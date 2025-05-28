@@ -1,12 +1,6 @@
 if (window.location.href.includes('screen=overview_villages')) {
 	const $html = `<h3 align="center">Renomear Aldeias</h3>
-	<div>
-		<div class="info_box">
-			<div class="content" style="margin-left: 4px">
-				<b>1 -</b> Exemplo 1, começando com 001.<br>
-				<b>2 -</b> Exemplo 3, começando com 3 dígitos.
-			</div>
-		</div>
+	
 		<input id="firstbox" type="checkbox">
 		<input id="start" type="text" placeholder="Início" size="1">
 		<input id="end" type="text" placeholder="Dígitos" size="1">
