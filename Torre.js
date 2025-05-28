@@ -241,3 +241,29 @@ function mostrarAlcance() {
 
     mapa.reload();
 }
+
+// --- NOVO: Preenchimento coordenada clicada na aldeia ---
+
+let campoCoordenadaAtivo = null;
+
+// Detecta qual campo de coordenada está ativo (focado)
+$('table.cabecalhoTorre').on('focus', 'input[name="coord"]', function () {
+    campoCoordenadaAtivo = this;
+});
+
+// Intercepta o clique no mapa (aldeias)
+const originalMapClick = TWMap.map._handleClick;
+TWMap.map._handleClick = function (e) {
+    originalMapClick.call(this, e);
+
+    // e.coord contém as coordenadas do clique
+    // e.villageId indica se clicou em uma aldeia
+    if (campoCoordenadaAtivo && e && e.coord && e.villageId) {
+        const coordTexto = `${e.coord[0]}|${e.coord[1]}`;
+        campoCoordenadaAtivo.value = coordTexto;
+
+        // Remove o foco após preencher (opcional)
+        campoCoordenadaAtivo.blur();
+        campoCoordenadaAtivo = null;
+    }
+};
