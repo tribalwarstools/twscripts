@@ -5,7 +5,7 @@ const igrejaRanges = [4, 6, 8];
 let activeInputs = 0;
 const maxInputs = 99;
 
-// Novo estilo CSS
+// Novo estilo CSS (com modificações para o painel flutuante)
 const customStyle = `
 <style>
 .igrejaRowOdd {
@@ -21,15 +21,30 @@ const customStyle = `
     font-weight: bold;
     color: #d8dee9;
 }
+#igrejaPanel {
+    position: fixed;
+    top: 20px;  /* Distância do topo da tela */
+    right: 20px;  /* Distância da borda direita da tela */
+    z-index: 1000; /* Para garantir que o painel fique acima de outros elementos */
+    background-color: #2e3440;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+#igrejaPanel table {
+    width: 100%;
+}
+#igrejaPanel button {
+    margin-top: 10px;
+}
 </style>`;
 
 // Inserindo o estilo no cabeçalho da página
-$("#contentContainer").eq(0).prepend(customStyle);
-$("#mobileHeader").eq(0).prepend(customStyle);
+$("head").append(customStyle);
 
-// Estrutura HTML principal
+// Estrutura HTML principal para o painel flutuante
 const panelHTML = `
-<div>
+<div id="igrejaPanel">
     <form id="IgrejaInputForm">
         <table class="igrejaHeader">
             <tr class="igrejaHeader">
@@ -64,8 +79,8 @@ const panelHTML = `
     </form>
 </div>`;
 
-// Adiciona a interface na página
-$("#contentContainer tr").eq(0).prepend("<td style='display: inline-block;vertical-align: top;'>" + panelHTML + "</td>");
+// Adiciona o painel flutuante na página
+$("body").prepend(panelHTML);
 
 // Evento de adicionar linha
 $("#addIgrejaBtn").click(() => addIgrejaRow("", 0));
