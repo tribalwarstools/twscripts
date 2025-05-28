@@ -1,226 +1,175 @@
-// Variáveis de alcance por nível da torre
-let towerData = [];
-const towerRanges = [1.1, 1.3, 1.5, 1.7, 2, 2.3, 2.6, 3, 3.4, 3.9, 4.4, 5.1, 5.8, 6.7, 7.6, 8.7, 10, 11.5, 13.1, 15,15,15,15,15,15,15,15,15,30];
+// Alcance por nível da igreja (em campos)
+let igrejaData = [];
+const alcanceIgreja = [4, 6, 8];
 
-let activeInputs = 0;
-const maxInputs = 99;
+let entradasAtivas = 0;
+const limiteEntradas = 99;
 
-// Novo estilo CSS
-const customStyle = `
+const estiloPersonalizado = `
 <style>
-.towerRowOdd {
+.igrejaLinhaImpar {
     background-color: #2e3440;
     color: #eceff4;
 }
-.towerRowEven {
+.igrejaLinhaPar {
     background-color: #3b4252;
     color: #eceff4;
 }
-.towerHeader {
+.igrejaCabecalho {
     background-color: #1e222a;
     font-weight: bold;
     color: #d8dee9;
 }
 </style>`;
 
-// Inserindo o estilo no cabeçalho da página
-$("#contentContainer").eq(0).prepend(customStyle);
-$("#mobileHeader").eq(0).prepend(customStyle);
+// Inserir CSS
+$("#contentContainer").eq(0).prepend(estiloPersonalizado);
+$("#mobileHeader").eq(0).prepend(estiloPersonalizado);
 
-// Estrutura HTML principal
-const panelHTML = `
+const htmlPainel = `
 <div>
-    <form id="TowerInputForm">
-        <table class="towerHeader">
-            <tr class="towerHeader">
-                <td>Coordinate</td>
-                <td>Level</td>
-                <td>Delete</td>
+    <form id="formularioIgreja">
+        <table class="igrejaCabecalho">
+            <tr class="igrejaCabecalho">
+                <td>Coordenada</td>
+                <td>Nível</td>
+                <td>Remover</td>
             </tr>
-            <tr id="btnAddRow" class="towerRowOdd">
+            <tr id="botaoAdicionarLinha" class="igrejaLinhaImpar">
                 <td colspan="3" align="center">
-                    <a href="javascript:void(0);" id="addTowerBtn" title="Add Entry"><img src="https://www.shinko-to-kuma.com/assets/img/tribalwars/plus.png" width="20" height="20"/></a>
+                    <a href="javascript:void(0);" id="btnAdicionarIgreja"><img src="https://www.shinko-to-kuma.com/assets/img/tribalwars/plus.png" width="20" height="20"/></a>
                 </td>
             </tr>
-            <tr id="actionButtons" class="towerRowEven">
+            <tr class="igrejaLinhaPar">
                 <td colspan="3" align="right">
-                    <button type="button" class="btn-confirm-yes" onclick="storeTowerData()">Save</button>
-                    <button type="button" class="btn-confirm-yes" onclick="renderTowerMap()">Show</button>
+                    <button type="button" class="btn-confirm-yes" onclick="salvarDadosIgreja()">Salvar</button>
+                    <button type="button" class="btn-confirm-yes" onclick="mostrarAlcanceIgreja()">Exibir</button>
                 </td>
             </tr>
-            <tr class="towerHeader">
+            <tr class="igrejaCabecalho">
                 <td colspan="3">
-                    <textarea id="bulkCoords" cols="30" rows="10" placeholder="Paste coordinates here"></textarea>
+                    <textarea id="campoCoordenadas" cols="30" rows="10" placeholder="Cole as coordenadas aqui"></textarea>
                 </td>
             </tr>
             <tr>
                 <td colspan="3" align="right">
-                    <button type="button" class="btn-confirm-yes" onclick="loadCoordinates()">Import</button>
+                    <button type="button" class="btn-confirm-yes" onclick="importarCoordenadas()">Importar</button>
                 </td>
             </tr>
         </table>
     </form>
 </div>`;
 
-// Adiciona a interface na página
-$("#contentContainer tr").eq(0).prepend("<td style='display: inline-block;vertical-align: top;'>" + panelHTML + "</td>");
+$("#contentContainer tr").eq(0).prepend("<td style='display: inline-block;vertical-align: top;'>" + htmlPainel + "</td>");
 
-// Evento de adicionar linha
-$("#addTowerBtn").click(() => addTowerRow("", 0));
+// Adiciona linha
+$("#btnAdicionarIgreja").click(() => adicionarLinhaIgreja("", 1));
 
-// Evento de remoção de linha
-$('table.towerHeader').on('click', '.removeTower', function () {
+// Remove linha
+$('table.igrejaCabecalho').on('click', '.removerIgreja', function () {
     $(this).closest('tr').remove();
-    activeInputs--;
-    if (activeInputs < maxInputs) {
-        $("#btnAddRow").show();
+    entradasAtivas--;
+    if (entradasAtivas < limiteEntradas) {
+        $("#botaoAdicionarLinha").show();
     }
 });
 
-// Carregar dados salvos do localStorage
-if (localStorage.getItem("towerVisualData") == null) {
-    towerData = [];
-    localStorage.setItem("towerVisualData", JSON.stringify(towerData));
+// Carrega dados salvos
+if (localStorage.getItem("igrejaAlcanceDados") == null) {
+    igrejaData = [];
+    localStorage.setItem("igrejaAlcanceDados", JSON.stringify(igrejaData));
 } else {
-    towerData = JSON.parse(localStorage.getItem("towerVisualData"));
-    towerData.forEach(entry => addTowerRow(entry.coord, entry.level));
+    igrejaData = JSON.parse(localStorage.getItem("igrejaAlcanceDados"));
+    igrejaData.forEach(entry => adicionarLinhaIgreja(entry.coord, entry.nivel));
 }
 
-function addTowerRow(coord, level) {
-    if (activeInputs < maxInputs) {
-        activeInputs++;
-        const cssClass = activeInputs % 2 === 0 ? "towerRowEven" : "towerRowOdd";
-        $(`<tr class="${cssClass}">
+function adicionarLinhaIgreja(coord, nivel) {
+    if (entradasAtivas < limiteEntradas) {
+        entradasAtivas++;
+        const classeLinha = entradasAtivas % 2 === 0 ? "igrejaLinhaPar" : "igrejaLinhaImpar";
+        $(`<tr class="${classeLinha}">
             <td><center><input type="text" name="coord" size="7" placeholder="xxx|yyy" value="${coord}"/></center></td>
-            <td><center><input type="text" name="level" size="5" placeholder="Level" value="${level}"/></center></td>
-            <td><center><span class="removeTower"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png" title="Remove"></span></center></td>
-        </tr>`).insertBefore($("#btnAddRow"));
+            <td><center>
+                <select name="nivel">
+                    <option value="1" ${nivel==1?"selected":""}>1</option>
+                    <option value="2" ${nivel==2?"selected":""}>2</option>
+                    <option value="3" ${nivel==3?"selected":""}>3</option>
+                </select>
+            </center></td>
+            <td><center><span class="removerIgreja"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png" title="Remover"></span></center></td>
+        </tr>`).insertBefore($("#botaoAdicionarLinha"));
 
-        if (activeInputs >= maxInputs) {
-            $("#btnAddRow").hide();
+        if (entradasAtivas >= limiteEntradas) {
+            $("#botaoAdicionarLinha").hide();
         }
     }
 }
 
-function storeTowerData() {
-    towerData = [];
-    const inputData = $("#TowerInputForm :input").serializeArray();
-    for (let i = 0; i < inputData.length; i += 2) {
-        towerData.push({ coord: inputData[i].value, level: parseInt(inputData[i + 1].value) });
+function salvarDadosIgreja() {
+    igrejaData = [];
+    const inputs = $("#formularioIgreja :input").serializeArray();
+    for (let i = 0; i < inputs.length; i += 2) {
+        igrejaData.push({ coord: inputs[i].value, nivel: parseInt(inputs[i + 1].value) });
     }
-    localStorage.setItem("towerVisualData", JSON.stringify(towerData));
+    localStorage.setItem("igrejaAlcanceDados", JSON.stringify(igrejaData));
 }
 
-function loadCoordinates() {
-    let coords = $("#bulkCoords").val().replace(/[\s\n]+/g, ",").split(",");
-    coords.forEach(c => addTowerRow(c, 0));
+function importarCoordenadas() {
+    let coords = $("#campoCoordenadas").val().replace(/[\s\n]+/g, ",").split(",");
+    coords.forEach(c => adicionarLinhaIgreja(c, 1));
 }
 
-function renderTowerMap() {
-    const map = TWMap;
-    const inputData = $("#TowerInputForm :input").serializeArray();
-    towerData = [];
-    for (let i = 0; i < inputData.length; i += 2) {
-        towerData.push({ coord: inputData[i].value, level: parseInt(inputData[i + 1].value) });
+function mostrarAlcanceIgreja() {
+    const mapa = TWMap;
+    const inputs = $("#formularioIgreja :input").serializeArray();
+    igrejaData = [];
+    for (let i = 0; i < inputs.length; i += 2) {
+        igrejaData.push({ coord: inputs[i].value, nivel: parseInt(inputs[i + 1].value) });
     }
 
-    function drawMainMap(canvas, sector) {
+    function desenharMapaPrincipal(canvas, setor) {
         const ctx = canvas.getContext("2d");
         ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        towerData.forEach(({ coord, level }) => {
-            if (level > 0) {
+        igrejaData.forEach(({ coord, nivel }) => {
+            if (nivel > 0) {
                 const [x, y] = coord.split('|').map(Number);
-                const center = map.map.pixelByCoord(x, y);
-                const sectorPos = map.map.pixelByCoord(sector.x, sector.y);
-                const px = (center[0] - sectorPos[0]) + map.tileSize[0] / 2;
-                const py = (center[1] - sectorPos[1]) + map.tileSize[1] / 2;
-                const radius = towerRanges[level - 1] * map.map.scale[0];
+                const centro = mapa.map.pixelByCoord(x, y);
+                const setorCoord = mapa.map.pixelByCoord(setor.x, setor.y);
+                const px = (centro[0] - setorCoord[0]) + mapa.tileSize[0] / 2;
+                const py = (centro[1] - setorCoord[1]) + mapa.tileSize[1] / 2;
+                const raio = alcanceIgreja[nivel - 1] * mapa.map.scale[0];
 
                 ctx.beginPath();
-                ctx.strokeStyle = '#000000';
-                ctx.ellipse(px, py, radius, radius, 0, 0, 2 * Math.PI);
+                ctx.strokeStyle = 'rgba(0, 0, 255, 0.5)';
+                ctx.fillStyle = 'rgba(100, 100, 255, 0.1)';
+                ctx.ellipse(px, py, raio, raio, 0, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
-                ctx.closePath();
-
-                ctx.beginPath();
-                ctx.strokeStyle = '#FFFFFF';
-                ctx.moveTo(px - 6, py - 6);
-                ctx.lineTo(px + 6, py + 6);
-                ctx.moveTo(px + 6, py - 6);
-                ctx.lineTo(px - 6, py + 6);
-                ctx.stroke();
                 ctx.closePath();
             }
         });
     }
 
-    function drawMiniMap(canvas, sector) {
-        const ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        towerData.forEach(({ coord, level }) => {
-            if (level > 0) {
-                const [x, y] = coord.split('|').map(Number);
-                const px = (x - sector.x) * 5 + 3;
-                const py = (y - sector.y) * 5 + 3;
-                const radius = towerRanges[level - 1] * 5;
-
-                ctx.beginPath();
-                ctx.strokeStyle = '#000000';
-                ctx.arc(px, py, radius, 0, 2 * Math.PI);
-                ctx.stroke();
-                ctx.fill();
-                ctx.closePath();
-
-                ctx.beginPath();
-                ctx.strokeStyle = '#FFFFFF';
-                ctx.moveTo(px - 2, py - 2);
-                ctx.lineTo(px + 2, py + 2);
-                ctx.moveTo(px + 2, py - 2);
-                ctx.lineTo(px - 2, py + 2);
-                ctx.stroke();
-                ctx.closePath();
-            }
-        });
+    if (!mapa.mapHandler._originalSpawn) {
+        mapa.mapHandler._originalSpawn = mapa.mapHandler.spawnSector;
     }
 
-    if (!map.mapHandler._originalSpawn) {
-        map.mapHandler._originalSpawn = map.mapHandler.spawnSector;
-    }
+    mapa.mapHandler.spawnSector = function (data, setor) {
+        mapa.mapHandler._originalSpawn(data, setor);
 
-    map.mapHandler.spawnSector = function (data, sector) {
-        map.mapHandler._originalSpawn(data, sector);
-
-        const canvasId = `mapOverlay_canvas_${sector.x}_${sector.y}`;
-        if (!document.getElementById(canvasId)) {
+        const idCanvas = `igreja_canvas_${setor.x}_${setor.y}`;
+        if (!document.getElementById(idCanvas)) {
             const canvas = document.createElement('canvas');
             canvas.className = 'mapOverlay_map_canvas';
-            canvas.id = canvasId;
+            canvas.id = idCanvas;
             canvas.style.position = 'absolute';
             canvas.style.zIndex = 10;
-            canvas.width = map.map.scale[0] * map.map.sectorSize;
-            canvas.height = map.map.scale[1] * map.map.sectorSize;
-            sector.appendElement(canvas, 0, 0);
-            drawMainMap(canvas, sector);
-        }
-
-        for (const key in map.minimap._loadedSectors) {
-            const miniSector = map.minimap._loadedSectors[key];
-            const miniCanvasId = `mapOverlay_topo_canvas_${key}`;
-            if (!document.getElementById(miniCanvasId)) {
-                const miniCanvas = document.createElement('canvas');
-                miniCanvas.className = 'mapOverlay_topo_canvas';
-                miniCanvas.id = miniCanvasId;
-                miniCanvas.style.position = 'absolute';
-                miniCanvas.style.zIndex = 11;
-                miniCanvas.width = 250;
-                miniCanvas.height = 250;
-                drawMiniMap(miniCanvas, miniSector);
-                miniSector.appendElement(miniCanvas, 0, 0);
-            }
+            canvas.width = mapa.map.scale[0] * mapa.map.sectorSize;
+            canvas.height = mapa.map.scale[1] * mapa.map.sectorSize;
+            setor.appendElement(canvas, 0, 0);
+            desenharMapaPrincipal(canvas, setor);
         }
     };
 
-    map.reload();
+    mapa.reload();
 }
