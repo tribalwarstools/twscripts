@@ -39,7 +39,7 @@ const painelHTML = `
             </tr>
             <tr id="botaoAdicionarLinha" class="linhaImpar">
                 <td colspan="3" align="center">
-                    <a href="javascript:void(0);" id="botaoAdicionar" title="Adicionar Torre"><img src="https://www.shinko-to-kuma.com/assets/img/tribalwars/plus.png" width="20" height="20"/></a>
+                    <button type="button" id="botaoAdicionar" class="btn-confirm-yes">Adicionar Torre</button>
                 </td>
             </tr>
             <tr id="botoesAcoes" class="linhaPar">
@@ -92,7 +92,7 @@ function adicionarLinhaTorre(coord, nivel) {
         $(`<tr class="${classeLinha}">
             <td><center><input type="text" name="coord" size="7" placeholder="xxx|yyy" value="${coord}"/></center></td>
             <td><center><input type="text" name="level" size="5" placeholder="Nível" value="${nivel}"/></center></td>
-            <td><center><span class="removerTorre"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png" title="Remover"></span></center></td>
+            <td><center><button type="button" class="btn-confirm-yes removerTorre">Excluir</button></center></td>
         </tr>`).insertBefore($("#botaoAdicionarLinha"));
 
         if (entradasAtivas >= maxEntradas) {
