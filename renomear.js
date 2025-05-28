@@ -1,5 +1,5 @@
 if (window.location.href.includes('screen=overview_villages')) {
-	const $html = `<h3 align="center">Renomeador</h3>
+	const $html = `<h3 align="center">Renomear Aldeias</h3>
 	<div>
 		<div class="info_box">
 			<div class="content" style="margin-left: 4px">
