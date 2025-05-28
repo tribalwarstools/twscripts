@@ -21,9 +21,9 @@ if (typeof woodPercentage == 'undefined') {
 // percentages for coins, 83000 is how much all 3 is combined
 
 var backgroundColor = "#ffffff";
-var borderColor = "#3e4147";
-var headerColor = "#202225";
-var titleColor = "#ffffdf";
+var borderColor = "#ffffff";
+var headerColor = "#ffffff";
+var titleColor = "#ffffff";
 var langShinko = [
     "Resource sender for flag boost minting",
     "Enter coordinate to send to",
