@@ -173,7 +173,7 @@ function renderIgrejaMap() {
     function drawMainMap(canvas, sector) {
         const ctx = canvas.getContext("2d");
         ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillStyle = 'rgba(173, 216, 230, 0.2)';
         igrejaData.forEach(({ coord, level }) => {
             if (level > 0) {
                 const [x, y] = coord.split('|').map(Number);
@@ -186,7 +186,7 @@ function renderIgrejaMap() {
                 ctx.beginPath();
                 ctx.strokeStyle = '#00a8ff';
                 ctx.ellipse(px, py, radius, radius, 0, 0, 2 * Math.PI);
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.fillStyle = 'rgba(173, 216, 230, 0.2)';
                 ctx.fill();
                 ctx.stroke();
                 ctx.closePath();
