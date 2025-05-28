@@ -241,3 +241,25 @@ function mostrarAlcance() {
 
     mapa.reload();
 }
+let campoCoordenadaSelecionado = null;
+
+// Detecta qual input de coordenada foi selecionado por último
+$(document).on("focus", 'input[name="coord"]', function () {
+    campoCoordenadaSelecionado = this;
+});
+
+// Sobrescreve o clique em aldeias no mapa
+if (!TWMap.map._originalHandleVillageClick) {
+    TWMap.map._originalHandleVillageClick = TWMap.map._handleVillageClick;
+}
+
+TWMap.map._handleVillageClick = function (event, vila) {
+    // Executa o comportamento normal
+    TWMap.map._originalHandleVillageClick(event, vila);
+
+    // Insere a coordenada no campo ativo
+    if (campoCoordenadaSelecionado) {
+        campoCoordenadaSelecionado.value = `${vila.x}|${vila.y}`;
+    }
+};
+
