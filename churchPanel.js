@@ -19,7 +19,7 @@ function makeMap() {
                     y = (t[1] - sector.y) * 5 + 3;
 
                 ctx.beginPath();
-                ctx.strokeStyle = '#000000';
+                ctx.strokeStyle = '#add8e6';
                 ctx.arc(x, y, this.igrejaRadius[ig - 1] * 5, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
@@ -53,7 +53,7 @@ function makeMap() {
                 y = (ig_pixel[1] - st_pixel[1]) + TWMap.tileSize[1] / 2;
 
                 ctx.beginPath();
-                ctx.strokeStyle = '#000000';
+                ctx.strokeStyle = '#add8e6';
                 ctx.ellipse(x, y, igr * TWMap.map.scale[0], igr * TWMap.map.scale[1], 0, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
