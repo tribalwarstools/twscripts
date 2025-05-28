@@ -167,6 +167,7 @@ function mostrarAlcance() {
 
                 ctx.beginPath();
                 ctx.strokeStyle = '#000000';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
                 ctx.arc(px, py, raio, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
