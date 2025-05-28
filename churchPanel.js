@@ -31,6 +31,8 @@ const customStyle = `
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     cursor: move;  /* Aponta que o painel pode ser arrastado */
+    width: 350px; /* Largura fixada para evitar esticamento */
+    height: auto; /* Altura ajustável de acordo com o conteúdo */
 }
 #igrejaPanel table {
     width: 100%;
