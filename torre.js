@@ -1,6 +1,6 @@
 // Dados de alcance por nível da torre
 let dadosTorres = [];
-const alcancesTorres = [1.1, 1.3, 1.5, 1.7, 2, 2.3, 2.6, 3, 3.4, 3.9, 4.4, 5.1, 5.8, 6.7, 7.6, 8.7, 10, 11.5, 13.1, 15,15,15,15,15,15,15,15,15,30];
+const alcancesTorres = [1.1, 1.3, 1.5, 1.7, 2, 2.3, 2.6, 3, 3.4, 3.9, 4.4, 5.1, 5.8, 6.7, 7.6, 8.7, 10, 11.5, 13.1, 15, 15, 15, 15, 15, 15, 15, 15, 30];
 
 let entradasAtivas = 0;
 const maxEntradas = 99;
@@ -21,9 +21,26 @@ const estiloPersonalizado = `
     font-weight: bold;
     color: #ffffff;
 }
+.btn, .btn-default {
+    display: inline-block;
+    padding: 3px;
+    margin: 0 2px;
+    text-align: center;
+    font-family: Verdana, Arial;
+    font-size: 12px !important;
+    font-weight: bold;
+    line-height: normal;
+    cursor: pointer;
+    background: #6c4824;
+    background: linear-gradient(to bottom, #947a62 0%, #7b5c3d 22%, #6c4824 30%, #6c4824 100%);
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+    border: 1px solid #000;
+    color: #fff;
+    white-space: nowrap;
+}
 </style>`;
 
-// Inserindo o estilo no cabeçalho da página
 $("#contentContainer").eq(0).prepend(estiloPersonalizado);
 $("#mobileHeader").eq(0).prepend(estiloPersonalizado);
 
@@ -39,13 +56,13 @@ const painelHTML = `
             </tr>
             <tr id="botaoAdicionarLinha" class="linhaImpar">
                 <td colspan="3" align="center">
-                    <button type="button" id="botaoAdicionar" class="btn-confirm-yes">Adicionar Torre</button>
+                    <button type="button" id="botaoAdicionar" class="btn btn-default">Adicionar Torre</button>
                 </td>
             </tr>
             <tr id="botoesAcoes" class="linhaPar">
                 <td colspan="3" align="right">
-                    <button type="button" class="btn-confirm-yes" onclick="salvarDadosTorres()">Salvar</button>
-                    <button type="button" class="btn-confirm-yes" onclick="mostrarAlcance()">Mostrar</button>
+                    <button type="button" class="btn btn-default" onclick="salvarDadosTorres()">Salvar</button>
+                    <button type="button" class="btn btn-default" onclick="mostrarAlcance()">Mostrar</button>
                 </td>
             </tr>
             <tr class="cabecalhoTorre">
@@ -55,7 +72,7 @@ const painelHTML = `
             </tr>
             <tr>
                 <td colspan="3" align="right">
-                    <button type="button" class="btn-confirm-yes" onclick="importarCoordenadas()">Importar</button>
+                    <button type="button" class="btn btn-default" onclick="importarCoordenadas()">Importar</button>
                 </td>
             </tr>
         </table>
@@ -92,7 +109,7 @@ function adicionarLinhaTorre(coord, nivel) {
         $(`<tr class="${classeLinha}">
             <td><center><input type="text" name="coord" size="7" placeholder="xxx|yyy" value="${coord}"/></center></td>
             <td><center><input type="text" name="level" size="5" placeholder="Nível" value="${nivel}"/></center></td>
-            <td><center><button type="button" class="btn-confirm-yes removerTorre">Excluir</button></center></td>
+            <td><center><button type="button" class="btn btn-default removerTorre">Excluir</button></center></td>
         </tr>`).insertBefore($("#botaoAdicionarLinha"));
 
         if (entradasAtivas >= maxEntradas) {
