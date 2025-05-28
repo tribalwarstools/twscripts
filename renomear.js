@@ -22,7 +22,7 @@ if (window.location.href.includes('screen=overview_villages')) {
 	<br>
 	<div>
 		<small>
-			<strong>Renomear Aldeias v1.2 por<span style="color: red;"> K I N G S </span></strong>
+			<strong>versão em Pt-Br</span></strong>
 		</small>
 	</div>`;
 
