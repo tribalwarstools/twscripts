@@ -184,7 +184,7 @@ function renderIgrejaMap() {
                 const radius = igrejaRanges[level - 1] * map.map.scale[0];
 
                 ctx.beginPath();
-                ctx.strokeStyle = '#000000';
+                ctx.strokeStyle = '#00a8ff';
                 ctx.ellipse(px, py, radius, radius, 0, 0, 2 * Math.PI);
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
                 ctx.fill();
