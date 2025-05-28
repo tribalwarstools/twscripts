@@ -1,10 +1,9 @@
 this.serverData = [];
-this.igrejaRadius = [4,6,8];
+this.igrejaRadius = [1.1, 1.3, 1.5, 1.7, 2, 2.3, 2.6, 3, 3.4, 3.9, 4.4, 5.1, 5.8, 6.7, 7.6, 8.7, 10, 11.5, 13.1, 15, 15, 15, 15, 15, 15, 15, 15, 15, 30];
 var currentFields = 0;
 var maxFields = 99;
-// categorias habilitadas
 
-// Estilizando o HTML
+// Estilos
 cssClassesIgreja = `
 <style>
 .igrejaRowA {
@@ -22,11 +21,10 @@ color: white;
 }
 </style>`
 
-// Adicionando os estilos à página, desktop/mobile
 $("#contentContainer").eq(0).prepend(cssClassesIgreja);
 $("#mobileHeader").eq(0).prepend(cssClassesIgreja);
 
-// Base HTML
+// HTML Base
 html = `
 <div>
     <form id="IgrejaData">
@@ -57,7 +55,7 @@ html = `
     </form>
 </div>`;
 
-// Exibindo o resumo
+// Exibe o HTML na página
 $("#contentContainer tr").eq(0).prepend("<td style='display: inline-block;vertical-align: top;'>" + html + "</td>")
 
 $(".add_button").click(function () {
@@ -73,15 +71,14 @@ if (localStorage.getItem("igrejaData") == null) {
     this.serverData = [];
     localStorage.setItem("igrejaData", JSON.stringify(serverData));
 } else {
-    console.log("Obtendo quais categorias estão habilitadas no armazenamento");
+    console.log("Obtendo dados de igreja do armazenamento");
     this.serverData = JSON.parse(localStorage.getItem("igrejaData"));
     for (var i = 0; i < serverData.length; i++) {
         addRow(serverData[i].village, serverData[i].igreja);
     }
 }
 
-var mapOverlay = TWMap;
-
+// Função para desenhar as igrejas no mapa
 function makeMap() {
     serverData = [];
     tempData = $("#IgrejaData :input").serializeArray();
@@ -89,7 +86,7 @@ function makeMap() {
         serverData.push({ "village": tempData[i].value, "igreja": parseInt(tempData[i + 1].value) })
     }
 
-    function drawTopoIgrejas(canvas, sector) {
+    function drawIgrejasTopo(canvas, sector) {
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.lineWidth = 1;
@@ -121,7 +118,7 @@ function makeMap() {
         }
     }
 
-    function drawMapIgrejas(canvas, sector) {
+    function drawIgrejasMapa(canvas, sector) {
         var ctx = canvas.getContext('2d');
         ctx.lineWidth = 2;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -131,10 +128,10 @@ function makeMap() {
             if (ig != -1) {
                 var igr = this.igrejaRadius[ig - 1],
                     t = serverData[prop].village.split('|'),
-                    ig_pixel = mapOverlay.map.pixelByCoord(t[0], t[1]),
-                    st_pixel = mapOverlay.map.pixelByCoord(sector.x, sector.y),
-                    x = (ig_pixel[0] - st_pixel[0]) + mapOverlay.tileSize[0] / 2
-                y = (ig_pixel[1] - st_pixel[1]) + mapOverlay.tileSize[1] / 2;
+                    ig_pixel = TWMap.map.pixelByCoord(t[0], t[1]),
+                    st_pixel = TWMap.map.pixelByCoord(sector.x, sector.y),
+                    x = (ig_pixel[0] - st_pixel[0]) + TWMap.tileSize[0] / 2
+                y = (ig_pixel[1] - st_pixel[1]) + TWMap.tileSize[1] / 2;
 
                 ctx.beginPath();
                 ctx.strokeStyle = '#000000';
@@ -155,21 +152,20 @@ function makeMap() {
         }
     }
 
-    if (mapOverlay.mapHandler._spawnSector) {
+    if (TWMap.mapHandler._spawnSector) {
         // Já existe, não recriar
     } else {
         // Não existe ainda
-        mapOverlay.mapHandler._spawnSector = mapOverlay.mapHandler.spawnSector;
+        TWMap.mapHandler._spawnSector = TWMap.mapHandler.spawnSector;
     }
 
-    mapOverlay.mapHandler.spawnSector = function (data, sector) {
-        mapOverlay.mapHandler._spawnSector(data, sector);
+    TWMap.mapHandler.spawnSector = function (data, sector) {
+        TWMap.mapHandler._spawnSector(data, sector);
 
-        // Canvas do mapa principal
         var beginX = sector.x - data.x;
-        var endX = beginX + mapOverlay.mapSubSectorSize;
+        var endX = beginX + TWMap.mapSubSectorSize;
         var beginY = sector.y - data.y;
-        var endY = beginY + mapOverlay.mapSubSectorSize;
+        var endY = beginY + TWMap.mapSubSectorSize;
 
         for (var x in data.tiles) {
             var x = parseInt(x, 10);
@@ -181,26 +177,80 @@ function makeMap() {
                 if (y < beginY || y >= endY) {
                     continue;
                 }
-                var v = mapOverlay.villages[(data.x + x) * 1000 + (data.y + y)];
+                var v = TWMap.villages[(data.x + x) * 1000 + (data.y + y)];
                 if (v) {
                     var el = $('#mapOverlay_canvas_' + sector.x + '_' + sector.y);
                     if (!el.length) {
                         var canvas = document.createElement('canvas');
                         canvas.style.position = 'absolute';
-                        canvas.width = (mapOverlay.map.scale[0] * mapOverlay.map.sectorSize);
-                        canvas.height = (mapOverlay.map.scale[1] * mapOverlay.map.sectorSize);
+                        canvas.width = (TWMap.map.scale[0] * TWMap.map.sectorSize);
+                        canvas.height = (TWMap.map.scale[1] * TWMap.map.sectorSize);
                         canvas.style.zIndex = 10;
                         canvas.className = 'mapOverlay_map_canvas';
                         canvas.id = 'mapOverlay_canvas_' + sector.x + '_' + sector.y;
 
                         sector.appendElement(canvas, 0, 0);
-                        drawMapIgrejas(canvas, sector);
+                        drawIgrejasMapa(canvas, sector);
                     }
                 }
             }
         }
 
-        // Canvas topo
-        for (var key in mapOverlay.minimap._loadedSectors) {
-            var sector = mapOverlay.minimap._loadedSectors[key];
-            var el = $('#mapOverlay_topo');
+        // Canvas Topo
+        for (var key in TWMap.minimap._loadedSectors) {
+            var sector = TWMap.minimap._loadedSectors[key];
+            var el = $('#mapOverlay_topo_canvas_' + key);
+            if (!el.length) {
+                var canvas = document.createElement('canvas');
+                canvas.style.position = 'absolute';
+                canvas.width = '250';
+                canvas.height = '250';
+                canvas.style.zIndex = 11;
+                canvas.className = 'mapOverlay_topo_canvas';
+                canvas.id = 'mapOverlay_topo_canvas_' + key;
+
+                drawIgrejasTopo(canvas, sector);
+                sector.appendElement(canvas, 0, 0);
+            }
+        }
+    }
+
+    TWMap.reload();
+}
+
+function importCoords() {
+    coords = $("#coordinates").val();
+    coords = coords.replace(/ /g, ",");
+    coords = coords.replace(/\n/g, ",");
+    coords = coords.split(',');
+
+    for (var i = 0; i < coords.length; i++) {
+        addRow(coords[i], 0);
+    }
+}
+
+function addRow(coord, level) {
+    if (currentFields < maxFields) {
+        currentFields++;
+        var tempClass = (currentFields % 2 == 0) ? "igrejaRowB" : "igrejaRowA";
+        
+        $(`<tr class="${tempClass}">
+            <td><center><input type="text" id="coord${currentFields}" name="village" class="target-input-field target-input-autocomplete ui-autocomplete-input" size="7" placeholder="xxx|xxx" value="${coord}"/></center></td>
+            <td><center><input type="text" id="igreja${currentFields}" name="igreja"  size="6" placeholder="Igreja nível" value="${level}"/></center></td>
+            <td><center><span id="removeRow"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png" title="remover"></span></center></td>
+        </tr>`).insertBefore($("#addButton")[0]);
+
+        if (currentFields >= maxFields) {
+            $("#addButton").css("display", "none");
+        }
+    }
+}
+
+function saveData() {
+    serverData = [];
+    tempData = $("#IgrejaData :input").serializeArray();
+    for (var i = 0; i < tempData.length; i = i + 2) {
+        serverData.push({ "village": tempData[i].value, "igreja": parseInt(tempData[i + 1].value) })
+    }
+    localStorage.setItem("igrejaData", JSON.stringify(serverData));
+}
