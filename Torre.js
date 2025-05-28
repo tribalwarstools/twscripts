@@ -9,17 +9,17 @@ const maxEntradas = 99;
 const estiloPersonalizado = `
 <style>
 .linhaImpar {
-    background-color: #2e3440;
+    background-color: #c1a264;
     color: #eceff4;
 }
 .linhaPar {
-    background-color: #3b4252;
+    background-color: #f0e2be;
     color: #eceff4;
 }
 .cabecalhoTorre {
-    background-color: #1e222a;
+    background-color: #7d510f;
     font-weight: bold;
-    color: #d8dee9;
+    color: #ffffff;
 }
 </style>`;
 
