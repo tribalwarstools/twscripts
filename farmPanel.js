@@ -1,11 +1,11 @@
 ﻿javascript:(function () {
   const units = {
-    spear: [0, 0], sword: [0, 0], axe: [0, 0], archer: [0, 0],
-    spy: [1, 0], light: [5, 0], marcher: [0, 0], heavy: [0, 0],
+    spear: [10, 0], sword: [10, 0], axe: [0, 0], archer: [0, 0],
+    spy: [0, 0], light: [0, 0], marcher: [0, 0], heavy: [0, 0],
     ram: [0, 0], catapult: [0, 0], knight: [0, 0], snob: [0, 0]
   };
   const options = {
-    coords: "000|000",
+    coords: "770|593 774|591 773|597 775|588 769|598 770|601 774|589 771|601 778|592 780|593 778|601 780|591 777|605 771|598 773|601 782|596 774|596 777|597 781|593 774|600 783|596 773|604 779|597 782|590 786|592 777|589 784|601 785|602 784|599 786|591 783|600 784|590 786|601",
     protect: false,
     getCoords: true,
     villagePoints: { min: 0, max: 12350 }
