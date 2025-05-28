@@ -1,148 +1,161 @@
-// VARIÁVEIS GLOBAIS
-window.churchData = [];
-window.churchRadius = [4, 6, 8];
-let currentFields = 0;
-const maxFields = 99;
+// ==UserScript==
+// @name         Raio da Igreja - Tribal Wars
+// @version      1.0
+// @description  Mostra o alcance da Igreja no mapa e minimapa com raio visual
+// @author       Adaptado por ChatGPT
+// @match        https://*.tribalwars.*/*map*
+// @grant        none
+// ==/UserScript==
 
-// ESTILO
-const cssChurch = `
-<style>
-.churchRowA {
-  background-color: #32353b;
-  color: white;
-}
-.churchRowB {
-  background-color: #36393f;
-  color: white;
-}
-.churchHeader {
-  background-color: #202225;
-  font-weight: bold;
-  color: white;
-}
-</style>`;
-$("#contentContainer").eq(0).prepend(cssChurch);
-$("#mobileHeader").eq(0).prepend(cssChurch);
+(function () {
+  'use strict';
 
-// HTML
-const html = `
-<div>
-  <form id="ChurchData">
-    <table class="churchHeader">
-      <tr class="churchHeader">
-        <td>Coord</td>
-        <td>Nível</td>
-        <td>Remover</td>
-      </tr>
-      <tr id="addChurchButton" class="churchRowA">
-        <td colspan="3"><center><a href="#" class="add_church_button"><img src="https://www.shinko-to-kuma.com/assets/img/tribalwars/plus.png" width="20" height="20"/></a></center></td>
-      </tr>
-      <tr class="churchRowB">
-        <td colspan="3" align="right">
-          <button type="button" class="btn-confirm-yes" onclick="saveChurchData()">Salvar</button>
-          <button type="button" class="btn-confirm-yes" onclick="drawChurchMap()">Mostrar</button>
-        </td>
-      </tr>
-      <tr class="churchHeader">
-        <td colspan="3"><textarea id="churchCoordinates" cols="30" rows="10" placeholder="Insira coordenadas aqui"></textarea></td>
-      </tr>
-      <tr>
-        <td colspan="3" align="right"><button type="button" class="btn-confirm-yes" onclick="importChurchCoords()">Importar</button></td>
-      </tr>
-    </table>
-  </form>
-</div>`;
-$("#contentContainer tr").eq(0).prepend(`<td style='vertical-align: top;'>${html}</td>`);
+  window.churchData = JSON.parse(localStorage.getItem("churchData") || "[]");
+  window.churchRadius = [4, 6, 8]; // Nível 1, 2, 3
 
-// EVENTOS
-$(".add_church_button").click(() => addChurchRow(""));
+  // Estilo visual
+  const css = `
+    <style>
+      .church-panel {
+        background: #202225;
+        color: white;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+        font-family: Verdana, sans-serif;
+      }
+      .church-panel input {
+        margin: 3px;
+      }
+    </style>`;
+  $("head").append(css);
 
-$('table.churchHeader').on('click', '#removeRow', function () {
-  $(this).closest('tr').remove();
-});
+  // Painel de controle
+  const html = `
+    <div class="church-panel">
+      <strong>Igrejas (formato: 500|500 - nível 1 a 3):</strong><br>
+      <textarea id="church-coords" rows="6" cols="30" placeholder="500|500 2\n501|501 3"></textarea><br>
+      <button id="church-load">Carregar</button>
+      <button id="church-save">Salvar</button>
+      <button id="church-clear">Limpar</button>
+    </div>`;
+  $("#map_container").before(html);
 
-// CARREGAR DADOS
-if (localStorage.getItem("churchData") !== null) {
-  window.churchData = JSON.parse(localStorage.getItem("churchData"));
-  for (let entry of window.churchData) {
-    addChurchRow(entry.village, entry.church);
-  }
-}
-
-// FUNÇÕES
-function addChurchRow(coord = "", level = 1) {
-  if (currentFields >= maxFields) return;
-  currentFields++;
-  const rowClass = currentFields % 2 === 0 ? "churchRowB" : "churchRowA";
-  const row = `
-    <tr class="${rowClass}">
-      <td><center><input type="text" name="village" size="7" placeholder="xxx|yyy" value="${coord}"/></center></td>
-      <td><center><input type="number" name="church" min="1" max="3" value="${level}"/></center></td>
-      <td><center><span id="removeRow"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png"></span></center></td>
-    </tr>`;
-  $(row).insertBefore($("#addChurchButton"));
-}
-
-function importChurchCoords() {
-  let coords = $("#churchCoordinates").val().replace(/\s+/g, ",").split(",");
-  coords.forEach(coord => {
-    if (coord.match(/^\d{3}\|\d{3}$/)) addChurchRow(coord.trim(), 1);
-  });
-}
-
-function saveChurchData() {
-  const inputs = $("#ChurchData :input").serializeArray();
-  window.churchData = [];
-  for (let i = 0; i < inputs.length; i += 2) {
-    window.churchData.push({
-      village: inputs[i].value,
-      church: parseInt(inputs[i + 1].value)
-    });
-  }
-  localStorage.setItem("churchData", JSON.stringify(window.churchData));
-}
-
-function drawChurchMap() {
-  const map = TWMap;
-  const overlayClass = "church_canvas";
-
-  $("canvas." + overlayClass).remove();
-
-  if (!map.mapHandler._spawnChurchBackup) {
-    map.mapHandler._spawnChurchBackup = map.mapHandler.spawnSector;
+  // Funções utilitárias
+  function parseInput(text) {
+    const lines = text.trim().split(/[\n,]+/);
+    return lines.map(line => {
+      const match = line.trim().match(/(\d{3})\|(\d{3})\s+(\d)/);
+      if (match) {
+        const village = `${match[1]}|${match[2]}`;
+        const church = parseInt(match[3], 10);
+        return { village, church };
+      }
+      return null;
+    }).filter(Boolean);
   }
 
-  map.mapHandler.spawnSector = function (data, sector) {
-    map.mapHandler._spawnChurchBackup(data, sector);
+  function drawChurchMap() {
+    const overlayClass = "church_map_canvas";
+    $("canvas." + overlayClass).remove();
 
-    const canvas = document.createElement("canvas");
-    canvas.width = map.map.scale[0] * map.map.sectorSize;
-    canvas.height = map.map.scale[1] * map.map.sectorSize;
-    canvas.className = overlayClass;
-    canvas.style.position = "absolute";
-    canvas.style.zIndex = 10;
+    const map = TWMap;
+    const scale = map.map.scale;
+    const sectorSize = map.map.sectorSize;
 
-    const ctx = canvas.getContext("2d");
+    for (const sectorKey in map.map._sectors) {
+      const sector = map.map._sectors[sectorKey];
+      const [sx, sy] = [sector.x, sector.y];
 
-    for (const { village, church } of window.churchData) {
-      const [vx, vy] = village.split("|").map(Number);
-      const radius = window.churchRadius[church - 1] * map.map.scale[0];
+      const canvas = document.createElement("canvas");
+      canvas.width = scale[0] * sectorSize;
+      canvas.height = scale[1] * sectorSize;
+      canvas.className = overlayClass;
+      canvas.style.position = "absolute";
+      canvas.style.zIndex = 10;
 
-      const pixel = map.map.pixelByCoord(vx, vy);
-      const sectorPixel = map.map.pixelByCoord(sector.x, sector.y);
-      const x = (pixel[0] - sectorPixel[0]) + map.tileSize[0] / 2;
-      const y = (pixel[1] - sectorPixel[1]) + map.tileSize[1] / 2;
+      const ctx = canvas.getContext("2d");
 
-      ctx.beginPath();
-      ctx.strokeStyle = '#0055FF';
-      ctx.fillStyle = 'rgba(0, 85, 255, 0.2)';
-      ctx.arc(x, y, radius, 0, 2 * Math.PI);
-      ctx.stroke();
-      ctx.fill();
+      for (const { village, church } of window.churchData) {
+        const [vx, vy] = village.split("|").map(Number);
+        const pixel = map.map.pixelByCoord(vx, vy);
+        const sectorPixel = map.map.pixelByCoord(sx, sy);
+        const x = (pixel[0] - sectorPixel[0]) + scale[0] / 2;
+        const y = (pixel[1] - sectorPixel[1]) + scale[1] / 2;
+        const radius = window.churchRadius[church - 1] * scale[0];
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#0055FF';
+        ctx.fillStyle = 'rgba(0, 85, 255, 0.2)';
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fill();
+      }
+
+      sector.appendElement(canvas, 0, 0);
     }
 
-    sector.appendElement(canvas, 0, 0);
-  };
+    drawChurchMiniMap(); // <- Chamar também o minimapa
+  }
 
-  map.reload();
-}
+  function drawChurchMiniMap() {
+    const overlayClass = "church_topo_canvas";
+    const minimap = TWMap.minimap;
+
+    $("canvas." + overlayClass).remove();
+
+    for (let key in minimap._loadedSectors) {
+      const sector = minimap._loadedSectors[key];
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 250;
+      canvas.height = 250;
+      canvas.className = overlayClass;
+      canvas.style.position = "absolute";
+      canvas.style.zIndex = 11;
+
+      const ctx = canvas.getContext("2d");
+
+      for (const { village, church } of window.churchData) {
+        const [vx, vy] = village.split("|").map(Number);
+        const x = (vx - sector.x) * 5 + 3;
+        const y = (vy - sector.y) * 5 + 3;
+        const radius = window.churchRadius[church - 1] * 5;
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#0055FF';
+        ctx.fillStyle = 'rgba(0, 85, 255, 0.2)';
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fill();
+      }
+
+      sector.appendElement(canvas, 0, 0);
+    }
+  }
+
+  // Eventos
+  $("#church-load").on("click", () => {
+    const text = $("#church-coords").val();
+    window.churchData = parseInput(text);
+    drawChurchMap();
+  });
+
+  $("#church-save").on("click", () => {
+    const text = $("#church-coords").val();
+    window.churchData = parseInput(text);
+    localStorage.setItem("churchData", JSON.stringify(window.churchData));
+    drawChurchMap();
+  });
+
+  $("#church-clear").on("click", () => {
+    localStorage.removeItem("churchData");
+    window.churchData = [];
+    drawChurchMap();
+  });
+
+  // Inicialização automática
+  if (window.churchData.length > 0) {
+    drawChurchMap();
+  }
+})();
