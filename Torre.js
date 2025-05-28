@@ -52,7 +52,7 @@ const painelHTML = `
             <tr class="cabecalhoTorre">
                 <td>Coordenada</td>
                 <td>Nível</td>
-                <td>Excluir</td>
+                <td></td>
             </tr>
             <tr id="botaoAdicionarLinha" class="linhaImpar">
                 <td colspan="3" align="center">
