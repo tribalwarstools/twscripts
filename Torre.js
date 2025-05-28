@@ -126,7 +126,7 @@ function mostrarAlcance() {
     function desenharMapaPrincipal(canvas, setor) {
         const ctx = canvas.getContext("2d");
         ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
         dadosTorres.forEach(({ coord, level }) => {
             if (level > 0) {
                 const [x, y] = coord.split('|').map(Number);
@@ -137,7 +137,7 @@ function mostrarAlcance() {
                 const raio = alcancesTorres[level - 1] * mapa.map.scale[0];
 
                 ctx.beginPath();
-                ctx.strokeStyle = '#000000';
+                ctx.strokeStyle = '#ff0000';
                 ctx.ellipse(px, py, raio, raio, 0, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
@@ -166,8 +166,8 @@ function mostrarAlcance() {
                 const raio = alcancesTorres[level - 1] * 5;
 
                 ctx.beginPath();
-                ctx.strokeStyle = '#000000';
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.strokeStyle = '#ff0000';
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
                 ctx.arc(px, py, raio, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
