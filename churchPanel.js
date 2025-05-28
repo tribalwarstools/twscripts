@@ -82,6 +82,31 @@ const panelHTML = `
 // Adiciona o painel na página
 $("body").append(panelHTML);
 
+// Lógica para permitir o arraste do painel flutuante
+let isDragging = false;
+let offsetX, offsetY;
+
+$("#igrejaPanel").mousedown(function (e) {
+    isDragging = true;
+    offsetX = e.clientX - $(this).offset().left;
+    offsetY = e.clientY - $(this).offset().top;
+    $(this).css('cursor', 'grabbing');
+});
+
+$(document).mousemove(function (e) {
+    if (isDragging) {
+        $("#igrejaPanel").css({
+            top: e.clientY - offsetY,
+            left: e.clientX - offsetX
+        });
+    }
+});
+
+$(document).mouseup(function () {
+    isDragging = false;
+    $("#igrejaPanel").css('cursor', 'move');
+});
+
 // Evento de adicionar linha
 $("#addIgrejaBtn").click(() => addIgrejaRow("", 0));
 
@@ -192,8 +217,8 @@ function renderIgrejaMap() {
                 ctx.strokeStyle = '#000000';
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
                 ctx.arc(px, py, radius, 0, 2 * Math.PI);
-                ctx.fill();
                 ctx.stroke();
+                ctx.fill();
                 ctx.closePath();
 
                 ctx.beginPath();
