@@ -243,23 +243,41 @@ function mostrarAlcance() {
 }
 let campoCoordenadaSelecionado = null;
 
-// Detecta qual input de coordenada foi selecionado por último
+// Detecta qual campo de coordenada está focado
 $(document).on("focus", 'input[name="coord"]', function () {
     campoCoordenadaSelecionado = this;
 });
 
-// Sobrescreve o clique em aldeias no mapa
-if (!TWMap.map._originalHandleVillageClick) {
-    TWMap.map._originalHandleVillageClick = TWMap.map._handleVillageClick;
-}
+// Intercepta clique em aldeias no mapa
+(function interceptarCliqueMapa() {
+    if (!window.TWMap || !TWMap.villageOverlay || !TWMap.villageOverlay._cache) return;
 
-TWMap.map._handleVillageClick = function (event, vila) {
-    // Executa o comportamento normal
-    TWMap.map._originalHandleVillageClick(event, vila);
+    const observer = new MutationObserver(() => {
+        $('.map_village').off('click.preencherCoord').on('click.preencherCoord', function () {
+            if (campoCoordenadaSelecionado) {
+                const coords = $(this).attr('data-coords') || $(this).attr('onclick')?.match(/\d+\|\d+/)?.[0];
+                if (coords) {
+                    campoCoordenadaSelecionado.value = coords;
+                }
+            }
+        });
+    });
 
-    // Insere a coordenada no campo ativo
-    if (campoCoordenadaSelecionado) {
-        campoCoordenadaSelecionado.value = `${vila.x}|${vila.y}`;
-    }
-};
+    // Observa mudanças no mapa (ex: ao mover ou carregar setor)
+    const target = document.getElementById('map_wrap') || document.body;
+    observer.observe(target, { childList: true, subtree: true });
 
+    // Dispara manualmente uma vez para aldeias já carregadas
+    setTimeout(() => {
+        $('.map_village').each(function () {
+            $(this).off('click.preencherCoord').on('click.preencherCoord', function () {
+                if (campoCoordenadaSelecionado) {
+                    const coords = $(this).attr('data-coords') || $(this).attr('onclick')?.match(/\d+\|\d+/)?.[0];
+                    if (coords) {
+                        campoCoordenadaSelecionado.value = coords;
+                    }
+                }
+            });
+        });
+    }, 1000);
+})();
