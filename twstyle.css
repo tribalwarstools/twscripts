@@ -1,0 +1,20 @@
+.btn, .btn-default {
+    display: inline-block;
+    padding: 3px;
+    margin: 0 2px;
+    text-align: center;
+    font-family: Verdana, Arial;
+    font-size: 12px !important;
+    font-weight: bold;
+    line-height: normal;
+    cursor: pointer;
+    background: #6c4824;
+    background: linear-gradient(to bottom, #947a62 0%, #7b5c3d 22%, #6c4824 30%, #6c4824 100%);
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+    border: 1px solid #000;
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* Adicione outros estilos compartilhados aqui */
