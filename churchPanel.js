@@ -21,24 +21,22 @@ const customStyle = `
     color: #d8dee9;
 }
 
-/* Estilo do painel flutuante */
 #igrejaPanel {
     position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    width: 250px;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 300px;
     background: #d2c09e;
     padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    cursor: move;
+    overflow-y: auto;
+    border-left: 2px solid #b8a87f;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
 }
 
-/* Para o header do painel flutuante */
-#igrejaPanel .igrejaHeader {
-    cursor: move;
-}
+
+
 </style>`;
 
 // Inserindo o estilo no cabeçalho da página
@@ -82,30 +80,6 @@ const panelHTML = `
 // Adiciona o painel na página
 $("body").append(panelHTML);
 
-// Lógica para permitir o arraste do painel flutuante
-let isDragging = false;
-let offsetX, offsetY;
-
-$("#igrejaPanel").mousedown(function (e) {
-    isDragging = true;
-    offsetX = e.clientX - $(this).offset().left;
-    offsetY = e.clientY - $(this).offset().top;
-    $(this).css('cursor', 'grabbing');
-});
-
-$(document).mousemove(function (e) {
-    if (isDragging) {
-        $("#igrejaPanel").css({
-            top: e.clientY - offsetY,
-            left: e.clientX - offsetX
-        });
-    }
-});
-
-$(document).mouseup(function () {
-    isDragging = false;
-    $("#igrejaPanel").css('cursor', 'move');
-});
 
 // Evento de adicionar linha
 $("#addIgrejaBtn").click(() => addIgrejaRow("", 0));
