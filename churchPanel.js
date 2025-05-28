@@ -214,7 +214,7 @@ function renderIgrejaMap() {
                 const radius = igrejaRanges[level - 1] * 5;
 
                 ctx.beginPath();
-                ctx.strokeStyle = '#000000';
+                ctx.strokeStyle = '#00a8ff';
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
                 ctx.arc(px, py, radius, 0, 2 * Math.PI);
                 ctx.stroke();
