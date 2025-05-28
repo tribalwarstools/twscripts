@@ -30,6 +30,7 @@ const customStyle = `
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    cursor: move;  /* Aponta que o painel pode ser arrastado */
 }
 #igrejaPanel table {
     width: 100%;
@@ -81,6 +82,37 @@ const panelHTML = `
 
 // Adiciona o painel flutuante na página
 $("body").prepend(panelHTML);
+
+// Função para tornar o painel arrastável
+function makePanelDraggable() {
+    const panel = document.getElementById('igrejaPanel');
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    panel.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        offsetX = e.clientX - panel.getBoundingClientRect().left;
+        offsetY = e.clientY - panel.getBoundingClientRect().top;
+        document.body.style.userSelect = 'none';  // Previne a seleção de texto durante o arrasto
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            const x = e.clientX - offsetX;
+            const y = e.clientY - offsetY;
+            panel.style.left = `${x}px`;
+            panel.style.top = `${y}px`;
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        document.body.style.userSelect = '';  // Restaura a seleção de texto após o arrasto
+    });
+}
+
+// Chama a função para tornar o painel arrastável
+makePanelDraggable();
 
 // Evento de adicionar linha
 $("#addIgrejaBtn").click(() => addIgrejaRow("", 0));
@@ -182,73 +214,6 @@ function renderIgrejaMap() {
             }
         });
     }
-
-    function drawMiniMap(canvas, sector) {
-        const ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        igrejaData.forEach(({ coord, level }) => {
-            if (level > 0) {
-                const [x, y] = coord.split('|').map(Number);
-                const px = (x - sector.x) * 5 + 3;
-                const py = (y - sector.y) * 5 + 3;
-                const radius = igrejaRanges[level - 1] * 5;
-
-                ctx.beginPath();
-                ctx.strokeStyle = '#000000';
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-                ctx.arc(px, py, radius, 0, 2 * Math.PI);
-                ctx.stroke();
-                ctx.fill();
-                ctx.closePath();
-
-                ctx.beginPath();
-                ctx.strokeStyle = '#FFFFFF';
-                ctx.moveTo(px - 2, py - 2);
-                ctx.lineTo(px + 2, py + 2);
-                ctx.moveTo(px + 2, py - 2);
-                ctx.lineTo(px - 2, py + 2);
-                ctx.stroke();
-                ctx.closePath();
-            }
-        });
-    }
-
-    if (!map.mapHandler._originalSpawn) {
-        map.mapHandler._originalSpawn = map.mapHandler.spawnSector;
-    }
-
-    map.mapHandler.spawnSector = function (data, sector) {
-        map.mapHandler._originalSpawn(data, sector);
-
-        const canvasId = `mapOverlay_canvas_${sector.x}_${sector.y}`;
-        if (!document.getElementById(canvasId)) {
-            const canvas = document.createElement('canvas');
-            canvas.className = 'mapOverlay_map_canvas';
-            canvas.id = canvasId;
-            canvas.style.position = 'absolute';
-            canvas.style.zIndex = 10;
-            canvas.width = map.map.scale[0] * map.map.sectorSize;
-            canvas.height = map.map.scale[1] * map.map.sectorSize;
-            sector.appendElement(canvas, 0, 0);
-            drawMainMap(canvas, sector);
-        }
-
-        for (const key in map.minimap._loadedSectors) {
-            const miniSector = map.minimap._loadedSectors[key];
-            const miniCanvasId = `mapOverlay_topo_canvas_${key}`;
-            if (!document.getElementById(miniCanvasId)) {
-                const miniCanvas = document.createElement('canvas');
-                miniCanvas.className = 'mapOverlay_topo_canvas';
-                miniCanvas.id = miniCanvasId;
-                miniCanvas.style.position = 'absolute';
-                miniCanvas.style.zIndex = 11;
-                miniCanvas.width = 250;
-                miniCanvas.height = 250;
-                drawMiniMap(miniCanvas, miniSector);
-                miniSector.appendElement(miniCanvas, 0, 0);
-            }
-        }
-    };
 
     map.reload();
 }
