@@ -109,7 +109,7 @@ function adicionarLinhaTorre(coord, nivel) {
         $(`<tr class="${classeLinha}">
             <td><center><input type="text" name="coord" size="7" placeholder="xxx|yyy" value="${coord}"/></center></td>
             <td><center><input type="text" name="level" size="5" placeholder="Nível" value="${nivel}"/></center></td>
-            <td><center><button type="button" class="btn btn-default removerTorre">Excluir</button></center></td>
+            <td><center><button type="button" class="btn btn-default removerTorre"> - </button></center></td>
         </tr>`).insertBefore($("#botaoAdicionarLinha"));
 
         if (entradasAtivas >= maxEntradas) {
