@@ -215,7 +215,7 @@ function renderIgrejaMap() {
 
                 ctx.beginPath();
                 ctx.strokeStyle = '#00a8ff';
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.fillStyle = 'rgba(173, 216, 230, 0.2)';
                 ctx.arc(px, py, radius, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
