@@ -20,7 +20,7 @@ if (typeof woodPercentage == 'undefined') {
 }
 // percentages for coins, 83000 is how much all 3 is combined
 
-var backgroundColor = "#36393f";
+var backgroundColor = "#ffffff";
 var borderColor = "#3e4147";
 var headerColor = "#202225";
 var titleColor = "#ffffdf";
