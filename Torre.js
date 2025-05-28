@@ -1,22 +1,22 @@
-// Variáveis de alcance por nível da torre
-let towerData = [];
-const towerRanges = [1.1, 1.3, 1.5, 1.7, 2, 2.3, 2.6, 3, 3.4, 3.9, 4.4, 5.1, 5.8, 6.7, 7.6, 8.7, 10, 11.5, 13.1, 15,15,15,15,15,15,15,15,15,30];
+// Dados de alcance por nível da torre
+let dadosTorres = [];
+const alcancesTorres = [1.1, 1.3, 1.5, 1.7, 2, 2.3, 2.6, 3, 3.4, 3.9, 4.4, 5.1, 5.8, 6.7, 7.6, 8.7, 10, 11.5, 13.1, 15,15,15,15,15,15,15,15,15,30];
 
-let activeInputs = 0;
-const maxInputs = 99;
+let entradasAtivas = 0;
+const maxEntradas = 99;
 
-// Novo estilo CSS
-const customStyle = `
+// Estilo CSS personalizado
+const estiloPersonalizado = `
 <style>
-.towerRowOdd {
+.linhaImpar {
     background-color: #2e3440;
     color: #eceff4;
 }
-.towerRowEven {
+.linhaPar {
     background-color: #3b4252;
     color: #eceff4;
 }
-.towerHeader {
+.cabecalhoTorre {
     background-color: #1e222a;
     font-weight: bold;
     color: #d8dee9;
@@ -24,38 +24,38 @@ const customStyle = `
 </style>`;
 
 // Inserindo o estilo no cabeçalho da página
-$("#contentContainer").eq(0).prepend(customStyle);
-$("#mobileHeader").eq(0).prepend(customStyle);
+$("#contentContainer").eq(0).prepend(estiloPersonalizado);
+$("#mobileHeader").eq(0).prepend(estiloPersonalizado);
 
 // Estrutura HTML principal
-const panelHTML = `
+const painelHTML = `
 <div>
-    <form id="TowerInputForm">
-        <table class="towerHeader">
-            <tr class="towerHeader">
-                <td>Coordinate</td>
-                <td>Level</td>
-                <td>Delete</td>
+    <form id="formEntradaTorre">
+        <table class="cabecalhoTorre">
+            <tr class="cabecalhoTorre">
+                <td>Coordenada</td>
+                <td>Nível</td>
+                <td>Excluir</td>
             </tr>
-            <tr id="btnAddRow" class="towerRowOdd">
+            <tr id="botaoAdicionarLinha" class="linhaImpar">
                 <td colspan="3" align="center">
-                    <a href="javascript:void(0);" id="addTowerBtn" title="Add Entry"><img src="https://www.shinko-to-kuma.com/assets/img/tribalwars/plus.png" width="20" height="20"/></a>
+                    <a href="javascript:void(0);" id="botaoAdicionar" title="Adicionar Torre"><img src="https://www.shinko-to-kuma.com/assets/img/tribalwars/plus.png" width="20" height="20"/></a>
                 </td>
             </tr>
-            <tr id="actionButtons" class="towerRowEven">
+            <tr id="botoesAcoes" class="linhaPar">
                 <td colspan="3" align="right">
-                    <button type="button" class="btn-confirm-yes" onclick="storeTowerData()">Save</button>
-                    <button type="button" class="btn-confirm-yes" onclick="renderTowerMap()">Show</button>
+                    <button type="button" class="btn-confirm-yes" onclick="salvarDadosTorres()">Salvar</button>
+                    <button type="button" class="btn-confirm-yes" onclick="mostrarAlcance()">Mostrar</button>
                 </td>
             </tr>
-            <tr class="towerHeader">
+            <tr class="cabecalhoTorre">
                 <td colspan="3">
-                    <textarea id="bulkCoords" cols="30" rows="10" placeholder="Paste coordinates here"></textarea>
+                    <textarea id="coordenadasMultiplas" cols="30" rows="10" placeholder="Cole as coordenadas aqui"></textarea>
                 </td>
             </tr>
             <tr>
                 <td colspan="3" align="right">
-                    <button type="button" class="btn-confirm-yes" onclick="loadCoordinates()">Import</button>
+                    <button type="button" class="btn-confirm-yes" onclick="importarCoordenadas()">Importar</button>
                 </td>
             </tr>
         </table>
@@ -63,83 +63,82 @@ const panelHTML = `
 </div>`;
 
 // Adiciona a interface na página
-$("#contentContainer tr").eq(0).prepend("<td style='display: inline-block;vertical-align: top;'>" + panelHTML + "</td>");
+$("#contentContainer tr").eq(0).prepend("<td style='display: inline-block;vertical-align: top;'>" + painelHTML + "</td>");
 
-// Evento de adicionar linha
-$("#addTowerBtn").click(() => addTowerRow("", 0));
+// Eventos
+$("#botaoAdicionar").click(() => adicionarLinhaTorre("", 0));
 
-// Evento de remoção de linha
-$('table.towerHeader').on('click', '.removeTower', function () {
+$('table.cabecalhoTorre').on('click', '.removerTorre', function () {
     $(this).closest('tr').remove();
-    activeInputs--;
-    if (activeInputs < maxInputs) {
-        $("#btnAddRow").show();
+    entradasAtivas--;
+    if (entradasAtivas < maxEntradas) {
+        $("#botaoAdicionarLinha").show();
     }
 });
 
-// Carregar dados salvos do localStorage
-if (localStorage.getItem("towerVisualData") == null) {
-    towerData = [];
-    localStorage.setItem("towerVisualData", JSON.stringify(towerData));
+// Carregar do localStorage
+if (localStorage.getItem("dadosVisualTorre") == null) {
+    dadosTorres = [];
+    localStorage.setItem("dadosVisualTorre", JSON.stringify(dadosTorres));
 } else {
-    towerData = JSON.parse(localStorage.getItem("towerVisualData"));
-    towerData.forEach(entry => addTowerRow(entry.coord, entry.level));
+    dadosTorres = JSON.parse(localStorage.getItem("dadosVisualTorre"));
+    dadosTorres.forEach(entrada => adicionarLinhaTorre(entrada.coord, entrada.level));
 }
 
-function addTowerRow(coord, level) {
-    if (activeInputs < maxInputs) {
-        activeInputs++;
-        const cssClass = activeInputs % 2 === 0 ? "towerRowEven" : "towerRowOdd";
-        $(`<tr class="${cssClass}">
+function adicionarLinhaTorre(coord, nivel) {
+    if (entradasAtivas < maxEntradas) {
+        entradasAtivas++;
+        const classeLinha = entradasAtivas % 2 === 0 ? "linhaPar" : "linhaImpar";
+        $(`<tr class="${classeLinha}">
             <td><center><input type="text" name="coord" size="7" placeholder="xxx|yyy" value="${coord}"/></center></td>
-            <td><center><input type="text" name="level" size="5" placeholder="Level" value="${level}"/></center></td>
-            <td><center><span class="removeTower"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png" title="Remove"></span></center></td>
-        </tr>`).insertBefore($("#btnAddRow"));
+            <td><center><input type="text" name="level" size="5" placeholder="Nível" value="${nivel}"/></center></td>
+            <td><center><span class="removerTorre"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png" title="Remover"></span></center></td>
+        </tr>`).insertBefore($("#botaoAdicionarLinha"));
 
-        if (activeInputs >= maxInputs) {
-            $("#btnAddRow").hide();
+        if (entradasAtivas >= maxEntradas) {
+            $("#botaoAdicionarLinha").hide();
         }
     }
 }
 
-function storeTowerData() {
-    towerData = [];
-    const inputData = $("#TowerInputForm :input").serializeArray();
-    for (let i = 0; i < inputData.length; i += 2) {
-        towerData.push({ coord: inputData[i].value, level: parseInt(inputData[i + 1].value) });
+function salvarDadosTorres() {
+    dadosTorres = [];
+    const entradas = $("#formEntradaTorre :input").serializeArray();
+    for (let i = 0; i < entradas.length; i += 2) {
+        dadosTorres.push({ coord: entradas[i].value, level: parseInt(entradas[i + 1].value) });
     }
-    localStorage.setItem("towerVisualData", JSON.stringify(towerData));
+    localStorage.setItem("dadosVisualTorre", JSON.stringify(dadosTorres));
 }
 
-function loadCoordinates() {
-    let coords = $("#bulkCoords").val().replace(/[\s\n]+/g, ",").split(",");
-    coords.forEach(c => addTowerRow(c, 0));
+function importarCoordenadas() {
+    let coords = $("#coordenadasMultiplas").val().replace(/[\s\n]+/g, ",").split(",");
+    coords.forEach(c => adicionarLinhaTorre(c, 0));
 }
 
-function renderTowerMap() {
-    const map = TWMap;
-    const inputData = $("#TowerInputForm :input").serializeArray();
-    towerData = [];
-    for (let i = 0; i < inputData.length; i += 2) {
-        towerData.push({ coord: inputData[i].value, level: parseInt(inputData[i + 1].value) });
+function mostrarAlcance() {
+    const mapa = TWMap;
+    const entradas = $("#formEntradaTorre :input").serializeArray();
+    dadosTorres = [];
+    for (let i = 0; i < entradas.length; i += 2) {
+        dadosTorres.push({ coord: entradas[i].value, level: parseInt(entradas[i + 1].value) });
     }
 
-    function drawMainMap(canvas, sector) {
+    function desenharMapaPrincipal(canvas, setor) {
         const ctx = canvas.getContext("2d");
         ctx.lineWidth = 2;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        towerData.forEach(({ coord, level }) => {
+        dadosTorres.forEach(({ coord, level }) => {
             if (level > 0) {
                 const [x, y] = coord.split('|').map(Number);
-                const center = map.map.pixelByCoord(x, y);
-                const sectorPos = map.map.pixelByCoord(sector.x, sector.y);
-                const px = (center[0] - sectorPos[0]) + map.tileSize[0] / 2;
-                const py = (center[1] - sectorPos[1]) + map.tileSize[1] / 2;
-                const radius = towerRanges[level - 1] * map.map.scale[0];
+                const centro = mapa.map.pixelByCoord(x, y);
+                const posSetor = mapa.map.pixelByCoord(setor.x, setor.y);
+                const px = (centro[0] - posSetor[0]) + mapa.tileSize[0] / 2;
+                const py = (centro[1] - posSetor[1]) + mapa.tileSize[1] / 2;
+                const raio = alcancesTorres[level - 1] * mapa.map.scale[0];
 
                 ctx.beginPath();
                 ctx.strokeStyle = '#000000';
-                ctx.ellipse(px, py, radius, radius, 0, 0, 2 * Math.PI);
+                ctx.ellipse(px, py, raio, raio, 0, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
                 ctx.closePath();
@@ -156,19 +155,19 @@ function renderTowerMap() {
         });
     }
 
-    function drawMiniMap(canvas, sector) {
+    function desenharMiniMapa(canvas, setor) {
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        towerData.forEach(({ coord, level }) => {
+        dadosTorres.forEach(({ coord, level }) => {
             if (level > 0) {
                 const [x, y] = coord.split('|').map(Number);
-                const px = (x - sector.x) * 5 + 3;
-                const py = (y - sector.y) * 5 + 3;
-                const radius = towerRanges[level - 1] * 5;
+                const px = (x - setor.x) * 5 + 3;
+                const py = (y - setor.y) * 5 + 3;
+                const raio = alcancesTorres[level - 1] * 5;
 
                 ctx.beginPath();
                 ctx.strokeStyle = '#000000';
-                ctx.arc(px, py, radius, 0, 2 * Math.PI);
+                ctx.arc(px, py, raio, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
                 ctx.closePath();
@@ -185,42 +184,42 @@ function renderTowerMap() {
         });
     }
 
-    if (!map.mapHandler._originalSpawn) {
-        map.mapHandler._originalSpawn = map.mapHandler.spawnSector;
+    if (!mapa.mapHandler._originalSpawn) {
+        mapa.mapHandler._originalSpawn = mapa.mapHandler.spawnSector;
     }
 
-    map.mapHandler.spawnSector = function (data, sector) {
-        map.mapHandler._originalSpawn(data, sector);
+    mapa.mapHandler.spawnSector = function (dados, setor) {
+        mapa.mapHandler._originalSpawn(dados, setor);
 
-        const canvasId = `mapOverlay_canvas_${sector.x}_${sector.y}`;
-        if (!document.getElementById(canvasId)) {
+        const idCanvas = `mapOverlay_canvas_${setor.x}_${setor.y}`;
+        if (!document.getElementById(idCanvas)) {
             const canvas = document.createElement('canvas');
             canvas.className = 'mapOverlay_map_canvas';
-            canvas.id = canvasId;
+            canvas.id = idCanvas;
             canvas.style.position = 'absolute';
             canvas.style.zIndex = 10;
-            canvas.width = map.map.scale[0] * map.map.sectorSize;
-            canvas.height = map.map.scale[1] * map.map.sectorSize;
-            sector.appendElement(canvas, 0, 0);
-            drawMainMap(canvas, sector);
+            canvas.width = mapa.map.scale[0] * mapa.map.sectorSize;
+            canvas.height = mapa.map.scale[1] * mapa.map.sectorSize;
+            setor.appendElement(canvas, 0, 0);
+            desenharMapaPrincipal(canvas, setor);
         }
 
-        for (const key in map.minimap._loadedSectors) {
-            const miniSector = map.minimap._loadedSectors[key];
-            const miniCanvasId = `mapOverlay_topo_canvas_${key}`;
-            if (!document.getElementById(miniCanvasId)) {
+        for (const chave in mapa.minimap._loadedSectors) {
+            const setorMini = mapa.minimap._loadedSectors[chave];
+            const idMiniCanvas = `mapOverlay_topo_canvas_${chave}`;
+            if (!document.getElementById(idMiniCanvas)) {
                 const miniCanvas = document.createElement('canvas');
                 miniCanvas.className = 'mapOverlay_topo_canvas';
-                miniCanvas.id = miniCanvasId;
+                miniCanvas.id = idMiniCanvas;
                 miniCanvas.style.position = 'absolute';
                 miniCanvas.style.zIndex = 11;
                 miniCanvas.width = 250;
                 miniCanvas.height = 250;
-                drawMiniMap(miniCanvas, miniSector);
-                miniSector.appendElement(miniCanvas, 0, 0);
+                desenharMiniMapa(miniCanvas, setorMini);
+                setorMini.appendElement(miniCanvas, 0, 0);
             }
         }
     };
 
-    map.reload();
+    mapa.reload();
 }
