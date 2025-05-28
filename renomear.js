@@ -22,7 +22,7 @@ if (window.location.href.includes('screen=overview_villages')) {
 	<br>
 	<div>
 		<small>
-			<strong>versão em Pt-Br</span></strong>
+			<strong>versão em PT-BR</span></strong>
 		</small>
 	</div>`;
 
