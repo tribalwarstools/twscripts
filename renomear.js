@@ -10,8 +10,8 @@ if (window.location.href.includes('screen=overview_villages')) {
 		<input id="textname" type="text" placeholder="Seu texto aqui" maxlength="32">
 	</div>
 	<div style="padding-top: 8px;">
-		<input id="rename" type="button" class="btn" value="Renomear Aldeias">
-		<input id="save" type="button" class="btn" value="Salvar Opções">
+		<input id="rename" type="button" class="btn" value="Renomear">
+		<input id="save" type="button" class="btn" value="Salvar">
 	</div>
 	<br>
 	<div>
