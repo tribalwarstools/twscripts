@@ -1,6 +1,6 @@
 // Variáveis de alcance por nível da torre
 let towerData = [];
-const towerRanges = [1.1, 1.3, 1.5, 1.7, 2, 2.3, 2.6, 3, 3.4, 3.9, 4.4, 5.1, 5.8, 6.7, 7.6, 8.7, 10, 11.5, 13.1, 15,15,15,15,15,15,15,15,15,30];
+const towerRanges = [4,6,8];
 
 let activeInputs = 0;
 const maxInputs = 99;
