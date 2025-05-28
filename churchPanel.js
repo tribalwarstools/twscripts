@@ -8,15 +8,15 @@ const maxInputs = 99;
 const customStyle = `
 <style>
 .igrejaRowOdd {
-    background-color: #2e3440;
+    background-color: #d2c09e;
     color: #eceff4;
 }
 .igrejaRowEven {
-    background-color: #3b4252;
+    background-color: #d2c09e;
     color: #eceff4;
 }
 .igrejaHeader {
-    background-color: #1e222a;
+    background-color: #d2c09e;
     font-weight: bold;
     color: #d8dee9;
 }
