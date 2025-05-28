@@ -106,8 +106,10 @@ function drawChurchMap() {
   const map = TWMap;
   const overlayClass = "church_canvas";
 
+  // Limpar canvas antigos
   $("canvas." + overlayClass).remove();
 
+  // Substituir função do mapa
   if (!map.mapHandler._spawnChurchBackup) {
     map.mapHandler._spawnChurchBackup = map.mapHandler.spawnSector;
   }
@@ -143,6 +145,41 @@ function drawChurchMap() {
 
     sector.appendElement(canvas, 0, 0);
   };
+
+  // Desenhar no minimapa
+  for (const key in map.minimap._loadedSectors) {
+    const sector = map.minimap._loadedSectors[key];
+    const canvasId = 'church_minimap_canvas_' + key;
+
+    $('#' + canvasId).remove();
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 250;
+    canvas.height = 250;
+    canvas.className = overlayClass;
+    canvas.id = canvasId;
+    canvas.style.position = "absolute";
+    canvas.style.zIndex = 11;
+
+    const ctx = canvas.getContext("2d");
+
+    for (const { village, church } of window.churchData) {
+      const [vx, vy] = village.split("|").map(Number);
+      const radius = window.churchRadius[church - 1] * 5; // 5px por campo
+
+      const x = (vx - sector.x) * 5 + 2.5;
+      const y = (vy - sector.y) * 5 + 2.5;
+
+      ctx.beginPath();
+      ctx.strokeStyle = '#0055FF';
+      ctx.fillStyle = 'rgba(0, 85, 255, 0.2)';
+      ctx.arc(x, y, radius, 0, 2 * Math.PI);
+      ctx.stroke();
+      ctx.fill();
+    }
+
+    sector.appendElement(canvas, 0, 0);
+  }
 
   map.reload();
 }
