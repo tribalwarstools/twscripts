@@ -1,84 +1,3 @@
-this.serverData = [];
-this.igrejaRadius = [4,6,8];
-var currentFields = 0;
-var maxFields = 99;
-
-// Estilos
-cssClassesIgreja = `
-<style>
-.igrejaRowA {
-background-color: #d2c09e;
-color: white;
-}
-.igrejaRowB {
-background-color: #d2c09e;
-color: white;
-}
-.igrejaHeader {
-background-color: #d2c09e;
-font-weight: bold;
-color: white;
-}
-</style>`
-
-$("#contentContainer").eq(0).prepend(cssClassesIgreja);
-$("#mobileHeader").eq(0).prepend(cssClassesIgreja);
-
-// HTML Base
-html = `
-<div>
-    <form id="IgrejaData">
-    <table class="igrejaHeader">
-        <tr class="igrejaHeader">
-            <td class="igrejaHeader" >Coordenada</th>
-            <td class="igrejaHeader" >Igreja nível</th>
-            <td class="igrejaHeader" >Remover</th>
-        </tr>
-        <tr id="addButton" class="igrejaRowA">
-            <td colspan="4"><center><a href="javascript:void(0);" class="add_button" title="Adicionar campo"><img src="https://www.shinko-to-kuma.com/assets/img/tribalwars/plus.png" width="20" height="20"/></a></center></td>
-        </tr>
-        <tr id="calculate" class="igrejaRowB">
-            <td colspan="4" align="right">
-                    <button type="button" ID="save" class="btn-confirm-yes" onclick="saveData()">Salvar lista</button>
-                    <button type="button" ID="calculate" class="btn-confirm-yes" onclick="makeMap()">Exibir</button>
-            </td>
-        </tr>
-        <tr id="importCoords" class="igrejaHeader">
-        <td colspan="4"><textarea id="coordinates" cols="30" rows="12" style="igrejaHeader" placeholder="Digite as coordenadas aqui"></textarea></td>
-        </tr>
-        <tr>
-        <td colspan="4" align="right">
-            <button type="button" ID="import" class="btn-confirm-yes" onclick="importCoords()">Importar coordenadas</button>
-        </td>
-        </tr>
-    </table>
-    </form>
-</div>`;
-
-// Exibe o HTML na página
-$("#contentContainer tr").eq(0).prepend("<td style='display: inline-block;vertical-align: top;'>" + html + "</td>")
-
-$(".add_button").click(function () {
-    addRow("");
-});
-
-$('table.igrejaHeader').on('click', '#removeRow', function (e) {
-    $(this).closest('tr').remove()
-})
-
-if (localStorage.getItem("igrejaData") == null) {
-    console.log("Sem dados de igreja encontrados, criando")
-    this.serverData = [];
-    localStorage.setItem("igrejaData", JSON.stringify(serverData));
-} else {
-    console.log("Obtendo dados de igreja do armazenamento");
-    this.serverData = JSON.parse(localStorage.getItem("igrejaData"));
-    for (var i = 0; i < serverData.length; i++) {
-        addRow(serverData[i].village, serverData[i].igreja);
-    }
-}
-
-// Função para desenhar as igrejas no mapa
 function makeMap() {
     serverData = [];
     tempData = $("#IgrejaData :input").serializeArray();
@@ -180,18 +99,21 @@ function makeMap() {
                 var v = TWMap.villages[(data.x + x) * 1000 + (data.y + y)];
                 if (v) {
                     var el = $('#mapOverlay_canvas_' + sector.x + '_' + sector.y);
-                    if (!el.length) {
-                        var canvas = document.createElement('canvas');
-                        canvas.style.position = 'absolute';
-                        canvas.width = (TWMap.map.scale[0] * TWMap.map.sectorSize);
-                        canvas.height = (TWMap.map.scale[1] * TWMap.map.sectorSize);
-                        canvas.style.zIndex = 10;
-                        canvas.className = 'mapOverlay_map_canvas';
-                        canvas.id = 'mapOverlay_canvas_' + sector.x + '_' + sector.y;
-
-                        sector.appendElement(canvas, 0, 0);
-                        drawIgrejasMapa(canvas, sector);
+                    if (el.length) {
+                        // Canvas já existe, então vamos removê-lo
+                        el.remove();
                     }
+
+                    var canvas = document.createElement('canvas');
+                    canvas.style.position = 'absolute';
+                    canvas.width = (TWMap.map.scale[0] * TWMap.map.sectorSize);
+                    canvas.height = (TWMap.map.scale[1] * TWMap.map.sectorSize);
+                    canvas.style.zIndex = 10;
+                    canvas.className = 'mapOverlay_map_canvas';
+                    canvas.id = 'mapOverlay_canvas_' + sector.x + '_' + sector.y;
+
+                    sector.appendElement(canvas, 0, 0);
+                    drawIgrejasMapa(canvas, sector);
                 }
             }
         }
@@ -216,41 +138,4 @@ function makeMap() {
     }
 
     TWMap.reload();
-}
-
-function importCoords() {
-    coords = $("#coordinates").val();
-    coords = coords.replace(/ /g, ",");
-    coords = coords.replace(/\n/g, ",");
-    coords = coords.split(',');
-
-    for (var i = 0; i < coords.length; i++) {
-        addRow(coords[i], 0);
-    }
-}
-
-function addRow(coord, level) {
-    if (currentFields < maxFields) {
-        currentFields++;
-        var tempClass = (currentFields % 2 == 0) ? "igrejaRowB" : "igrejaRowA";
-        
-        $(`<tr class="${tempClass}">
-            <td><center><input type="text" id="coord${currentFields}" name="village" class="target-input-field target-input-autocomplete ui-autocomplete-input" size="7" placeholder="xxx|xxx" value="${coord}"/></center></td>
-            <td><center><input type="text" id="igreja${currentFields}" name="igreja"  size="6" placeholder="Igreja nível" value="${level}"/></center></td>
-            <td><center><span id="removeRow"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png" title="remover"></span></center></td>
-        </tr>`).insertBefore($("#addButton")[0]);
-
-        if (currentFields >= maxFields) {
-            $("#addButton").css("display", "none");
-        }
-    }
-}
-
-function saveData() {
-    serverData = [];
-    tempData = $("#IgrejaData :input").serializeArray();
-    for (var i = 0; i < tempData.length; i = i + 2) {
-        serverData.push({ "village": tempData[i].value, "igreja": parseInt(tempData[i + 1].value) })
-    }
-    localStorage.setItem("igrejaData", JSON.stringify(serverData));
 }
