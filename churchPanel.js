@@ -27,7 +27,7 @@ const customStyle = `
     top: 20px;
     right: 20px;
     z-index: 9999;
-    width: 280px;
+    width: 200px;
     background: #2e3440;
     padding: 20px;
     border-radius: 10px;
