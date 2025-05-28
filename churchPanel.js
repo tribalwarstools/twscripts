@@ -39,7 +39,9 @@ const panelHTML = `
             </tr>
             <tr id="btnAddRow" class="igrejaRowOdd">
                 <td colspan="3" align="center">
-                    <a href="javascript:void(0);" id="addIgrejaBtn" title="Adicionar Entrada"><img src="https://www.shinko-to-kuma.com/assets/img/tribalwars/plus.png" width="20" height="20"/></a>
+                    <a href="javascript:void(0);" id="addIgrejaBtn" title="Adicionar Entrada">
+                        <img src="https://www.shinko-to-kuma.com/assets/img/tribalwars/plus.png" width="20" height="20"/>
+                    </a>
                 </td>
             </tr>
             <tr id="actionButtons" class="igrejaRowEven">
@@ -90,9 +92,19 @@ function addIgrejaRow(coord, level) {
     if (activeInputs < maxInputs) {
         activeInputs++;
         const cssClass = activeInputs % 2 === 0 ? "igrejaRowEven" : "igrejaRowOdd";
+        
+        // Criando o select para o nível
+        const levelSelect = `
+            <select name="level" style="width: 100px;">
+                <option value="1" ${level === 1 ? 'selected' : ''}>1</option>
+                <option value="2" ${level === 2 ? 'selected' : ''}>2</option>
+                <option value="3" ${level === 3 ? 'selected' : ''}>3</option>
+            </select>
+        `;
+        
         $(`<tr class="${cssClass}">
             <td><center><input type="text" name="coord" size="7" placeholder="xxx|yyy" value="${coord}"/></center></td>
-            <td><center><input type="text" name="level" size="5" placeholder="Nível" value="${level}"/></center></td>
+            <td><center>${levelSelect}</center></td>
             <td><center><span class="removeIgreja"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png" title="Remover"></span></center></td>
         </tr>`).insertBefore($("#btnAddRow"));
 
