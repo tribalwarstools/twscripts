@@ -4,28 +4,28 @@ var currentFields = 0;
 var maxFields = 99;
 
 // Estilos
-cssClassesIgreja = `
+cssClassesIgreja = 
 <style>
 .igrejaRowA {
-    background-color: #d2c09e;
-    color: white;
+background-color: #d2c09e;
+color: white;
 }
 .igrejaRowB {
-    background-color: #d2c09e;
-    color: white;
+background-color: #d2c09e;
+color: white;
 }
 .igrejaHeader {
-    background-color: #d2c09e;
-    font-weight: bold;
-    color: white;
+background-color: #d2c09e;
+font-weight: bold;
+color: white;
 }
-</style>`
+</style>
 
 $("#contentContainer").eq(0).prepend(cssClassesIgreja);
 $("#mobileHeader").eq(0).prepend(cssClassesIgreja);
 
 // HTML Base
-html = `
+html = 
 <div>
     <form id="IgrejaData">
     <table class="igrejaHeader">
@@ -53,7 +53,7 @@ html = `
         </tr>
     </table>
     </form>
-</div>`;
+</div>;
 
 // Exibe o HTML na página
 $("#contentContainer tr").eq(0).prepend("<td style='display: inline-block;vertical-align: top;'>" + html + "</td>")
@@ -90,7 +90,7 @@ function makeMap() {
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.lineWidth = 1;
-        ctx.fillStyle = '#ADD8E6';  // Azul claro
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
 
         for (var prop in serverData) {
             var ig = serverData[prop].igreja;
@@ -121,7 +121,7 @@ function makeMap() {
     function drawIgrejasMapa(canvas, sector) {
         var ctx = canvas.getContext('2d');
         ctx.lineWidth = 2;
-        ctx.fillStyle = '#ADD8E6';  // Azul claro
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
 
         for (var prop in serverData) {
             var ig = serverData[prop].igreja;
@@ -215,29 +215,30 @@ function makeMap() {
         }
     }
 
-    TWMap.reloadMap();
+    TWMap.reload();
 }
 
-// Função para adicionar linha
+function importCoords() {
+    coords = $("#coordinates").val();
+    coords = coords.replace(/ /g, ",");
+    coords = coords.replace(/\n/g, ",");
+    coords = coords.split(',');
+
+    for (var i = 0; i < coords.length; i++) {
+        addRow(coords[i], 0);
+    }
+}
+
 function addRow(coord, level) {
     if (currentFields < maxFields) {
         currentFields++;
         var tempClass = (currentFields % 2 == 0) ? "igrejaRowB" : "igrejaRowA";
-
-        $(`<tr class="${tempClass}">
+        
+        $(<tr class="${tempClass}">
             <td><center><input type="text" id="coord${currentFields}" name="village" class="target-input-field target-input-autocomplete ui-autocomplete-input" size="7" placeholder="xxx|xxx" value="${coord}"/></center></td>
-            <td><center>
-                <select id="igreja${currentFields}" name="igreja" size="1">
-                    <option value="0" ${level == 0 ? 'selected' : ''}>Selecione o Nível</option>
-                    <option value="1" ${level == 1 ? 'selected' : ''}>Nível 1</option>
-                    <option value="2" ${level == 2 ? 'selected' : ''}>Nível 2</option>
-                    <option value="3" ${level == 3 ? 'selected' : ''}>Nível 3</option>
-                    <option value="4" ${level == 4 ? 'selected' : ''}>Nível 4</option>
-                    <option value="5" ${level == 5 ? 'selected' : ''}>Nível 5</option>
-                </select>
-            </center></td>
+            <td><center><input type="text" id="igreja${currentFields}" name="igreja"  size="6" placeholder="Igreja nível" value="${level}"/></center></td>
             <td><center><span id="removeRow"><img src="https://dsen.innogamescdn.com/asset/d25bbc6/graphic/delete.png" title="remover"></span></center></td>
-        </tr>`).insertBefore($("#addButton")[0]);
+        </tr>).insertBefore($("#addButton")[0]);
 
         if (currentFields >= maxFields) {
             $("#addButton").css("display", "none");
@@ -245,16 +246,11 @@ function addRow(coord, level) {
     }
 }
 
-// Função de salvar
 function saveData() {
     serverData = [];
     tempData = $("#IgrejaData :input").serializeArray();
     for (var i = 0; i < tempData.length; i = i + 2) {
-        // Adiciona o nível da igreja
-        serverData.push({ 
-            "village": tempData[i].value, 
-            "igreja": parseInt(tempData[i + 1].value) 
-        });
+        serverData.push({ "village": tempData[i].value, "igreja": parseInt(tempData[i + 1].value) })
     }
     localStorage.setItem("igrejaData", JSON.stringify(serverData));
 }
