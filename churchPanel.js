@@ -168,6 +168,7 @@ function renderTowerMap() {
 
                 ctx.beginPath();
                 ctx.strokeStyle = '#000000';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
                 ctx.arc(px, py, radius, 0, 2 * Math.PI);
                 ctx.stroke();
                 ctx.fill();
