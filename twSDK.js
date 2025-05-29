@@ -1,25 +1,41 @@
+/*
+    NAME: Tribal Wars Scripts Library
+    VERSION: 1.2.3 (beta version)
+    LAST UPDATED AT: 2024-06-23
+    AUTHOR: RedAlert (redalert_tw)
+    AUTHOR URL: https://twscripts.dev/
+    CONTRIBUTORS: Shinko to Kuma; Sass, SaveBankDev, DSsecundum, suilenroc
+    HELP: https://github.com/RedAlertTW/Tribal-Wars-Scripts-SDK
+    STATUS: Work in progress. Not finished 100%.
+
+    This software is provided 'as-is', without any express or implied warranty.
+    In no event will the author/s be held liable for any damages arising from the use of this software.
+    It is allowed to clone, rehost, re-distribute and all other forms of copying this code without permission from the author/s, for as long as it is not used on commercial products.
+    This notice may not be removed or altered from any source distribution.
+ */
+
 scriptUrl = document.currentScript.src;
 
-janela.twSDK = {
-    // variáveis
+window.twSDK = {
+    // variables
     scriptData: {},
-    traduções: {},
-    mercados permitidos: [],
-    Telas permitidas: [],
-    Modos permitidos: [],
-    enableCountApi: verdadeiro,
-    isDebug: falso,
+    translations: {},
+    allowedMarkets: [],
+    allowedScreens: [],
+    allowedModes: [],
+    enableCountApi: true,
+    isDebug: false,
     isMobile: jQuery('#mobileHeader').length > 0,
     delayBetweenRequests: 200,
-    // variáveis ​​auxiliares
-    mercado: game_data.market,
-    unidades: game_data.units,
-    vila: game_data.village,
-    edifícios: game_data.village.buildings,
-    sitterId: dados_do_jogo.jogador.sitter > 0 ? `&t=${game_data.player.id}` : '',
-    coordenadasRegex: /\d{1,3}\|\d{1,3}/g,
-    dataHoraCorrespondência:
-        /(?:[AZ][az]{2}\s+\d{1,2},\s*\d{0,4}\s+|hoje\s+às\s+|amanhã\s+às\s+)\d{1,2}:\d{2}:\d{2}:?\.?\d{0,3}/,
+    // helper variables
+    market: game_data.market,
+    units: game_data.units,
+    village: game_data.village,
+    buildings: game_data.village.buildings,
+    sitterId: game_data.player.sitter > 0 ? `&t=${game_data.player.id}` : '',
+    coordsRegex: /\d{1,3}\|\d{1,3}/g,
+    dateTimeMatch:
+        /(?:[A-Z][a-z]{2}\s+\d{1,2},\s*\d{0,4}\s+|today\s+at\s+|tomorrow\s+at\s+)\d{1,2}:\d{2}:\d{2}:?\.?\d{0,3}/,
     worldInfoInterface: '/interface.php?func=get_config',
     unitInfoInterface: '/interface.php?func=get_unit_info',
     buildingInfoInterface: '/interface.php?func=get_building_info',
@@ -27,109 +43,109 @@ janela.twSDK = {
     worldDataPlayers: '/map/player.txt',
     worldDataTribes: '/map/ally.txt',
     worldDataConquests: '/map/conquer_extended.txt',
-    // constantes do jogo
-    edifíciosLista: [
-        'principal',
-        'quartel',
-        'estável',
-        'garagem',
-        'igreja',
-        'igreja_f',
-        'torre de vigia',
-        'esnobe',
-        'ferreiro',
-        'lugar',
-        'estátua',
-        'mercado',
-        'madeira',
-        'pedra',
-        'ferro',
-        'fazenda',
-        'armazenar',
-        'esconder',
-        'parede',
+    // game constants
+    buildingsList: [
+        'main',
+        'barracks',
+        'stable',
+        'garage',
+        'church',
+        'church_f',
+        'watchtower',
+        'snob',
+        'smith',
+        'place',
+        'statue',
+        'market',
+        'wood',
+        'stone',
+        'iron',
+        'farm',
+        'storage',
+        'hide',
+        'wall',
     ],
     // https://help.tribalwars.net/wiki/Points
     buildingPoints: {
-        principal: [
+        main: [
             10, 2, 2, 3, 4, 4, 5, 6, 7, 9, 10, 12, 15, 18, 21, 26, 31, 37, 44,
             53, 64, 77, 92, 110, 133, 159, 191, 229, 274, 330,
         ],
-        quartel: [
+        barracks: [
             16, 3, 4, 5, 5, 7, 8, 9, 12, 14, 16, 20, 24, 28, 34, 42, 49, 59, 71,
             85, 102, 123, 147, 177, 212,
         ],
-        estável: [
+        stable: [
             20, 4, 5, 6, 6, 9, 10, 12, 14, 17, 21, 25, 29, 36, 43, 51, 62, 74,
             88, 107,
         ],
-        garagem: [24, 5, 6, 6, 9, 10, 12, 14, 17, 21, 25, 29, 36, 43, 51],
-        igreja: [10, 2, 2],
-        igreja_f: [10],
-        torre de vigia: [
+        garage: [24, 5, 6, 6, 9, 10, 12, 14, 17, 21, 25, 29, 36, 43, 51],
+        chuch: [10, 2, 2],
+        church_f: [10],
+        watchtower: [
             42, 8, 10, 13, 14, 18, 20, 25, 31, 36, 43, 52, 62, 75, 90, 108, 130,
             155, 186, 224,
         ],
-        esnobe: [512],
-        ferreiro: [
+        snob: [512],
+        smith: [
             19, 4, 4, 6, 6, 8, 10, 11, 14, 16, 20, 23, 28, 34, 41, 49, 58, 71,
             84, 101,
         ],
-        lugar: [0],
-        estátua: [24],
-        mercado: [
+        place: [0],
+        statue: [24],
+        market: [
             10, 2, 2, 3, 4, 4, 5, 6, 7, 9, 10, 12, 15, 18, 21, 26, 31, 37, 44,
             53, 64, 77, 92, 110, 133,
         ],
-        madeira: [
+        wood: [
             6, 1, 2, 1, 2, 3, 3, 3, 5, 5, 6, 8, 8, 11, 13, 15, 19, 22, 27, 32,
             38, 46, 55, 66, 80, 95, 115, 137, 165, 198,
         ],
-        pedra: [
+        stone: [
             6, 1, 2, 1, 2, 3, 3, 3, 5, 5, 6, 8, 8, 11, 13, 15, 19, 22, 27, 32,
             38, 46, 55, 66, 80, 95, 115, 137, 165, 198,
         ],
-        ferro: [
+        iron: [
             6, 1, 2, 1, 2, 3, 3, 3, 5, 5, 6, 8, 8, 11, 13, 15, 19, 22, 27, 32,
             38, 46, 55, 66, 80, 95, 115, 137, 165, 198,
         ],
-        fazenda: [
+        farm: [
             5, 1, 1, 2, 1, 2, 3, 3, 3, 5, 5, 6, 8, 8, 11, 13, 15, 19, 22, 27,
             32, 38, 46, 55, 66, 80, 95, 115, 137, 165,
         ],
-        armazenar: [
+        storage: [
             6, 1, 2, 1, 2, 3, 3, 3, 5, 5, 6, 8, 8, 11, 13, 15, 19, 22, 27, 32,
             38, 46, 55, 66, 80, 95, 115, 137, 165, 198,
         ],
-        ocultar: [5, 1, 1, 2, 1, 2, 3, 3, 3, 5],
-        parede: [
+        hide: [5, 1, 1, 2, 1, 2, 3, 3, 3, 5],
+        wall: [
             8, 2, 2, 2, 3, 3, 4, 5, 5, 7, 9, 9, 12, 15, 17, 20, 25, 29, 36, 43,
         ],
     },
-    unidadesFarmSpace: {
-        lança: 1,
-        espada: 1,
-        machado: 1,
-        arqueiro: 1,
-        espião: 2,
-        luz: 4,
-        manifestante: 5,
-        pesado: 6,
-        carneiro: 5,
-        catapulta: 8,
-        cavaleiro: 10,
-        esnobe: 100,
+    unitsFarmSpace: {
+        spear: 1,
+        sword: 1,
+        axe: 1,
+        archer: 1,
+        spy: 2,
+        light: 4,
+        marcher: 5,
+        heavy: 6,
+        ram: 5,
+        catapult: 8,
+        knight: 10,
+        snob: 100,
     },
     // https://help.tribalwars.net/wiki/Timber_camp
     // https://help.tribalwars.net/wiki/Clay_pit
     // https://help.tribalwars.net/wiki/Iron_mine
-    resPorHora: {
+    resPerHour: {
         0: 2,
-        1:30,
-        2:35,
-        3:41,
-        4:47,
-        5:55,
+        1: 30,
+        2: 35,
+        3: 41,
+        4: 47,
+        5: 55,
         6: 64,
         7: 74,
         8: 86,
@@ -156,29 +172,29 @@ janela.twSDK = {
         29: 2063,
         30: 2400,
     },
-    torre de vigiaNíveis: [
-        1,1, 1,3, 1,5, 1,7, 2, 2,3, 2,6, 3, 3,4, 3,9, 4,4, 5,1, 5,8, 6,7, 7,6,
-        8,7, 10, 11,5, 13,1, 15,
+    watchtowerLevels: [
+        1.1, 1.3, 1.5, 1.7, 2, 2.3, 2.6, 3, 3.4, 3.9, 4.4, 5.1, 5.8, 6.7, 7.6,
+        8.7, 10, 11.5, 13.1, 15,
     ],
 
-    // métodos internos
-    _initDebug: função () {
+    // internal methods
+    _initDebug: function () {
         const scriptInfo = this.scriptInfo();
-        console.debug(`${scriptInfo} Funciona ðŸš€!`);
-        console.debug(`${scriptInfo} AJUDA:`, this.scriptData.helpLink);
-        se (isto éDepuração) {
-            console.debug(`${scriptInfo} Mercado:`, game_data.market);
-            console.debug(`${scriptInfo} Mundo:`, game_data.world);
-            console.debug(`${scriptInfo} Tela:`, game_data.screen);
+        console.debug(`${scriptInfo} It works ðŸš€!`);
+        console.debug(`${scriptInfo} HELP:`, this.scriptData.helpLink);
+        if (this.isDebug) {
+            console.debug(`${scriptInfo} Market:`, game_data.market);
+            console.debug(`${scriptInfo} World:`, game_data.world);
+            console.debug(`${scriptInfo} Screen:`, game_data.screen);
             console.debug(
-                `${scriptInfo} Versão do jogo:`,
-                dados_do_jogo.versão_principal
+                `${scriptInfo} Game Version:`,
+                game_data.majorVersion
             );
-            console.debug(`${scriptInfo} Versão do jogo:`, game_data.version);
-            console.debug(`${scriptInfo} Localidade:`, game_data.locale);
+            console.debug(`${scriptInfo} Game Build:`, game_data.version);
+            console.debug(`${scriptInfo} Locale:`, game_data.locale);
             console.debug(
                 `${scriptInfo} PA:`,
-                dados_do_jogo.recursos.Premium.ativo
+                game_data.features.Premium.active
             );
             console.debug(
                 `${scriptInfo} LA:`,
@@ -190,369 +206,369 @@ janela.twSDK = {
             );
         }
     },
-    _countAPI: função () {
+    _countAPI: function () {
         const scriptInfo = this.scriptInfo(scriptConfig.scriptData);
 
-        se (scriptConfig.enableCountApi) {
+        if (scriptConfig.enableCountApi) {
             jQuery
                 .ajax({
                     url: 'https://twscripts.dev/count/',
-                    método: 'POST',
-                    dados: {
+                    method: 'POST',
+                    data: {
                         scriptData: scriptConfig.scriptData,
-                        mundo: game_data.world,
-                        mercado: game_data.market,
+                        world: game_data.world,
+                        market: game_data.market,
                         referralScript: scriptUrl.split('?&_=')[0],
                     },
-                    Tipo de dados: 'JSON',
+                    dataType: 'JSON',
                 })
-                .então(({ mensagem }) => {
-                    se (mensagem) {
+                .then(({ message }) => {
+                    if (message) {
                         console.debug(
-                            `${scriptInfo} Este script foi executado ${twSDK.formatAsNumber(
-                                parseInt(mensagem)
-                            )} vezes.`
+                            `${scriptInfo} This script has been run ${twSDK.formatAsNumber(
+                                parseInt(message)
+                            )} times.`
                         );
                     }
                 });
         }
     },
 
-    // métodos públicos
-    addGlobalStyle: função () {
-        retornar `
-            /* Estilo de tabela */
-            .ra-table-container { overflow-y: auto; overflow-x: hidden; altura: auto; altura máxima: 400px; }
-            .ra-table th { tamanho da fonte: 14px; }
-            .ra-table th rótulo { margem: 0; preenchimento: 0; }
-            .ra-tabela th,
-            .ra-table td { preenchimento: 5px; alinhamento de texto: centro; }
-            .ra-table td a { quebra-palavra: quebra-tudo; }
-            .ra-table a:focus { cor: azul; }
-            .ra-table a.btn:foco { cor: #fff; }
-            .ra-table tr:enésimo-do-tipo(2n) td { cor de fundo: #f0e2be }
-            .ra-table tr:enésimo-do-tipo(2n+1) td { cor de fundo: #fff5da; }
+    // public methods
+    addGlobalStyle: function () {
+        return `
+            /* Table Styling */
+            .ra-table-container { overflow-y: auto; overflow-x: hidden; height: auto; max-height: 400px; }
+            .ra-table th { font-size: 14px; }
+            .ra-table th label { margin: 0; padding: 0; }
+            .ra-table th,
+            .ra-table td { padding: 5px; text-align: center; }
+            .ra-table td a { word-break: break-all; }
+            .ra-table a:focus { color: blue; }
+            .ra-table a.btn:focus { color: #fff; }
+            .ra-table tr:nth-of-type(2n) td { background-color: #f0e2be }
+            .ra-table tr:nth-of-type(2n+1) td { background-color: #fff5da; }
 
             .ra-table-v2 th,
-            .ra-table-v2 td { alinhamento de texto: esquerda; }
+            .ra-table-v2 td { text-align: left; }
 
-            .ra-table-v3 { borda: 2px sólido #bd9c5a; }
+            .ra-table-v3 { border: 2px solid #bd9c5a; }
             .ra-table-v3 th,
-            .ra-table-v3 td { border-collapse: separar; borda: 1px sólido #bd9c5a; alinhamento de texto: esquerda; }
+            .ra-table-v3 td { border-collapse: separate; border: 1px solid #bd9c5a; text-align: left; }
 
-            /* Entradas */
-            .ra-textarea { largura: 100%; altura: 80px; redimensionamento: nenhum; }
+            /* Inputs */
+            .ra-textarea { width: 100%; height: 80px; resize: none; }
 
-            /* Aparecer */
-            .ra-popup-content { largura: 360px; }
-            .ra-popup-content * { tamanho da caixa: caixa de borda; }
-            .ra-popup-content input[tipo="texto"] { preenchimento: 3px; largura: 100%; }
-            .ra-popup-content .btn-confirm-yes { preenchimento: 3px !importante; }
-            .ra-popup-content rótulo { display: bloco; margem inferior: 5px; espessura da fonte: 600; }
-            .ra-popup-content > div { margem inferior: 15px; }
-            .ra-popup-content > div:last-child { margem-inferior: 0 !importante; }
-            .ra-popup-content textarea { largura: 100%; altura: 100px; redimensionamento: nenhum; }
+            /* Popup */
+            .ra-popup-content { width: 360px; }
+            .ra-popup-content * { box-sizing: border-box; }
+            .ra-popup-content input[type="text"] { padding: 3px; width: 100%; }
+            .ra-popup-content .btn-confirm-yes { padding: 3px !important; }
+            .ra-popup-content label { display: block; margin-bottom: 5px; font-weight: 600; }
+            .ra-popup-content > div { margin-bottom: 15px; }
+            .ra-popup-content > div:last-child { margin-bottom: 0 !important; }
+            .ra-popup-content textarea { width: 100%; height: 100px; resize: none; }
 
-            /* Elementos */
-            .ra-details { display: bloco; margem inferior: 8px; borda: 1px sólido #603000; preenchimento: 8px; raio da borda: 4px; }
-            .ra-details resumo { font-weight: 600; cursor: ponteiro; }
-            .ra-details p { margem: 10px 0 0 0; preenchimento: 0; }
+            /* Elements */
+            .ra-details { display: block; margin-bottom: 8px; border: 1px solid #603000; padding: 8px; border-radius: 4px; }
+            .ra-details summary { font-weight: 600; cursor: pointer; }
+            .ra-details p { margin: 10px 0 0 0; padding: 0; }
 
-            /* Ajudantes */
-            .ra-pa5 { preenchimento: 5px !importante; }
-            .ra-mt15 { margem superior: 15px !importante; }
-            .ra-mb10 { margem inferior: 10px !importante; }
-            .ra-mb15 { margem inferior: 15px !importante; }
-            .ra-tal { alinhamento de texto: esquerda !importante; }
-            .ra-tac { alinhamento de texto: centro !importante; }
-            .ra-tar { alinhamento de texto: direita !importante; }
+            /* Helpers */
+            .ra-pa5 { padding: 5px !important; }
+            .ra-mt15 { margin-top: 15px !important; }
+            .ra-mb10 { margin-bottom: 10px !important; }
+            .ra-mb15 { margin-bottom: 15px !important; }
+            .ra-tal { text-align: left !important; }
+            .ra-tac { text-align: center !important; }
+            .ra-tar { text-align: right !important; }
 
-            /* RESPONSIVO */
-            @media (largura máxima: 480px) {
-                .ra-widget-fixo {
-                    posição: relativa !importante;
-                    topo: 0;
-                    esquerda: 0;
-                    exibir: bloco;
-                    largura: automático;
-                    altura: automático;
-                    índice z: 1;
+            /* RESPONSIVE */
+            @media (max-width: 480px) {
+                .ra-fixed-widget {
+                    position: relative !important;
+                    top: 0;
+                    left: 0;
+                    display: block;
+                    width: auto;
+                    height: auto;
+                    z-index: 1;
                 }
 
                 .ra-box-widget {
-                    posição: relativa;
-                    exibir: bloco;
-                    dimensionamento de caixa: caixa de borda;
-                    largura: 97%;
-                    altura: automático;
-                    margem: 10px automático;
+                    position: relative;
+                    display: block;
+                    box-sizing: border-box;
+                    width: 97%;
+                    height: auto;
+                    margin: 10px auto;
                 }
 
-                .ra-tabela {
-                    border-collapse: recolher !importante;
+                .ra-table {
+                    border-collapse: collapse !important;
                 }
 
-                .botão de fechamento personalizado { display: nenhum; }
-                .ra-fixed-widget h3 { margem inferior: 15px; }
-                .ra-popup-content { largura: 100%; }
+                .custom-close-button { display: none; }
+                .ra-fixed-widget h3 { margin-bottom: 15px; }
+                .ra-popup-content { width: 100%; }
             }
         `;
     },
-    addScriptToQuickbar: função (nome, script, retorno de chamada) {
-        deixe scriptData = `tecla de atalho=&nome=${nome}&href=${encodeURI(script)}`;
-        deixe ação =
+    addScriptToQuickbar: function (name, script, callback) {
+        let scriptData = `hotkey=&name=${name}&href=${encodeURI(script)}`;
+        let action =
             '/game.php?screen=settings&mode=quickbar_edit&action=quickbar_edit&';
 
         jQuery.ajax({
-            url: ação,
-            tipo: 'POST',
-            dados: scriptData + `&h=${csrf_token}`,
-            sucesso: função () {
-                se (tipo de retorno de chamada === 'função') {
-                    ligar de volta();
+            url: action,
+            type: 'POST',
+            data: scriptData + `&h=${csrf_token}`,
+            success: function () {
+                if (typeof callback === 'function') {
+                    callback();
                 }
             },
         });
     },
-    arraysIntersection: função () {
-        var resultado = [];
-        listas var;
+    arraysIntersection: function () {
+        var result = [];
+        var lists;
 
-        se (argumentos.length === 1) {
-            listas = argumentos[0];
-        } outro {
-            listas = argumentos;
+        if (arguments.length === 1) {
+            lists = arguments[0];
+        } else {
+            lists = arguments;
         }
 
-        para (var i = 0; i < listas.length; i++) {
-            var currentList = listas[i];
-            for (var y = 0; y < lista atual.length; y++) {
+        for (var i = 0; i < lists.length; i++) {
+            var currentList = lists[i];
+            for (var y = 0; y < currentList.length; y++) {
                 var currentValue = currentList[y];
-                se (resultado.indexOf(valoratual) === -1) {
-                    var existsInAll = verdadeiro;
-                    para (var x = 0; x < listas.length; x++) {
-                        se (listas[x].indexOf(valoratual) === -1) {
-                            existsInAll = falso;
-                            quebrar;
+                if (result.indexOf(currentValue) === -1) {
+                    var existsInAll = true;
+                    for (var x = 0; x < lists.length; x++) {
+                        if (lists[x].indexOf(currentValue) === -1) {
+                            existsInAll = false;
+                            break;
                         }
                     }
-                    se (existeEmTodos) {
-                        resultado.push(valoratual);
+                    if (existsInAll) {
+                        result.push(currentValue);
                     }
                 }
             }
         }
-        retornar resultado;
+        return result;
     },
-    buildUnitsPicker: função (
-        unidades selecionadas = [],
-        unidades a ignorar,
-        tipo = 'caixa de seleção'
+    buildUnitsPicker: function (
+        selectedUnits = [],
+        unitsToIgnore,
+        type = 'checkbox'
     ) {
-        deixe unitsTable = ``;
+        let unitsTable = ``;
 
-        deixe thUnits = ``;
-        deixe tableRow = ``;
+        let thUnits = ``;
+        let tableRow = ``;
 
-        game_data.units.forEach((unidade) => {
-            se (!unitsToIgnore.includes(unidade)) {
-                deixe marcado = '';
-                se (selectedUnits.includes(unidade)) {
-                    verificado = `verificado`;
+        game_data.units.forEach((unit) => {
+            if (!unitsToIgnore.includes(unit)) {
+                let checked = '';
+                if (selectedUnits.includes(unit)) {
+                    checked = `checked`;
                 }
 
-                Unidades += `
+                thUnits += `
                     <th class="ra-tac">
-                        <rótulo para="unidade_${unidade}">
-                            <img src="/gráfico/unidade/unidade_${unidade}.png">
+                        <label for="unit_${unit}">
+                            <img src="/graphic/unit/unit_${unit}.png">
                         </label>
                     </th>
                 `;
 
                 tableRow += `
                     <td class="ra-tac">
-                        <input nome="ra_chosen_units" tipo="${tipo}" ${marcado} id="unidade_${unidade}" classe="ra-unit-selector" valor="${unidade}" />
+                        <input name="ra_chosen_units" type="${type}" ${checked} id="unit_${unit}" class="ra-unit-selector" value="${unit}" />
                     </td>
                 `;
             }
         });
 
-        tabelaDeUnidades = `
-            <tabela class="ra-table ra-table-v2" width="100%" id="raUnitSelector">
-                <cabeça>
+        unitsTable = `
+            <table class="ra-table ra-table-v2" width="100%" id="raUnitSelector">
+                <thead>
                     <tr>
                         ${thUnits}
                     </tr>
                 </thead>
-                <tcorpo>
+                <tbody>
                     <tr>
                         ${tableRow}
                     </tr>
                 </tbody>
-            </tabela>
+            </table>
         `;
 
-        retornar unidadesTabela;
+        return unitsTable;
     },
-    calcularMoedasNecessáriasParaNthNoble: função (nobre) {
-        retornar (nobre * nobre + nobre) / 2;
+    calculateCoinsNeededForNthNoble: function (noble) {
+        return (noble * noble + noble) / 2;
     },
-    calcularDistânciaDaVilaAtual: função (coord) {
-        const x1 = dados_do_jogo.vila.x;
-        const y1 = dados_do_jogo.vila.y;
+    calculateDistanceFromCurrentVillage: function (coord) {
+        const x1 = game_data.village.x;
+        const y1 = game_data.village.y;
         const [x2, y2] = coord.split('|');
         const deltaX = Math.abs(x1 - x2);
         const deltaY = Math.abs(y1 - y2);
-        retornar Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     },
-    calcularDistância: função (de, para) {
-        const [x1, y1] = de.split('|');
-        const [x2, y2] = para.split('|');
+    calculateDistance: function (from, to) {
+        const [x1, y1] = from.split('|');
+        const [x2, y2] = to.split('|');
         const deltaX = Math.abs(x1 - x2);
         const deltaY = Math.abs(y1 - y2);
-        retornar Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     },
-    calculatePercentages: função (valor, total) {
-        se (quantidade === indefinido) quantidade = 0;
-        retornar parseFloat((quantidade / total) * 100).toFixed(2);
+    calculatePercentages: function (amount, total) {
+        if (amount === undefined) amount = 0;
+        return parseFloat((amount / total) * 100).toFixed(2);
     },
-    calculateTimesByDistance: função assíncrona (distância) {
-        const _self = isto;
+    calculateTimesByDistance: async function (distance) {
+        const _self = this;
 
-        const vezes = [];
+        const times = [];
         const travelTimes = [];
 
         const unitInfo = await _self.getWorldUnitInfo();
         const worldConfig = await _self.getWorldConfig();
 
-        para (deixe [chave, valor] de Object.entries(unitInfo.config)) {
-            vezes.push(valor.velocidade);
+        for (let [key, value] of Object.entries(unitInfo.config)) {
+            times.push(value.speed);
         }
 
-        const { velocidade, velocidade_unitária } = worldConfig.config;
+        const { speed, unit_speed } = worldConfig.config;
 
-        vezes.paraCada((tempo) => {
-            deixe travelTime = Math.round(
-                (distância * tempo * 60) / velocidade / unidade_de_velocidade
+        times.forEach((time) => {
+            let travelTime = Math.round(
+                (distance * time * 60) / speed / unit_speed
             );
-            TempoDeViagem = _self.secondsToHms(TempoDeViagem);
-            travelTimes.push(tempoDeViagem);
+            travelTime = _self.secondsToHms(travelTime);
+            travelTimes.push(travelTime);
         });
 
-        Tempos de viagem de retorno;
+        return travelTimes;
     },
-    checkValidLocation: função (tipo) {
-        switch (tipo) {
-            caso 'tela':
-                retornar this.allowedScreens.includes(
-                    this.getParameterByName('tela')
+    checkValidLocation: function (type) {
+        switch (type) {
+            case 'screen':
+                return this.allowedScreens.includes(
+                    this.getParameterByName('screen')
                 );
-            caso 'modo':
-                retornar this.allowedModes.includes(
-                    this.getParameterByName('modo')
+            case 'mode':
+                return this.allowedModes.includes(
+                    this.getParameterByName('mode')
                 );
-            padrão:
-                retornar falso;
+            default:
+                return false;
         }
     },
-    checkValidMarket: função () {
-        se (this.market === 'yy') retornar verdadeiro;
-        retornar this.allowedMarkets.includes(this.market);
+    checkValidMarket: function () {
+        if (this.market === 'yy') return true;
+        return this.allowedMarkets.includes(this.market);
     },
-    cleanString: função (string) {
-        tentar {
-            retornar decodeURIComponent(string).replace(/\+/g, ' ');
-        } pegar (erro) {
-            console.error(erro, string);
-            retornar string;
+    cleanString: function (string) {
+        try {
+            return decodeURIComponent(string).replace(/\+/g, ' ');
+        } catch (error) {
+            console.error(error, string);
+            return string;
         }
     },
-    copyToClipboard: função (string) {
+    copyToClipboard: function (string) {
         navigator.clipboard.writeText(string);
     },
-    createUUID: função () {
-        retornar crypto.randomUUID();
+    createUUID: function () {
+        return crypto.randomUUID();
     },
-    csvToArray: função (strDados, strDelimitador = ',') {
-        var objPattern = novo RegExp(
+    csvToArray: function (strData, strDelimiter = ',') {
+        var objPattern = new RegExp(
             '(\\' +
-                strDelimitador +
+                strDelimiter +
                 '|\\r?\\n|\\r|^)' +
                 '(?:"([^"]*(?:""[^"]*)*)"|' +
                 '([^"\\' +
-                strDelimitador +
+                strDelimiter +
                 '\\r\\n]*))',
             'gi'
         );
         var arrData = [[]];
-        var arrMatches = nulo;
-        enquanto ((arrMatches = objPattern.exec(strData))) {
+        var arrMatches = null;
+        while ((arrMatches = objPattern.exec(strData))) {
             var strMatchedDelimiter = arrMatches[1];
-            se (
+            if (
                 strMatchedDelimiter.length &&
-                strMatchedDelimiter !== strDelimitador
+                strMatchedDelimiter !== strDelimiter
             ) {
                 arrData.push([]);
             }
-            var strValorMatched;
+            var strMatchedValue;
 
-            se (arrMatches[2]) {
+            if (arrMatches[2]) {
                 strMatchedValue = arrMatches[2].replace(
-                    novo RegExp('""', 'g'),
-                    '''
+                    new RegExp('""', 'g'),
+                    '"'
                 );
-            } outro {
+            } else {
                 strMatchedValue = arrMatches[3];
             }
             arrData[arrData.length - 1].push(strMatchedValue);
         }
-        retornar arrData;
+        return arrData;
     },
-    decryptAccountManangerTemplate: função (exportedTemplate) {
-        const edifícios = [];
+    decryptAccountManangerTemplate: function (exportedTemplate) {
+        const buildings = [];
 
-        const binaryString = atob(exportadoTemplate);
-        const bytes = novo Uint8Array(binaryString.length);
-        para (deixe i = 0; i < binaryString.length; i++) {
+        const binaryString = atob(exportedTemplate);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
         }
 
         const payloadLength = bytes[0] + bytes[1] * 256;
-        se (payloadLength <= bytes.length - 2) {
+        if (payloadLength <= bytes.length - 2) {
             const payload = bytes.slice(2, 2 + payloadLength);
-            para (deixe i = 0; i < carga útil.comprimento; i += 2) {
-                const buildingId = carga útil[i];
-                const buildingLevel = carga útil[i + 1];
-                se (this.buildingsList[buildingId]) {
-                    edifícios.push({
+            for (let i = 0; i < payload.length; i += 2) {
+                const buildingId = payload[i];
+                const buildingLevel = payload[i + 1];
+                if (this.buildingsList[buildingId]) {
+                    buildings.push({
                         id: this.buildingsList[buildingId],
-                        atualização: `+${buildingLevel}`,
+                        upgrade: `+${buildingLevel}`,
                     });
                 }
             }
 
-            retornar edifícios;
+            return buildings;
         }
     },
-    filterVillagesByPlayerIds: função (playerIds, vilas) {
+    filterVillagesByPlayerIds: function (playerIds, villages) {
         const playerVillages = [];
-        aldeias.paraCada((aldeia) => {
-            se (playerIds.includes(parseInt(vila[4]))) {
-                constante coordenada = vila[2] + '|' + vila[3];
-                playerVillages.push(coordenada);
+        villages.forEach((village) => {
+            if (playerIds.includes(parseInt(village[4]))) {
+                const coordinate = village[2] + '|' + village[3];
+                playerVillages.push(coordinate);
             }
         });
-        retornar jogadorVillages;
+        return playerVillages;
     },
-    formatAsNumber: função (número) {
-        retornar parseInt(número).toLocaleString('de');
+    formatAsNumber: function (number) {
+        return parseInt(number).toLocaleString('de');
     },
-    formatDateTime: função (dataHora) {
-        dataHora = nova Data(dataHora);
-        retornar (
+    formatDateTime: function (dateTime) {
+        dateTime = new Date(dateTime);
+        return (
             this.zeroPad(dateTime.getDate(), 2) +
             '/' +
-            this.zeroPad(dataHora.obterMês() + 1, 2) +
+            this.zeroPad(dateTime.getMonth() + 1, 2) +
             '/' +
             dateTime.getFullYear() +
             ' ' +
@@ -560,385 +576,385 @@ janela.twSDK = {
             ':' +
             this.zeroPad(dateTime.getMinutes(), 2) +
             ':' +
-            this.zeroPad(dataHora.obterSegundos(), 2)
+            this.zeroPad(dateTime.getSeconds(), 2)
         );
     },
-    frequencyCounter: função (matriz) {
-        retornar array.reduce(função (acc, curr) {
-            se (tipo de acc[atual] == 'indefinido') {
-                acc[atual] = 1;
-            } outro {
-                acc[atual] += 1;
+    frequencyCounter: function (array) {
+        return array.reduce(function (acc, curr) {
+            if (typeof acc[curr] == 'undefined') {
+                acc[curr] = 1;
+            } else {
+                acc[curr] += 1;
             }
-            retornar acc;
+            return acc;
         }, {});
     },
-    generateRandomCoordinates: função () {
+    generateRandomCoordinates: function () {
         const x = Math.floor(Math.random() * 1000);
         const y = Math.floor(Math.random() * 1000);
-        retornar `${x}|${y}`;
+        return `${x}|${y}`;
     },
-    obterTudo: função (
-        urls, // matriz de URLs
-        onLoad, // chamado quando qualquer URL é carregada, parâmetros (índice, dados)
-        onDone, // chamado quando todos os URLs foram carregados com sucesso, sem parâmetros
-        onError // chamado quando um carregamento de URL falha ou se onLoad lança uma exceção, params (erro)
+    getAll: function (
+        urls, // array of URLs
+        onLoad, // called when any URL is loaded, params (index, data)
+        onDone, // called when all URLs successfully loaded, no params
+        onError // called when a URL load fails or if onLoad throws an exception, params (error)
     ) {
         var numDone = 0;
         var lastRequestTime = 0;
-        var minWaitTime = this.delayBetweenRequests; // ms entre solicitações
-        carregarPróximo();
-        função loadNext() {
-            se (numDone == urls.length) {
+        var minWaitTime = this.delayBetweenRequests; // ms between requests
+        loadNext();
+        function loadNext() {
+            if (numDone == urls.length) {
                 onDone();
-                retornar;
+                return;
             }
 
-            deixe agora = Date.now();
-            deixe timeElapsed = now - lastRequestTime;
-            se (tempoDecorrido < tempoDeEsperaMínimo) {
-                deixe timeRemaining = minWaitTime - timeElapsed;
-                setTimeout(loadNext, tempoRestante);
-                retornar;
+            let now = Date.now();
+            let timeElapsed = now - lastRequestTime;
+            if (timeElapsed < minWaitTime) {
+                let timeRemaining = minWaitTime - timeElapsed;
+                setTimeout(loadNext, timeRemaining);
+                return;
             }
-            lastRequestTime = agora;
+            lastRequestTime = now;
             jQuery
                 .get(urls[numDone])
-                .feito((dados) => {
-                    tentar {
-                        onLoad(numDone, dados);
-                        ++numConcluído;
-                        carregarPróximo();
-                    } pegar (e) {
+                .done((data) => {
+                    try {
+                        onLoad(numDone, data);
+                        ++numDone;
+                        loadNext();
+                    } catch (e) {
                         onError(e);
                     }
                 })
-                .falha((xhr) => {
+                .fail((xhr) => {
                     onError(xhr);
                 });
         }
     },
-    getBuildingsInfo: função assíncrona () {
-        const TIME_INTERVAL = 60 * 60 * 1000 * 24 * 365; // busca a configuração apenas uma vez, pois elas não mudam
-        const ÚLTIMA_ATUALIZAÇÃO_HORA =
+    getBuildingsInfo: async function () {
+        const TIME_INTERVAL = 60 * 60 * 1000 * 24 * 365; // fetch config only once since they don't change
+        const LAST_UPDATED_TIME =
             localStorage.getItem('buildings_info_last_updated') ?? 0;
-        deixe buildingsInfo = [];
+        let buildingsInfo = [];
 
-        se (ÚLTIMA_ATUALIZAÇÃO !== nulo) {
-            se (Data.parse(nova Data()) >= ÚLTIMA_ATUALIZAÇÃO_HORA + INTERVALO_DE_TEMPO) {
-                const resposta = await jQuery.ajax({
+        if (LAST_UPDATED_TIME !== null) {
+            if (Date.parse(new Date()) >= LAST_UPDATED_TIME + TIME_INTERVAL) {
+                const response = await jQuery.ajax({
                     url: this.buildingInfoInterface,
                 });
-                buildingsInfo = this.xml2json(jQuery(resposta));
+                buildingsInfo = this.xml2json(jQuery(response));
                 localStorage.setItem(
-                    'informações_de_edifícios',
-                    JSON.stringify(informaçõesdeedifícios)
+                    'buildings_info',
+                    JSON.stringify(buildingsInfo)
                 );
                 localStorage.setItem(
-                    'informações_de_edifícios_última_atualização',
-                    Data.parse(nova Data())
+                    'buildings_info_last_updated',
+                    Date.parse(new Date())
                 );
-            } outro {
-                buildingInfo = JSON.parse(
+            } else {
+                buildingsInfo = JSON.parse(
                     localStorage.getItem('buildings_info')
                 );
             }
-        } outro {
-            const resposta = await jQuery.ajax({
+        } else {
+            const response = await jQuery.ajax({
                 url: this.buildingInfoInterface,
             });
-            buildingsInfo = this.xml2json(jQuery(resposta));
+            buildingsInfo = this.xml2json(jQuery(response));
             localStorage.setItem('buildings_info', JSON.stringify(unitInfo));
             localStorage.setItem(
-                'informações_de_edifícios_última_atualização',
-                Data.parse(nova Data())
+                'buildings_info_last_updated',
+                Date.parse(new Date())
             );
         }
 
-        retornar buildingsInfo;
+        return buildingsInfo;
     },
-    getContinentByCoord: função (coord) {
-        deixe [x, y] = Array.from(coord.split('|')).map((e) => parseInt(e));
-        para (seja i = 0; i < 1000; i += 100) {
-            //eixos x
-            para (seja j = 0; j < 1000; j += 100) {
-                //eixos y
-                se (i >= x && x < i + 100 && j >= y && y < j + 100) {
-                    deixe nr_continente =
-                        parseInt(y/100) + '' + parseInt(x/100);
-                    retornar nr_continente;
+    getContinentByCoord: function (coord) {
+        let [x, y] = Array.from(coord.split('|')).map((e) => parseInt(e));
+        for (let i = 0; i < 1000; i += 100) {
+            //x axes
+            for (let j = 0; j < 1000; j += 100) {
+                //y axes
+                if (i >= x && x < i + 100 && j >= y && y < j + 100) {
+                    let nr_continent =
+                        parseInt(y / 100) + '' + parseInt(x / 100);
+                    return nr_continent;
                 }
             }
         }
     },
-    getContinentsFromCoordinates: função (coordenadas) {
-        deixe continentes = [];
+    getContinentsFromCoordinates: function (coordinates) {
+        let continents = [];
 
-        coordenadas.forEach((coord) => {
-            const continente = twSDK.getContinentByCoord(coord);
-            continentes.push(continente);
+        coordinates.forEach((coord) => {
+            const continent = twSDK.getContinentByCoord(coord);
+            continents.push(continent);
         });
 
-        retornar [...novo Conjunto(continentes)];
+        return [...new Set(continents)];
     },
-    getCoordFromString: função (string) {
-        se (!string) retornar [];
-        retornar string.match(this.coordsRegex)[0];
+    getCoordFromString: function (string) {
+        if (!string) return [];
+        return string.match(this.coordsRegex)[0];
     },
-    getContinentSectorField: função (coordenada) {
-        const continente = this.getContinentByCoord(coordenada);
-        deixe [coordX, coordY] = coordenada.split('|');
+    getContinentSectorField: function (coordinate) {
+        const continent = this.getContinentByCoord(coordinate);
+        let [coordX, coordY] = coordinate.split('|');
 
-        deixe tempX = Número(coordX);
-        deixe tempY = Número(coordY);
+        let tempX = Number(coordX);
+        let tempY = Number(coordY);
 
-        //==== setor ====
-        se (tempX >= 100) tempX = Número(String(coordX).substring(1));
-        se (tempY >= 100) tempY = Número(String(coordY).substring(1));
+        //==== sector ====
+        if (tempX >= 100) tempX = Number(String(coordX).substring(1));
+        if (tempY >= 100) tempY = Number(String(coordY).substring(1));
 
-        deixe xPos = Math.floor(tempX / 5);
-        deixe yPos = Math.floor(tempY / 5);
-        deixe setor = yPos * 20 + xPos;
+        let xPos = Math.floor(tempX / 5);
+        let yPos = Math.floor(tempY / 5);
+        let sector = yPos * 20 + xPos;
 
-        //==== campo ====
-        se (tempX >= 10) tempX = Número(String(tempX).substring(1));
+        //==== field ====
+        if (tempX >= 10) tempX = Number(String(tempX).substring(1));
         if (tempY >= 10) tempY = Number(String(tempY).substring(1));
 
-        se (tempX >= 5) tempX = tempX - 5;
+        if (tempX >= 5) tempX = tempX - 5;
         if (tempY >= 5) tempY = tempY - 5;
-        deixe campo = tempY * 5 + tempX;
+        let field = tempY * 5 + tempX;
 
-        deixe nome = continente + ':' + setor + ':' + campo;
+        let name = continent + ':' + sector + ':' + field;
 
-        nome de retorno;
+        return name;
     },
-    getDestinationCoordinates: função (config, tribos, jogadores, aldeias) {
-        constante {
-            entrada de jogadores,
-            tribosInput,
-            continentes,
+    getDestinationCoordinates: function (config, tribes, players, villages) {
+        const {
+            playersInput,
+            tribesInput,
+            continents,
             minCoord,
             maxCoord,
             distCenter,
-            centro,
-            Jogadores excluídos,
-            habilitar20Para1Limite,
+            center,
+            excludedPlayers,
+            enable20To1Limit,
             minPoints,
             maxPoints,
-            configuração aleatória seletiva,
-        } = configuração;
+            selectiveRandomConfig,
+        } = config;
 
-        // obter coordenadas de destino
+        // get target coordinates
         const chosenPlayers = playersInput.split(',');
         const chosenTribes = tribesInput.split(',');
 
         const chosenPlayerIds = twSDK.getEntityIdsByArrayIndex(
-            jogadores escolhidos,
-            jogadores,
+            chosenPlayers,
+            players,
             1
         );
         const chosenTribeIds = twSDK.getEntityIdsByArrayIndex(
-            Tribos escolhidas,
-            tribos,
+            chosenTribes,
+            tribes,
             2
         );
 
-        const tribePlayers = twSDK.getTribeMembersById(chosenTribeIds, jogadores);
+        const tribePlayers = twSDK.getTribeMembersById(chosenTribeIds, players);
 
         const mergedPlayersList = [...tribePlayers, ...chosenPlayerIds];
-        deixe uniquePlayersList = [...novo Conjunto(mergedPlayersList)];
+        let uniquePlayersList = [...new Set(mergedPlayersList)];
 
         const chosenExcludedPlayers = excludedPlayers.split(',');
-        se (chosenExcludedPlayers.length > 0) {
+        if (chosenExcludedPlayers.length > 0) {
             const excludedPlayersIds = twSDK.getEntityIdsByArrayIndex(
-                JogadoresExcluídosEscolhedos,
-                jogadores,
+                chosenExcludedPlayers,
+                players,
                 1
             );
             excludedPlayersIds.forEach((item) => {
                 uniquePlayersList = uniquePlayersList.filter(
-                    (jogador) => jogador !== item
+                    (player) => player !== item
                 );
             });
         }
 
-        // filtrar pela regra 20:1
-        se (enable20To1Limit) {
-            deixe uniquePlayersListArray = [];
+        // filter by 20:1 rule
+        if (enable20To1Limit) {
+            let uniquePlayersListArray = [];
             uniquePlayersList.forEach((playerId) => {
-                jogadores.paraCada((jogador) => {
-                    se (parseInt(jogador[0]) === playerId) {
-                        uniquePlayersListArray.push(jogador);
+                players.forEach((player) => {
+                    if (parseInt(player[0]) === playerId) {
+                        uniquePlayersListArray.push(player);
                     }
                 });
             });
 
-            const jogadoresNãoMaiorEntão20Vezes = uniquePlayersListArray.filter(
-                (jogador) => {
-                    retornar (
-                        parseInt(jogador[4]) <=
-                        parseInt(dados_do_jogo.jogador.pontos) * 20
+            const playersNotBiggerThen20Times = uniquePlayersListArray.filter(
+                (player) => {
+                    return (
+                        parseInt(player[4]) <=
+                        parseInt(game_data.player.points) * 20
                     );
                 }
             );
 
-            uniquePlayersList = jogadoresNãoMaioresEntão20Vezes.map((jogador) =>
-                parseInt(jogador[0])
+            uniquePlayersList = playersNotBiggerThen20Times.map((player) =>
+                parseInt(player[0])
             );
         }
 
-        deixe coordinatesArray = twSDK.filterVillagesByPlayerIds(
-            listadejogadoresúnica,
-            aldeias
+        let coordinatesArray = twSDK.filterVillagesByPlayerIds(
+            uniquePlayersList,
+            villages
         );
 
-        // filtrar por pontos mínimos e máximos da vila
-        se (pontosmin || pontosmax) {
-            deixe filteredCoordinatesArray = [];
+        // filter by min and max village points
+        if (minPoints || maxPoints) {
+            let filteredCoordinatesArray = [];
 
-            coordinatesArray.forEach((coordenada) => {
-                aldeias.paraCada((aldeia) => {
-                    const villageCoordinate = vila[2] + '|' + vila[3];
-                    se (vilaCoordenada === coordenada) {
-                        filteredCoordinatesArray.push(vila);
+            coordinatesArray.forEach((coordinate) => {
+                villages.forEach((village) => {
+                    const villageCoordinate = village[2] + '|' + village[3];
+                    if (villageCoordinate === coordinate) {
+                        filteredCoordinatesArray.push(village);
                     }
                 });
             });
 
             filteredCoordinatesArray = filteredCoordinatesArray.filter(
-                (vila) => {
-                    const vilaPontos = parseInt(vila[5]);
+                (village) => {
+                    const villagePoints = parseInt(village[5]);
                     const minPointsNumber = parseInt(minPoints) || 26;
                     const maxPointsNumber = parseInt(maxPoints) || 12124;
-                    se (
+                    if (
                         villagePoints > minPointsNumber &&
                         villagePoints < maxPointsNumber
                     ) {
-                        retornar à aldeia;
+                        return village;
                     }
                 }
             );
 
             coordinatesArray = filteredCoordinatesArray.map(
-                (vila) => vila[2] + '|' + vila[3]
+                (village) => village[2] + '|' + village[3]
             );
         }
 
-        // filtrar coordenadas por continente
-        se (continentes.comprimento) {
-            deixe chosenContinentsArray = continentes.split(',');
+        // filter coordinates by continent
+        if (continents.length) {
+            let chosenContinentsArray = continents.split(',');
             chosenContinentsArray = chosenContinentsArray.map((item) =>
                 item.trim()
             );
 
             const availableContinents =
-                twSDK.getContinentsFromCoordinates(matriz de coordenadas);
+                twSDK.getContinentsFromCoordinates(coordinatesArray);
             const filteredVillagesByContinent =
                 twSDK.getFilteredVillagesByContinent(
-                    coordenadasArray,
-                    Continentes disponíveis
+                    coordinatesArray,
+                    availableContinents
                 );
 
             const isUserInputValid = chosenContinentsArray.every((item) =>
                 availableContinents.includes(item)
             );
 
-            se (isUserInputValid) {
-                coordinatesArray = matrizDeContinentesEscolhados
-                    .mapa((continente) => {
-                        se (continente.length && $.isNumeric(continente)) {
-                            retornar [...filteredVillagesByContinent[continente]];
-                        } outro {
-                            retornar;
+            if (isUserInputValid) {
+                coordinatesArray = chosenContinentsArray
+                    .map((continent) => {
+                        if (continent.length && $.isNumeric(continent)) {
+                            return [...filteredVillagesByContinent[continent]];
+                        } else {
+                            return;
                         }
                     })
-                    .plano();
-            } outro {
-                retornar [];
+                    .flat();
+            } else {
+                return [];
             }
         }
 
-        // filtrar coordenadas por uma caixa delimitadora de coordenadas
-        se (minCoord.length && maxCoord.length) {
+        // filter coordinates by a bounding box of coordinates
+        if (minCoord.length && maxCoord.length) {
             const raMinCoordCheck = minCoord.match(twSDK.coordsRegex);
             const raMaxCoordCheck = maxCoord.match(twSDK.coordsRegex);
 
-            se (raMinCoordCheck !== nulo && raMaxCoordCheck !== nulo) {
+            if (raMinCoordCheck !== null && raMaxCoordCheck !== null) {
                 const [minX, minY] = raMinCoordCheck[0].split('|');
                 const [maxX, maxY] = raMaxCoordCheck[0].split('|');
 
                 coordinatesArray = [...coordinatesArray].filter(
-                    (coordenada) => {
-                        const [x, y] = coordenada.split('|');
-                        se (minX <= x && x <= maxX && minY <= y && y <= maxY) {
-                            retornar coordenada;
+                    (coordinate) => {
+                        const [x, y] = coordinate.split('|');
+                        if (minX <= x && x <= maxX && minY <= y && y <= maxY) {
+                            return coordinate;
                         }
                     }
                 );
-            } outro {
-                retornar [];
+            } else {
+                return [];
             }
         }
 
-        // filtrar por raio
-        se (distCenter.length && centro.length) {
-            se (!$.isNumeric(distCenter)) distCenter = 0;
-            const raCenterCheck = centro.match(twSDK.coordsRegex);
+        // filter by radius
+        if (distCenter.length && center.length) {
+            if (!$.isNumeric(distCenter)) distCenter = 0;
+            const raCenterCheck = center.match(twSDK.coordsRegex);
 
-            se (distCenter !== 0 && raCenterCheck !== nulo) {
-                deixe coordinatesArrayWithDistance = [];
-                coordinatesArray.forEach((coordenada) => {
-                    const distância = twSDK.calculateDistance(
+            if (distCenter !== 0 && raCenterCheck !== null) {
+                let coordinatesArrayWithDistance = [];
+                coordinatesArray.forEach((coordinate) => {
+                    const distance = twSDK.calculateDistance(
                         raCenterCheck[0],
-                        coordenada
+                        coordinate
                     );
-                    coordenadasArrayWithDistance.push({
-                        coord: coordenada,
-                        distância: distância,
+                    coordinatesArrayWithDistance.push({
+                        coord: coordinate,
+                        distance: distance,
                     });
                 });
 
-                coordenadasArrayWithDistance =
+                coordinatesArrayWithDistance =
                     coordinatesArrayWithDistance.filter((item) => {
-                        retornar (
-                            pars eFloat(item.distance) <= parseFloat(distCenter)
+                        return (
+                            parseFloat(item.distance) <= parseFloat(distCenter)
                         );
                     });
 
                 coordinatesArray = coordinatesArrayWithDistance.map(
                     (item) => item.coord
                 );
-            } outro {
-                retornar [];
+            } else {
+                return [];
             }
         }
 
-        // aplicar multiplicador
-        se (seletivoRandomConfig) {
+        // apply multiplier
+        if (selectiveRandomConfig) {
             const selectiveRandomizer = selectiveRandomConfig.split(';');
 
-            const makeRepeated = (arr, repete) =>
+            const makeRepeated = (arr, repeats) =>
                 Array.from({ length: repeats }, () => arr).flat();
-            const multiplicadoCoordenadasArray = [];
+            const multipliedCoordinatesArray = [];
 
             selectiveRandomizer.forEach((item) => {
-                const [playerName, distribuição] = item.split(':');
-                se (distribuição > 1) {
-                    jogadores.paraCada((jogador) => {
-                        se (
-                            twSDK.cleanString(jogador[1]) ===
-                            twSDK.cleanString(nome do jogador)
+                const [playerName, distribution] = item.split(':');
+                if (distribution > 1) {
+                    players.forEach((player) => {
+                        if (
+                            twSDK.cleanString(player[1]) ===
+                            twSDK.cleanString(playerName)
                         ) {
-                            deixe playerVillages =
+                            let playerVillages =
                                 twSDK.filterVillagesByPlayerIds(
-                                    [parseInt(jogador[0])],
-                                    aldeias
+                                    [parseInt(player[0])],
+                                    villages
                                 );
                             const flattenedPlayerVillagesArray = makeRepeated(
                                 playerVillages,
-                                distribuição
+                                distribution
                             );
-                            multiplicadoCoordenadasArray.push(
+                            multipliedCoordinatesArray.push(
                                 flattenedPlayerVillagesArray
                             );
                         }
@@ -949,169 +965,169 @@ janela.twSDK = {
             coordinatesArray.push(...multipliedCoordinatesArray.flat());
         }
 
-        retornar coordenadasArray;
+        return coordinatesArray;
     },
-    getEntityIdsByArrayIndex: função (itens escolhidos, itens, índice) {
+    getEntityIdsByArrayIndex: function (chosenItems, items, index) {
         const itemIds = [];
-        ItensEscolhemos.paraCada((ItemEscolhemos) => {
-            itens.paraCada((item) => {
-                se (
-                    twSDK.cleanString(item[índice]) ===
-                    twSDK.cleanString(ItemEscolhido)
+        chosenItems.forEach((chosenItem) => {
+            items.forEach((item) => {
+                if (
+                    twSDK.cleanString(item[index]) ===
+                    twSDK.cleanString(chosenItem)
                 ) {
-                    retornar itemIds.push(parseInt(item[0]));
+                    return itemIds.push(parseInt(item[0]));
                 }
             });
         });
-        retornar itensIds;
+        return itemIds;
     },
-    getFilteredVillagesByContinent: função (
+    getFilteredVillagesByContinent: function (
         playerVillagesCoords,
-        continentes
+        continents
     ) {
-        deixe coordenadas = [...playerVillagesCoords];
-        deixe filteredVillagesByContinent = [];
+        let coords = [...playerVillagesCoords];
+        let filteredVillagesByContinent = [];
 
-        coordenadas.paraCada((coord) => {
-            continentes.paraCada((continente) => {
-                deixe currentVillageContinent = twSDK.getContinentByCoord(coord);
-                se (currentVillageContinent === continente) {
+        coords.forEach((coord) => {
+            continents.forEach((continent) => {
+                let currentVillageContinent = twSDK.getContinentByCoord(coord);
+                if (currentVillageContinent === continent) {
                     filteredVillagesByContinent.push({
-                        continente: continente,
-                        coordenadas: coord,
+                        continent: continent,
+                        coords: coord,
                     });
                 }
             });
         });
 
-        retornar twSDK.groupArrayByProperty(
-            VilasFiltradasPorContinente,
-            'continente',
-            'coordenadas'
+        return twSDK.groupArrayByProperty(
+            filteredVillagesByContinent,
+            'continent',
+            'coords'
         );
     },
-    obterRecursosDoJogo: função () {
+    getGameFeatures: function () {
         const { Premium, FarmAssistent, AccountManager } = game_data.features;
-        const isPA = Premium.ativo;
-        const isLA = FarmAssistent.ativo;
-        const isAM = AccountManager.ativo;
-        retornar { éPA, éLA, éAM };
+        const isPA = Premium.active;
+        const isLA = FarmAssistent.active;
+        const isAM = AccountManager.active;
+        return { isPA, isLA, isAM };
     },
-    getKeyByValue: função (objeto, valor) {
-        retornar Object.keys(objeto).find((chave) => objeto[chave] === valor);
+    getKeyByValue: function (object, value) {
+        return Object.keys(object).find((key) => object[key] === value);
     },
-    getLandingTimeFromArrivesIn: função (chegaEm) {
+    getLandingTimeFromArrivesIn: function (arrivesIn) {
         const currentServerTime = twSDK.getServerDateTimeObject();
-        const [horas, minutos, segundos] = arrivesIn.split(':');
-        const totalSeconds = +horas * 3600 + +minutos * 60 + +segundos;
-        const arrivalDateTime = nova Data(
+        const [hours, minutes, seconds] = arrivesIn.split(':');
+        const totalSeconds = +hours * 3600 + +minutes * 60 + +seconds;
+        const arrivalDateTime = new Date(
             currentServerTime.getTime() + totalSeconds * 1000
         );
-        retornar data e hora de chegada;
+        return arrivalDateTime;
     },
-    getLastCoordFromString: função (string) {
-        se (!string) retornar [];
+    getLastCoordFromString: function (string) {
+        if (!string) return [];
         const regex = this.coordsRegex;
-        deixe combinar;
-        deixe lastMatch;
-        enquanto ((match = regex.exec(string)) !== nulo) {
-            lastMatch = correspondência;
+        let match;
+        let lastMatch;
+        while ((match = regex.exec(string)) !== null) {
+            lastMatch = match;
         }
-        retornar lastMatch? lastMatch[0] : [];
+        return lastMatch ? lastMatch[0] : [];
     },
-    obterPáginasParaBuscar: função () {
-        deixe list_pages = [];
+    getPagesToFetch: function () {
+        let list_pages = [];
 
-        const currentPage = twSDK.getParameterByName('página');
-        se (currentPage == '-1') retornar [];
+        const currentPage = twSDK.getParameterByName('page');
+        if (currentPage == '-1') return [];
 
-        se (
-            documento
+        if (
+            document
                 .getElementsByClassName('vis')[1]
-                .getElementsByTagName('selecionar').comprimento > 0
+                .getElementsByTagName('select').length > 0
         ) {
-            Matriz.de(
-                documento
+            Array.from(
+                document
                     .getElementsByClassName('vis')[1]
-                    .getElementsByTagName('selecionar')[0]
-            ).forEach(função (item) {
-                list_pages.push(item.valor);
+                    .getElementsByTagName('select')[0]
+            ).forEach(function (item) {
+                list_pages.push(item.value);
             });
-            lista_páginas.pop();
-        } senão se (
-            document.getElementsByClassName('item de navegação paginado').length > 0
+            list_pages.pop();
+        } else if (
+            document.getElementsByClassName('paged-nav-item').length > 0
         ) {
-            deixe nr = 0;
-            Matriz.de(
-                document.getElementsByClassName('item de navegação paginado')
-            ).forEach(função (item) {
-                deixe atual = item.href;
-                atual = current.split('page=')[0] + 'page=' + nr;
+            let nr = 0;
+            Array.from(
+                document.getElementsByClassName('paged-nav-item')
+            ).forEach(function (item) {
+                let current = item.href;
+                current = current.split('page=')[0] + 'page=' + nr;
                 nr++;
-                list_pages.push(atual);
+                list_pages.push(current);
             });
-        } outro {
-            deixe current_link = window.location.href;
-            list_pages.push(link_atual);
+        } else {
+            let current_link = window.location.href;
+            list_pages.push(current_link);
         }
-        lista_páginas.shift();
+        list_pages.shift();
 
-        retornar lista_páginas;
+        return list_pages;
     },
-    getParameterByName: função (nome, url = window.location.href) {
-        retornar nova URL(url).searchParams.get(nome);
+    getParameterByName: function (name, url = window.location.href) {
+        return new URL(url).searchParams.get(name);
     },
-    getRelativeImagePath: função (url) {
+    getRelativeImagePath: function (url) {
         const urlParts = url.split('/');
-        retornar `/${urlParts[5]}/${urlParts[6]}/${urlParts[7]}`;
+        return `/${urlParts[5]}/${urlParts[6]}/${urlParts[7]}`;
     },
-    getServerDateTimeObject: função () {
+    getServerDateTimeObject: function () {
         const formattedTime = this.getServerDateTime();
-        retornar nova Data(formatadoHora);
+        return new Date(formattedTime);
     },
-    getServerDateTime: função () {
+    getServerDateTime: function () {
         const serverTime = jQuery('#serverTime').text();
         const serverDate = jQuery('#serverDate').text();
-        const [dia, mês, ano] = serverDate.split('/');
+        const [day, month, year] = serverDate.split('/');
         const serverTimeFormatted =
-            ano + '-' + mês + '-' + dia + ' ' + serverTime;
-        retornar serverTimeFormatted;
+            year + '-' + month + '-' + day + ' ' + serverTime;
+        return serverTimeFormatted;
     },
-    getTimeFromString: função (timeLand) {
-        deixe dateLand = '';
-        deixe serverDate = documento
-            .getElementById('data do servidor')
+    getTimeFromString: function (timeLand) {
+        let dateLand = '';
+        let serverDate = document
+            .getElementById('serverDate')
             .innerText.split('/');
 
-        deixe TIME_PATTERNS = {
-            hoje: 'hoje às %s',
-            amanhã: 'amanhã às %s',
-            mais tarde: 'em %1 às %2',
+        let TIME_PATTERNS = {
+            today: 'today at %s',
+            tomorrow: 'tomorrow at %s',
+            later: 'on %1 at %2',
         };
 
-        se (janela.lang) {
-            PADRÕES_DE_TEMPO = {
-                hoje: window.lang['aea2b0aa9ae1534226518faaefffdaad'],
-                amanhã: window.lang['57d28d1b211fddbb7a499ead5bf23079'],
-                mais tarde: window.lang['0cb274c906d622fa8ce524bcfbb7552d'],
+        if (window.lang) {
+            TIME_PATTERNS = {
+                today: window.lang['aea2b0aa9ae1534226518faaefffdaad'],
+                tomorrow: window.lang['57d28d1b211fddbb7a499ead5bf23079'],
+                later: window.lang['0cb274c906d622fa8ce524bcfbb7552d'],
             };
         }
 
-        deixe todayPattern = new RegExp(
+        let todayPattern = new RegExp(
             TIME_PATTERNS.today.replace('%s', '([\\d+|:]+)')
         ).exec(timeLand);
-        deixe tomorrowPattern = new RegExp(
+        let tomorrowPattern = new RegExp(
             TIME_PATTERNS.tomorrow.replace('%s', '([\\d+|:]+)')
         ).exec(timeLand);
-        deixe laterDatePattern = novo RegExp(
-            TIME_PATTERNS.mais tarde
-                .substituir('%1', '([\\d+|\\.]+)')
-                .substituir('%2', '([\\d+|:]+)')
+        let laterDatePattern = new RegExp(
+            TIME_PATTERNS.later
+                .replace('%1', '([\\d+|\\.]+)')
+                .replace('%2', '([\\d+|:]+)')
         ).exec(timeLand);
 
-        se (todayPattern !== nulo) {
-            // hoje
-            dataLand =
+        if (todayPattern !== null) {
+            // today
+            dateLand =
                 serverDate[0] +
                 '/' +
                 serverDate[1] +
@@ -1119,204 +1135,204 @@ janela.twSDK = {
                 serverDate[2] +
                 ' ' +
                 timeLand.match(/\d+:\d+:\d+:\d+/)[0];
-        } senão se (tomorrowPattern !== null) {
-            // amanhã
-            deixe tomorrowDate = nova Data(
-                data_do_servidor[1] + '/' + data_do_servidor[0] + '/' + data_do_servidor[2]
+        } else if (tomorrowPattern !== null) {
+            // tomorrow
+            let tomorrowDate = new Date(
+                serverDate[1] + '/' + serverDate[0] + '/' + serverDate[2]
             );
-            data_amanhã.setDate(data_amanhã.getDate() + 1);
-            dataLand =
+            tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+            dateLand =
                 ('0' + tomorrowDate.getDate()).slice(-2) +
                 '/' +
                 ('0' + (tomorrowDate.getMonth() + 1)).slice(-2) +
                 '/' +
-                dataamanhã.obterAnoCompleto() +
+                tomorrowDate.getFullYear() +
                 ' ' +
                 timeLand.match(/\d+:\d+:\d+:\d+/)[0];
-        } outro {
-            // sobre
-            deixe em = timeLand.match(/\d+.\d+/)[0].split('.');
-            dataLand =
-                em[0] +
+        } else {
+            // on
+            let on = timeLand.match(/\d+.\d+/)[0].split('.');
+            dateLand =
+                on[0] +
                 '/' +
-                em[1] +
+                on[1] +
                 '/' +
                 serverDate[2] +
                 ' ' +
                 timeLand.match(/\d+:\d+:\d+:\d+/)[0];
         }
 
-        data de retornoTerra;
+        return dateLand;
     },
-    getTravelTimeInSecond: função (distância, velocidade unitária) {
-        deixe travelTime = distância * velocidade unitária * 60;
-        se (tempodeviagem % 1 > 0,5) {
-            retornar (tempodeviagem += 1);
-        } outro {
-            Tempo de viagem de retorno;
+    getTravelTimeInSecond: function (distance, unitSpeed) {
+        let travelTime = distance * unitSpeed * 60;
+        if (travelTime % 1 > 0.5) {
+            return (travelTime += 1);
+        } else {
+            return travelTime;
         }
     },
-    getTribeMembersById: função (tribeIds, jogadores) {
+    getTribeMembersById: function (tribeIds, players) {
         const tribeMemberIds = [];
-        jogadores.paraCada((jogador) => {
-            se (tribeIds.includes(parseInt(jogador[2]))) {
-                tribeMemberIds.push(parseInt(jogador[0]));
+        players.forEach((player) => {
+            if (tribeIds.includes(parseInt(player[2]))) {
+                tribeMemberIds.push(parseInt(player[0]));
             }
         });
-        retornar tribeMemberIds;
+        return tribeMemberIds;
     },
-    getTroop: função (unidade) {
-        retornar parseInt(
-            document.units[unidade].parentNode
+    getTroop: function (unit) {
+        return parseInt(
+            document.units[unit].parentNode
                 .getElementsByTagName('a')[1]
                 .innerHTML.match(/\d+/),
             10
         );
     },
-    obterPrédiosDaVillage: função () {
-        const edifícios = dados_do_jogo.vila.edifícios;
+    getVillageBuildings: function () {
+        const buildings = game_data.village.buildings;
         const villageBuildings = [];
 
-        para (deixe [chave, valor] de Object.entries(edifícios)) {
-            se (valor > 0) {
+        for (let [key, value] of Object.entries(buildings)) {
+            if (value > 0) {
                 villageBuildings.push({
-                    edifício: chave,
-                    nível: valor,
+                    building: key,
+                    level: value,
                 });
             }
         }
 
-        retornar aldeiaEdifícios;
+        return villageBuildings;
     },
-    getWorldConfig: função assíncrona () {
-        const INTERVALO_DE_TEMPO = 60 * 60 * 1000 * 24 * 7;
-        const ÚLTIMA_ATUALIZAÇÃO_HORA =
+    getWorldConfig: async function () {
+        const TIME_INTERVAL = 60 * 60 * 1000 * 24 * 7;
+        const LAST_UPDATED_TIME =
             localStorage.getItem('world_config_last_updated') ?? 0;
-        deixe worldConfig = [];
+        let worldConfig = [];
 
-        se (ÚLTIMA_ATUALIZAÇÃO !== nulo) {
-            se (Data.parse(nova Data()) >= ÚLTIMA_ATUALIZAÇÃO_HORA + INTERVALO_DE_TEMPO) {
-                const resposta = await jQuery.ajax({
+        if (LAST_UPDATED_TIME !== null) {
+            if (Date.parse(new Date()) >= LAST_UPDATED_TIME + TIME_INTERVAL) {
+                const response = await jQuery.ajax({
                     url: this.worldInfoInterface,
                 });
-                worldConfig = this.xml2json(jQuery(resposta));
+                worldConfig = this.xml2json(jQuery(response));
                 localStorage.setItem(
-                    'configuração_mundial',
+                    'world_config',
                     JSON.stringify(worldConfig)
                 );
                 localStorage.setItem(
                     'world_config_last_updated',
-                    Data.parse(nova Data())
+                    Date.parse(new Date())
                 );
-            } outro {
+            } else {
                 worldConfig = JSON.parse(localStorage.getItem('world_config'));
             }
-        } outro {
-            const resposta = await jQuery.ajax({
+        } else {
+            const response = await jQuery.ajax({
                 url: this.worldInfoInterface,
             });
-            worldConfig = this.xml2json(jQuery(resposta));
+            worldConfig = this.xml2json(jQuery(response));
             localStorage.setItem('world_config', JSON.stringify(unitInfo));
             localStorage.setItem(
                 'world_config_last_updated',
-                Data.parse(nova Data())
+                Date.parse(new Date())
             );
         }
 
-        retornar worldConfig;
+        return worldConfig;
     },
-    getWorldUnitInfo: função assíncrona () {
-        const INTERVALO_DE_TEMPO = 60 * 60 * 1000 * 24 * 7;
-        const ÚLTIMA_ATUALIZAÇÃO_HORA =
+    getWorldUnitInfo: async function () {
+        const TIME_INTERVAL = 60 * 60 * 1000 * 24 * 7;
+        const LAST_UPDATED_TIME =
             localStorage.getItem('units_info_last_updated') ?? 0;
-        deixe unitInfo = [];
+        let unitInfo = [];
 
-        se (ÚLTIMA_ATUALIZAÇÃO !== nulo) {
-            se (Data.parse(nova Data()) >= ÚLTIMA_ATUALIZAÇÃO_HORA + INTERVALO_DE_TEMPO) {
-                const resposta = await jQuery.ajax({
+        if (LAST_UPDATED_TIME !== null) {
+            if (Date.parse(new Date()) >= LAST_UPDATED_TIME + TIME_INTERVAL) {
+                const response = await jQuery.ajax({
                     url: this.unitInfoInterface,
                 });
-                unitInfo = this.xml2json(jQuery(resposta));
+                unitInfo = this.xml2json(jQuery(response));
                 localStorage.setItem('units_info', JSON.stringify(unitInfo));
                 localStorage.setItem(
-                    'unidades_info_última_atualização',
-                    Data.parse(nova Data())
+                    'units_info_last_updated',
+                    Date.parse(new Date())
                 );
-            } outro {
+            } else {
                 unitInfo = JSON.parse(localStorage.getItem('units_info'));
             }
-        } outro {
-            const resposta = await jQuery.ajax({
+        } else {
+            const response = await jQuery.ajax({
                 url: this.unitInfoInterface,
             });
-            unitInfo = this.xml2json(jQuery(resposta));
+            unitInfo = this.xml2json(jQuery(response));
             localStorage.setItem('units_info', JSON.stringify(unitInfo));
             localStorage.setItem(
-                'unidades_info_última_atualização',
-                Data.parse(nova Data())
+                'units_info_last_updated',
+                Date.parse(new Date())
             );
         }
 
-        retornar unitInfo;
+        return unitInfo;
     },
-    groupArrayByProperty: função (matriz, propriedade, filtro) {
-        retornar array.reduce(função (acumulador, objeto) {
-            // obtenha o valor do nosso objeto (idade no nosso caso) para usar para agrupar o array como a chave do array
-            const key = objeto[propriedade];
-            // se o valor atual for semelhante à chave(idade), não acumule o array transformado e deixe-o vazio
-            se (!acumulador[chave]) {
-                acumulador[chave] = [];
+    groupArrayByProperty: function (array, property, filter) {
+        return array.reduce(function (accumulator, object) {
+            // get the value of our object(age in our case) to use for group    the array as the array key
+            const key = object[property];
+            // if the current value is similar to the key(age) don't accumulate the transformed array and leave it empty
+            if (!accumulator[key]) {
+                accumulator[key] = [];
             }
-            // adicione o valor ao array
-            acumulador[chave].push(objeto[filtro]);
-            // retorna o array transformado
-            acumulador de retorno;
-            // Também definimos o valor inicial de reduce() para um objeto vazio
+            // add the value to the array
+            accumulator[key].push(object[filter]);
+            // return the transformed array
+            return accumulator;
+            // Also we also set the initial value of reduce() to an empty object
         }, {});
     },
-    isArcherWorld: função () {
-        retornar this.units.includes('archer');
+    isArcherWorld: function () {
+        return this.units.includes('archer');
     },
-    isChurchWorld: função () {
-        retornar 'igreja' em this.village.buildings;
+    isChurchWorld: function () {
+        return 'church' in this.village.buildings;
     },
-    isPaladinWorld: função () {
-        retornar this.units.includes('cavaleiro');
+    isPaladinWorld: function () {
+        return this.units.includes('knight');
     },
-    isWatchTowerWorld: função () {
-        retornar 'torre de vigia' em this.village.buildings;
+    isWatchTowerWorld: function () {
+        return 'watchtower' in this.village.buildings;
     },
-    loadJS: função (url, retorno de chamada) {
-        deixe scriptTag = document.createElement('script');
+    loadJS: function (url, callback) {
+        let scriptTag = document.createElement('script');
         scriptTag.src = url;
-        scriptTag.onload = retorno de chamada;
-        scriptTag.onreadystatechange = retorno de chamada;
-        documento.corpo.appendChild(scriptTag);
+        scriptTag.onload = callback;
+        scriptTag.onreadystatechange = callback;
+        document.body.appendChild(scriptTag);
     },
-    redirectTo: função (localização) {
-        window.location.assign(game_data.link_base_pure + localização);
+    redirectTo: function (location) {
+        window.location.assign(game_data.link_base_pure + location);
     },
-    removeDuplicateObjectsFromArray: função (matriz, prop) {
-        retornar array.filter((obj, pos, arr) => {
-            retornar arr.map((mapObj) => mapObj[prop]).indexOf(obj[prop]) === pos;
+    removeDuplicateObjectsFromArray: function (array, prop) {
+        return array.filter((obj, pos, arr) => {
+            return arr.map((mapObj) => mapObj[prop]).indexOf(obj[prop]) === pos;
         });
     },
-    renderBoxWidget: função (corpo, id, mainClass, customStyle) {
+    renderBoxWidget: function (body, id, mainClass, customStyle) {
         const globalStyle = this.addGlobalStyle();
 
-        conteúdo constante = `
+        const content = `
             <div class="${mainClass} ra-box-widget" id="${id}">
-                <div classe="${mainClass}-header">
+                <div class="${mainClass}-header">
                     <h3>${this.tt(this.scriptData.name)}</h3>
                 </div>
                 <div class="${mainClass}-body">
-                    ${corpo}
+                    ${body}
                 </div>
-                <div classe="${mainClass}-footer">
-                    <pequeno>
-                        <forte>
+                <div class="${mainClass}-footer">
+                    <small>
+                        <strong>
                             ${this.tt(this.scriptData.name)} ${
-            this.scriptData.versão
+            this.scriptData.version
         }
                         </strong> -
                         <a href="${
@@ -1327,57 +1343,57 @@ janela.twSDK = {
                         <a href="${
                             this.scriptData.helpLink
                         }" target="_blank" rel="noreferrer noopener">
-                            ${this.tt('Ajuda')}
+                            ${this.tt('Help')}
                         </a>
-                    </pequeno>
+                    </small>
                 </div>
             </div>
-            <estilo>
-                .${mainClass} { posição: relativa; exibição: bloco; largura: 100%; altura: automático; limpar: ambos; margem: 10px 0 15px; borda: 1px sólido #603000; tamanho da caixa: caixa de borda; plano de fundo: #f4e4bc; }
-                .${mainClass} * { tamanho da caixa: caixa de borda; }
-                .${mainClass} > div { preenchimento: 10px; }
-                .${mainClass} .btn-confirm-yes { preenchimento: 3px; }
+            <style>
+                .${mainClass} { position: relative; display: block; width: 100%; height: auto; clear: both; margin: 10px 0 15px; border: 1px solid #603000; box-sizing: border-box; background: #f4e4bc; }
+                .${mainClass} * { box-sizing: border-box; }
+                .${mainClass} > div { padding: 10px; }
+                .${mainClass} .btn-confirm-yes { padding: 3px; }
                 .${mainClass}-header { display: flex; align-items: center; justify-content: space-between; background-color: #c1a264 !important; background-image: url(/graphic/screen/tableheader_bg3.png); background-repeat: repeat-x; }
-                .${mainClass}-header h3 { margem: 0; preenchimento: 0; altura da linha: 1; }
-                .${mainClass}-body p { tamanho da fonte: 14px; }
-                .${mainClass}-body label { display: bloco; espessura da fonte: 600; margem inferior: 6px; }
+                .${mainClass}-header h3 { margin: 0; padding: 0; line-height: 1; }
+                .${mainClass}-body p { font-size: 14px; }
+                .${mainClass}-body label { display: block; font-weight: 600; margin-bottom: 6px; }
                 
-                ${estilo global}
+                ${globalStyle}
 
-                /* Estilo personalizado */
-                ${estilo personalizado}
-            </estilo>
+                /* Custom Style */
+                ${customStyle}
+            </style>
         `;
 
-        se (jQuery(`#${id}`).comprimento < 1) {
-            jQuery('#contentContainer').prepend(conteúdo);
-            jQuery('#mobileContent').prepend(conteúdo);
-        } outro {
-            jQuery(`.${mainClass}-body`).html(corpo);
+        if (jQuery(`#${id}`).length < 1) {
+            jQuery('#contentContainer').prepend(content);
+            jQuery('#mobileContent').prepend(content);
+        } else {
+            jQuery(`.${mainClass}-body`).html(body);
         }
     },
-    renderFixedWidget: função (
-        corpo,
-        eu ia,
-        Classe principal,
-        estilo personalizado,
-        largura,
-        customName = this.scriptData.nome
+    renderFixedWidget: function (
+        body,
+        id,
+        mainClass,
+        customStyle,
+        width,
+        customName = this.scriptData.name
     ) {
         const globalStyle = this.addGlobalStyle();
 
-        conteúdo constante = `
-            <div class="${mainClass} ra-widget-fixo" id="${id}">
-                <div classe="${mainClass}-header">
-                    <h3>${this.tt(nomepersonalizado)}</h3>
+        const content = `
+            <div class="${mainClass} ra-fixed-widget" id="${id}">
+                <div class="${mainClass}-header">
+                    <h3>${this.tt(customName)}</h3>
                 </div>
                 <div class="${mainClass}-body">
-                    ${corpo}
+                    ${body}
                 </div>
-                <div classe="${mainClass}-footer">
-                    <pequeno>
-                        <forte>
-                            ${this.tt(nomepersonalizado)} ${this.scriptData.versão}
+                <div class="${mainClass}-footer">
+                    <small>
+                        <strong>
+                            ${this.tt(customName)} ${this.scriptData.version}
                         </strong> -
                         <a href="${
                             this.scriptData.authorUrl
@@ -1387,396 +1403,396 @@ janela.twSDK = {
                         <a href="${
                             this.scriptData.helpLink
                         }" target="_blank" rel="noreferrer noopener">
-                            ${this.tt('Ajuda')}
+                            ${this.tt('Help')}
                         </a>
-                    </pequeno>
+                    </small>
                 </div>
-                <a class="popup_box_close botão-de-fechamento-personalizado" href="#"> </a>
+                <a class="popup_box_close custom-close-button" href="#">&nbsp;</a>
             </div>
-            <estilo>
-                .${mainClass} { posição: fixa; topo: 10vw; direita: 10vw; índice z: 99999; borda: 2px sólido #7d510f; raio da borda: 10px; preenchimento: 10px; largura: ${
-            largura ?? '360px'
-        }; overflow-y: auto; preenchimento: 10px; plano de fundo: #e3d5b3 url('/graphic/index/main_bg.jpg') rolar para a direita superior repetir; }
-                .${mainClass} * { tamanho da caixa: caixa de borda; }
+            <style>
+                .${mainClass} { position: fixed; top: 10vw; right: 10vw; z-index: 99999; border: 2px solid #7d510f; border-radius: 10px; padding: 10px; width: ${
+            width ?? '360px'
+        }; overflow-y: auto; padding: 10px; background: #e3d5b3 url('/graphic/index/main_bg.jpg') scroll right top repeat; }
+                .${mainClass} * { box-sizing: border-box; }
 
-                ${estilo global}
+                ${globalStyle}
 
-                /* Estilo personalizado */
-                .custom-close-button { direita: 0; topo: 0; }
-                ${estilo personalizado}
-            </estilo>
+                /* Custom Style */
+                .custom-close-button { right: 0; top: 0; }
+                ${customStyle}
+            </style>
         `;
 
-        se (jQuery(`#${id}`).comprimento < 1) {
-            se (dispositivo móvel) {
-                jQuery('#content_value').prepend(conteúdo);
-            } outro {
-                jQuery('#contentContainer').prepend(conteúdo);
-                jQuery(`#${id}`).arrastável({
-                    cancelar: '.ra-table, entrada, área de texto, botão, selecionar, opção',
+        if (jQuery(`#${id}`).length < 1) {
+            if (mobiledevice) {
+                jQuery('#content_value').prepend(content);
+            } else {
+                jQuery('#contentContainer').prepend(content);
+                jQuery(`#${id}`).draggable({
+                    cancel: '.ra-table, input, textarea, button, select, option',
                 });
 
-                jQuery(`#${id} .custom-close-button`).on('clique', função (e) {
+                jQuery(`#${id} .custom-close-button`).on('click', function (e) {
                     e.preventDefault();
                     jQuery(`#${id}`).remove();
                 });
             }
-        } outro {
-            jQuery(`.${mainClass}-body`).html(corpo);
+        } else {
+            jQuery(`.${mainClass}-body`).html(body);
         }
     },
-    scriptInfo: função (scriptData = this.scriptData) {
-        retornar `[${scriptData.name} ${scriptData.version}]`;
+    scriptInfo: function (scriptData = this.scriptData) {
+        return `[${scriptData.name} ${scriptData.version}]`;
     },
-    secondsToHms: função (carimbo de data/hora) {
-        const horas = Math.floor(timestamp / 60 / 60);
-        const minutos = Math.floor(timestamp / 60) - horas * 60;
-        const segundos = timestamp % 60;
-        retornar (
-            horas.toString().padStart(2, '0') +
+    secondsToHms: function (timestamp) {
+        const hours = Math.floor(timestamp / 60 / 60);
+        const minutes = Math.floor(timestamp / 60) - hours * 60;
+        const seconds = timestamp % 60;
+        return (
+            hours.toString().padStart(2, '0') +
             ':' +
-            minutos.toString().padStart(2, '0') +
+            minutes.toString().padStart(2, '0') +
             ':' +
-            segundos.toString().padStart(2, '0')
+            seconds.toString().padStart(2, '0')
         );
     },
-    setUpdateProgress: função (elementoParaAtualizar, valorParaDefinir) {
-        jQuery(elementoParaAtualizar).texto(valorParaDefinir);
+    setUpdateProgress: function (elementToUpdate, valueToSet) {
+        jQuery(elementToUpdate).text(valueToSet);
     },
-    sortArrayOfObjectsByKey: função (matriz, chave) {
-        retornar array.sort((a, b) => b[chave] - a[chave]);
+    sortArrayOfObjectsByKey: function (array, key) {
+        return array.sort((a, b) => b[key] - a[key]);
     },
-    startProgressBar: função (total) {
-        const largura = jQuery('#content_value')[0].clientWidth;
+    startProgressBar: function (total) {
+        const width = jQuery('#content_value')[0].clientWidth;
         const preloaderContent = `
-            <div id="barra de progresso" class="barra de progresso" style="margem inferior:12px;">
+            <div id="progressbar" class="progress-bar" style="margin-bottom:12px;">
                 <span class="count label">0/${total}</span>
-                <div id="progresso">
-                    <span class="count label" style="largura: ${width}px;">
+                <div id="progress">
+                    <span class="count label" style="width: ${width}px;">
                         0/${total}
                     </span>
                 </div>
             </div>
         `;
 
-        se (isto é móvel) {
+        if (this.isMobile) {
             jQuery('#content_value').eq(0).prepend(preloaderContent);
-        } outro {
+        } else {
             jQuery('#contentContainer').eq(0).prepend(preloaderContent);
         }
     },
-    sumOfArrayItemValues: função (matriz) {
-        retornar array.reduce((a, b) => a + b, 0);
+    sumOfArrayItemValues: function (array) {
+        return array.reduce((a, b) => a + b, 0);
     },
-    randomItemPickerString: função (itens, divisor = ' ') {
-        const itemsArray = itens.split(divisor);
+    randomItemPickerString: function (items, splitter = ' ') {
+        const itemsArray = items.split(splitter);
         const chosenIndex = Math.floor(Math.random() * itemsArray.length);
-        retornar itemsArray[chosenIndex];
+        return itemsArray[chosenIndex];
     },
-    randomItemPickerArray: função (itens) {
-        const chosenIndex = Math.floor(Math.random() * itens.length);
-        retornar itens[índiceEscolha];
+    randomItemPickerArray: function (items) {
+        const chosenIndex = Math.floor(Math.random() * items.length);
+        return items[chosenIndex];
     },
-    timeAgo: função (segundos) {
-        var intervalo = segundos/31536000;
-        se (intervalo > 1) retornar Math.floor(intervalo) + ' Y';
+    timeAgo: function (seconds) {
+        var interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + ' Y';
 
-        intervalo = segundos / 2592000;
-        se (intervalo > 1) retornar Math.floor(intervalo) + ' M';
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + ' M';
 
-        intervalo = segundos / 86400;
-        se (intervalo > 1) retornar Math.floor(intervalo) + ' D';
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + ' D';
 
-        intervalo = segundos / 3600;
-        se (intervalo > 1) retornar Math.floor(intervalo) + ' H';
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + ' H';
 
-        intervalo = segundos / 60;
-        se (intervalo > 1) retornar Math.floor(intervalo) + ' m';
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + ' m';
 
-        retornar Math.floor(segundos) + ' s';
+        return Math.floor(seconds) + ' s';
     },
-    tt: função (string) {
-        se (this.translations[game_data.locale] !== indefinido) {
-            retornar isto.translations[game_data.locale][string];
-        } outro {
-            retornar isto.translations['en_DK'][string];
+    tt: function (string) {
+        if (this.translations[game_data.locale] !== undefined) {
+            return this.translations[game_data.locale][string];
+        } else {
+            return this.translations['en_DK'][string];
         }
     },
-    toggleUploadButtonStatus: função (elementoToToggle) {
-        jQuery(elementToToggle).attr('desativado', (i, v) => !v);
+    toggleUploadButtonStatus: function (elementToToggle) {
+        jQuery(elementToToggle).attr('disabled', (i, v) => !v);
     },
-    updateProgress: função (elementoToUpate, itemsLength, índice) {
+    updateProgress: function (elementToUpate, itemsLength, index) {
         jQuery(elementToUpate).text(`${index}/${itemsLength}`);
     },
-    updateProgressBar: função (índice, total) {
-        jQuery('#progress').css('largura', `${((índice + 1) / total) * 100}%`);
+    updateProgressBar: function (index, total) {
+        jQuery('#progress').css('width', `${((index + 1) / total) * 100}%`);
         jQuery('.count').text(`${index + 1}/${total}`);
-        se (índice + 1 == total) {
+        if (index + 1 == total) {
             jQuery('#progressbar').fadeOut(1000);
         }
     },
-    xml2json: função ($xml) {
-        deixe dados = {};
-        const _self = isto;
-        $.each($xml.children(), função (i) {
-            deixe $this = $(this);
-            se ($this.children().length > 0) {
-                dados[$this.prop('tagName')] = _self.xml2json($this);
-            } outro {
-                dados[$this.prop('tagName')] = $.trim($this.text());
+    xml2json: function ($xml) {
+        let data = {};
+        const _self = this;
+        $.each($xml.children(), function (i) {
+            let $this = $(this);
+            if ($this.children().length > 0) {
+                data[$this.prop('tagName')] = _self.xml2json($this);
+            } else {
+                data[$this.prop('tagName')] = $.trim($this.text());
             }
         });
-        retornar dados;
+        return data;
     },
-    worldDataAPI: função assíncrona (entidade) {
-        const TIME_INTERVAL = 60 * 60 * 1000; // busca dados a cada hora
-        const ÚLTIMA_ATUALIZAÇÃO = localStorage.getItem(
+    worldDataAPI: async function (entity) {
+        const TIME_INTERVAL = 60 * 60 * 1000; // fetch data every hour
+        const LAST_UPDATED_TIME = localStorage.getItem(
             `${entity}_last_updated`
         );
 
-        // verifique se a entidade é permitida e pode ser buscada
-        const allowedEntities = ['vila', 'jogador', 'aliado', 'conquistar'];
-        se (!allowedEntities.includes(entidade)) {
-            lançar novo erro(`A entidade ${entity} não existe!`);
+        // check if entity is allowed and can be fetched
+        const allowedEntities = ['village', 'player', 'ally', 'conquer'];
+        if (!allowedEntities.includes(entity)) {
+            throw new Error(`Entity ${entity} does not exist!`);
         }
 
-        // dados mundiais iniciais
+        // initial world data
         const worldData = {};
 
         const dbConfig = {
-            aldeia: {
+            village: {
                 dbName: 'villagesDb',
-                dbTable: 'vilas',
-                chave: 'villageId',
+                dbTable: 'villages',
+                key: 'villageId',
                 url: twSDK.worldDataVillages,
             },
-            jogador: {
-                Nome do banco de dados: 'playersDb',
-                dbTable: 'jogadores',
-                chave: 'playerId',
+            player: {
+                dbName: 'playersDb',
+                dbTable: 'players',
+                key: 'playerId',
                 url: twSDK.worldDataPlayers,
             },
-            aliado: {
-                Nome do banco de dados: 'tribesDb',
-                dbTable: 'tribos',
-                chave: 'tribeId',
+            ally: {
+                dbName: 'tribesDb',
+                dbTable: 'tribes',
+                key: 'tribeId',
                 url: twSDK.worldDataTribes,
             },
-            conquistar: {
-                Nome do banco de dados: 'conquerDb',
-                dbTable: 'conquistar',
-                chave: '',
+            conquer: {
+                dbName: 'conquerDb',
+                dbTable: 'conquer',
+                key: '',
                 url: twSDK.worldDataConquests,
             },
         };
 
-        // Auxiliares: buscam dados da entidade e salvam no localStorage
-        const fetchDataAndSave = async() => {
-            const DATA_URL = dbConfig[entidade].url;
+        // Helpers: Fetch entity data and save to localStorage
+        const fetchDataAndSave = async () => {
+            const DATA_URL = dbConfig[entity].url;
 
-            tentar {
-                // buscar dados
-                const resposta = await jQuery.ajax(DATA_URL);
-                const data = twSDK.csvToArray(resposta);
-                deixe responseData = [];
+            try {
+                // fetch data
+                const response = await jQuery.ajax(DATA_URL);
+                const data = twSDK.csvToArray(response);
+                let responseData = [];
 
-                // preparar dados para serem salvos no banco de dados
-                switch (entidade) {
-                    caso 'vila':
-                        responseData = dados
+                // prepare data to be saved in db
+                switch (entity) {
+                    case 'village':
+                        responseData = data
                             .filter((item) => {
-                                se (item[0] != '') {
-                                    devolver item;
+                                if (item[0] != '') {
+                                    return item;
                                 }
                             })
-                            .mapa((item) => {
-                                retornar {
+                            .map((item) => {
+                                return {
                                     villageId: parseInt(item[0]),
-                                    Nome da vila: twSDK.cleanString(item[1]),
-                                    aldeiaX: item[2],
-                                    aldeiaY: item[3],
+                                    villageName: twSDK.cleanString(item[1]),
+                                    villageX: item[2],
+                                    villageY: item[3],
                                     playerId: parseInt(item[4]),
-                                    vilaPoints: parseInt(item[5]),
-                                    vilaType: parseInt(item[6]),
+                                    villagePoints: parseInt(item[5]),
+                                    villageType: parseInt(item[6]),
                                 };
                             });
-                        quebrar;
-                    caso 'jogador':
-                        responseData = dados
+                        break;
+                    case 'player':
+                        responseData = data
                             .filter((item) => {
-                                se (item[0] != '') {
-                                    devolver item;
+                                if (item[0] != '') {
+                                    return item;
                                 }
                             })
-                            .mapa((item) => {
-                                retornar {
+                            .map((item) => {
+                                return {
                                     playerId: parseInt(item[0]),
-                                    nome do jogador: twSDK.cleanString(item[1]),
+                                    playerName: twSDK.cleanString(item[1]),
                                     tribeId: parseInt(item[2]),
-                                    aldeias: parseInt(item[3]),
-                                    pontos: parseInt(item[4]),
-                                    classificação: parseInt(item[5]),
+                                    villages: parseInt(item[3]),
+                                    points: parseInt(item[4]),
+                                    rank: parseInt(item[5]),
                                 };
                             });
-                        quebrar;
-                    caso 'aliado':
-                        responseData = dados
+                        break;
+                    case 'ally':
+                        responseData = data
                             .filter((item) => {
-                                se (item[0] != '') {
-                                    devolver item;
+                                if (item[0] != '') {
+                                    return item;
                                 }
                             })
-                            .mapa((item) => {
-                                retornar {
+                            .map((item) => {
+                                return {
                                     tribeId: parseInt(item[0]),
-                                    nome da tribo: twSDK.cleanString(item[1]),
+                                    tribeName: twSDK.cleanString(item[1]),
                                     tribeTag: twSDK.cleanString(item[2]),
-                                    jogadores: parseInt(item[3]),
-                                    aldeias: parseInt(item[4]),
-                                    pontos: parseInt(item[5]),
+                                    players: parseInt(item[3]),
+                                    villages: parseInt(item[4]),
+                                    points: parseInt(item[5]),
                                     allPoints: parseInt(item[6]),
-                                    classificação: parseInt(item[7]),
+                                    rank: parseInt(item[7]),
                                 };
                             });
-                        quebrar;
-                    caso 'conquistar':
-                        responseData = dados
+                        break;
+                    case 'conquer':
+                        responseData = data
                             .filter((item) => {
-                                se (item[0] != '') {
-                                    devolver item;
+                                if (item[0] != '') {
+                                    return item;
                                 }
                             })
-                            .mapa((item) => {
-                                retornar {
+                            .map((item) => {
+                                return {
                                     villageId: parseInt(item[0]),
                                     unixTimestamp: parseInt(item[1]),
-                                    novoPlayerId: parseInt(item[2]),
-                                    novoPlayerId: parseInt(item[3]),
+                                    newPlayerId: parseInt(item[2]),
+                                    newPlayerId: parseInt(item[3]),
                                     oldTribeId: parseInt(item[4]),
-                                    novoTribeId: parseInt(item[5]),
-                                    vilaPoints: parseInt(item[6]),
+                                    newTribeId: parseInt(item[5]),
+                                    villagePoints: parseInt(item[6]),
                                 };
                             });
-                        quebrar;
-                    padrão:
-                        retornar [];
+                        break;
+                    default:
+                        return [];
                 }
 
-                // salvar dados no banco de dados
-                salvar em armazenamento DB indexado (
-                    dbConfig[entidade].dbName,
-                    dbConfig[entidade].dbTable,
-                    dbConfig[entidade].chave,
-                    dados de resposta
+                // save data in db
+                saveToIndexedDbStorage(
+                    dbConfig[entity].dbName,
+                    dbConfig[entity].dbTable,
+                    dbConfig[entity].key,
+                    responseData
                 );
 
-                // atualiza o último item localStorage atualizado
+                // update last updated localStorage item
                 localStorage.setItem(
                     `${entity}_last_updated`,
-                    Data.parse(nova Data())
+                    Date.parse(new Date())
                 );
 
-                retornar responseData;
-            } pegar (erro) {
-                throw Error(`Erro ao buscar ${DATA_URL}`);
+                return responseData;
+            } catch (error) {
+                throw Error(`Error fetching ${DATA_URL}`);
             }
         };
 
-        // Auxiliares: Salvar no armazenamento IndexedDb
-        função assíncrona saveToIndexedDbStorage(dbName, tabela, keyId, dados) {
-            const dbConnect=indexedDB.open(dbName);
+        // Helpers: Save to IndexedDb storage
+        async function saveToIndexedDbStorage(dbName, table, keyId, data) {
+            const dbConnect = indexedDB.open(dbName);
 
-            dbConnect.onupgradeneeded = função () {
+            dbConnect.onupgradeneeded = function () {
                 const db = dbConnect.result;
-                se (keyId.length) {
-                    db.createObjectStore(tabela, {
+                if (keyId.length) {
+                    db.createObjectStore(table, {
                         keyPath: keyId,
                     });
-                } outro {
-                    db.createObjectStore(tabela, {
-                        autoIncremento: verdadeiro,
+                } else {
+                    db.createObjectStore(table, {
+                        autoIncrement: true,
                     });
                 }
             };
 
-            dbConnect.onsuccess = função () {
+            dbConnect.onsuccess = function () {
                 const db = dbConnect.result;
-                const transação = db.transaction(tabela, 'leitura/gravação');
-                const store = transação.objectStore(tabela);
-                store.clear(); // limpa a loja de itens antes de adicionar novos
+                const transaction = db.transaction(table, 'readwrite');
+                const store = transaction.objectStore(table);
+                store.clear(); // clean store from items before adding new ones
 
-                dados.paraCada((item) => {
-                    armazenar.put(item);
+                data.forEach((item) => {
+                    store.put(item);
                 });
 
-                UI.SuccessMessage('Banco de dados atualizado!');
+                UI.SuccessMessage('Database updated!');
             };
         }
 
-        // Auxiliares: Ler todas as aldeias do indexedDB
-        function getAllData(nomedobd, tabela) {
-            retornar nova Promessa((resolver, rejeitar) => {
-                const dbConnect=indexedDB.open(dbName);
+        // Helpers: Read all villages from indexedDB
+        function getAllData(dbName, table) {
+            return new Promise((resolve, reject) => {
+                const dbConnect = indexedDB.open(dbName);
 
                 dbConnect.onsuccess = () => {
                     const db = dbConnect.result;
 
                     const dbQuery = db
-                        .transaction(tabela, 'leitura e gravação')
-                        .objectStore(tabela)
-                        .obterTudo();
+                        .transaction(table, 'readwrite')
+                        .objectStore(table)
+                        .getAll();
 
-                    dbQuery.onsuccess = (evento) => {
-                        resolver(evento.alvo.resultado);
+                    dbQuery.onsuccess = (event) => {
+                        resolve(event.target.result);
                     };
 
-                    dbQuery.onerror = (evento) => {
-                        rejeitar(evento.alvo.erro);
+                    dbQuery.onerror = (event) => {
+                        reject(event.target.error);
                     };
                 };
 
-                dbConnect.onerror = (evento) => {
-                    rejeitar(evento.alvo.erro);
+                dbConnect.onerror = (event) => {
+                    reject(event.target.error);
                 };
             });
         }
 
-        // Auxiliares: Transformam um array de objetos em um array de arrays
-        função objectToArray(matrizDeObjetos, entidade) {
-            switch (entidade) {
-                caso 'vila':
-                    retornar arrayOfObjects.map((item) => [
-                        item.vilaId,
-                        item.vilaNome,
-                        item.vilaX,
-                        item.vilaY,
+        // Helpers: Transform an array of objects into an array of arrays
+        function objectToArray(arrayOfObjects, entity) {
+            switch (entity) {
+                case 'village':
+                    return arrayOfObjects.map((item) => [
+                        item.villageId,
+                        item.villageName,
+                        item.villageX,
+                        item.villageY,
                         item.playerId,
                         item.villagePoints,
-                        item.vilaTipo,
+                        item.villageType,
                     ]);
-                caso 'jogador':
-                    retornar arrayOfObjects.map((item) => [
+                case 'player':
+                    return arrayOfObjects.map((item) => [
                         item.playerId,
                         item.playerName,
                         item.tribeId,
-                        item.vilas,
-                        item.pontos,
-                        item.classificação,
+                        item.villages,
+                        item.points,
+                        item.rank,
                     ]);
-                caso 'aliado':
-                    retornar arrayOfObjects.map((item) => [
+                case 'ally':
+                    return arrayOfObjects.map((item) => [
                         item.tribeId,
                         item.tribeName,
                         item.tribeTag,
-                        item.jogadores,
-                        item.vilas,
-                        item.pontos,
+                        item.players,
+                        item.villages,
+                        item.points,
                         item.allPoints,
-                        item.classificação,
+                        item.rank,
                     ]);
-                caso 'conquistar':
-                    retornar arrayOfObjects.map((item) => [
-                        item.vilaId,
+                case 'conquer':
+                    return arrayOfObjects.map((item) => [
+                        item.villageId,
                         item.unixTimestamp,
                         item.newPlayerId,
                         item.newPlayerId,
@@ -1784,60 +1800,60 @@ janela.twSDK = {
                         item.newTribeId,
                         item.villagePoints,
                     ]);
-                padrão:
-                    retornar [];
+                default:
+                    return [];
             }
         }
 
-        // decidir o que fazer com base no horário atual e no último horário de atualização da entidade
-        se (ÚLTIMA_ATUALIZAÇÃO !== nulo) {
-            se (
-                Data.parse(nova Data()) >=
-                parseInt(ÚLTIMA_ATUALIZAÇÃO_HORA) + INTERVALO_DE_TEMPO
+        // decide what to do based on current time and last updated entity time
+        if (LAST_UPDATED_TIME !== null) {
+            if (
+                Date.parse(new Date()) >=
+                parseInt(LAST_UPDATED_TIME) + TIME_INTERVAL
             ) {
-                worldData[entidade] = await fetchDataAndSave();
-            } outro {
-                worldData[entidade] = await getAllData(
-                    dbConfig[entidade].dbName,
-                    dbConfig[entidade].dbTable
+                worldData[entity] = await fetchDataAndSave();
+            } else {
+                worldData[entity] = await getAllData(
+                    dbConfig[entity].dbName,
+                    dbConfig[entity].dbTable
                 );
             }
-        } outro {
-            worldData[entidade] = await fetchDataAndSave();
+        } else {
+            worldData[entity] = await fetchDataAndSave();
         }
 
-        // transforma os dados para que no final seja retornado um array de arrays
-        worldData[entidade] = objectToArray(worldData[entidade], entidade);
+        // transform the data so at the end an array of array is returned
+        worldData[entity] = objectToArray(worldData[entity], entity);
 
-        retornar worldData[entidade];
+        return worldData[entity];
     },
-    zeroPad: função (num, contagem) {
+    zeroPad: function (num, count) {
         var numZeropad = num + '';
-        enquanto (numZeropad.length < contagem) {
+        while (numZeropad.length < count) {
             numZeropad = '0' + numZeropad;
         }
-        retornar numZeropad;
+        return numZeropad;
     },
 
-    // inicializar biblioteca
-    init: função assíncrona (scriptConfig) {
-        constante {
+    // initialize library
+    init: async function (scriptConfig) {
+        const {
             scriptData,
-            traduções,
-            mercados permitidos,
-            Telas permitidas,
-            ModosPermitidos,
-            éDepurar,
+            translations,
+            allowedMarkets,
+            allowedScreens,
+            allowedModes,
+            isDebug,
             enableCountApi,
         } = scriptConfig;
 
         this.scriptData = scriptData;
-        this.translations = traduções;
-        this.allowedMarkets = mercadospermitidos;
-        this.allowedScreens = TelasPermitidas;
-        this.allowedModes = ModosPermitidos;
-        isto.enableCountApi = enableCountApi;
-        isto.isDebug = éDepuração;
+        this.translations = translations;
+        this.allowedMarkets = allowedMarkets;
+        this.allowedScreens = allowedScreens;
+        this.allowedModes = allowedModes;
+        this.enableCountApi = enableCountApi;
+        this.isDebug = isDebug;
 
         twSDK._initDebug();
         twSDK._countAPI();
