@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  const sdkUrl = 'https://twscripts.dev/twSDK.js';
+  const sdkUrl = 'https://tribalwarstools.github.io/twscripts/twSDK.js';
 
   function loadTwSDK(callback) {
     if (typeof window.twSDK !== 'undefined') {
