@@ -1,19 +1,3 @@
-/*
-    NOME: Biblioteca de scripts de Tribal Wars
-    VERSÃO: 1.2.3 (versão beta)
-    ÚLTIMA ATUALIZAÇÃO EM: 23/06/2024
-    AUTOR: RedAlert (redalert_tw)
-    URL DO AUTOR: https://twscripts.dev/
-    COLABORADORES: Shinko para Kuma; Sass, SaveBankDev, DSsecundum, suilenroc
-    AJUDA: https://github.com/RedAlertTW/Tribal-Wars-Scripts-SDK
-    STATUS: Em andamento. Não concluído 100%.
-
-    Este software é fornecido "no estado em que se encontra", sem qualquer garantia expressa ou implícita.
-    Em nenhuma hipótese o(s) autor(es) serão responsabilizados por quaisquer danos decorrentes do uso deste software.
-    É permitido clonar, rehospedar, redistribuir e todas as outras formas de cópia deste código sem a permissão do(s) autor(es), desde que não seja usado em produtos comerciais.
-    Este aviso não pode ser removido ou alterado de nenhuma distribuição de origem.
- */
-
 scriptUrl = document.currentScript.src;
 
 janela.twSDK = {
