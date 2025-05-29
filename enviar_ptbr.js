@@ -20,7 +20,7 @@ if (typeof woodPercentage == 'undefined') {
 }
 // percentages for coins, 83000 is how much all 3 is combined
 
-var backgroundColor = "#ffffff";
+var backgroundColor = "#6c4824";
 var borderColor = "#ffffff";
 var headerColor = "#ffffff";
 var titleColor = "#ffffff";
@@ -164,15 +164,15 @@ if (game_data.locale == "pt_BR") {
 cssClassesSophie = `
 <style>
 .sophRowA {
-background-color: #32353b;
+background-color: #6c4824;
 color: white;
 }
 .sophRowB {
-background-color: #36393f;
+background-color: #6c4824;
 color: white;
 }
 .sophHeader {
-background-color: #202225;
+background-color: #6c4824;
 font-weight: bold;
 color: white;
 }
