@@ -11,7 +11,7 @@
 (async function () {
   'use strict';
 
-  const sdkUrl = 'https://tribalwarstoos.github.io/twSDK.js';
+  const sdkUrl = 'https://tribalwarstools.github.io/twSDK.js';
 
   // Carrega a twSDK se ainda não estiver carregada
   if (typeof window.twSDK === 'undefined') {
