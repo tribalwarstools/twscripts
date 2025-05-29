@@ -1,47 +1,64 @@
 // ==UserScript==
-// @name         Captura de Coordenadas (Tribal Wars)
+// @name         Painel de Captura de Coordenadas (com twSDK)
 // @namespace    https://seurepositorio.github.io/
-// @version      1.2
-// @description  Captura coordenadas ao clicar em aldeias no mapa (compatível com sistema atual do jogo). Painel visual incluso.
+// @version      1.0
+// @description  Captura coordenadas de aldeias no mapa com suporte a twSDK.js e exibição de continente. Estilo TW padrão incluído.
 // @author       Você
 // @match        https://*.tribalwars.*/game.php*
 // @grant        none
 // ==/UserScript==
 
-(function () {
+(async function () {
   'use strict';
+
+  const sdkUrl = 'https://tribalwarstoos.github.io/twSDK.js';
+
+  // Carrega a twSDK se ainda não estiver carregada
+  if (typeof window.twSDK === 'undefined') {
+    await new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = sdkUrl;
+      s.onload = resolve;
+      document.head.appendChild(s);
+    });
+  }
+
+  const scriptConfig = {
+    scriptData: {
+      name: 'Captura de Coordenadas',
+      version: '1.0',
+      author: 'Você',
+      authorUrl: 'https://seurepositorio.github.io/',
+      helpLink: 'https://twscripts.dev/',
+    },
+    translations: {},
+    allowedMarkets: ['br', 'pt'],
+    allowedScreens: [],
+    allowedModes: [],
+    isDebug: false,
+    enableCountApi: false,
+  };
+
+  // Inicializa a twSDK
+  window.twSDK.init(scriptConfig);
 
   const coords = [];
 
+  // Cria a interface com twSDK
   function buildUI() {
-    const panel = document.createElement('div');
-    panel.id = 'coord-capture-panel';
-    panel.style.position = 'fixed';
-    panel.style.top = '100px';
-    panel.style.right = '20px';
-    panel.style.background = '#f8f8f8';
-    panel.style.border = '2px solid #444';
-    panel.style.padding = '10px';
-    panel.style.zIndex = 9999;
-    panel.style.fontSize = '12px';
-    panel.style.borderRadius = '10px';
-    panel.style.boxShadow = '0 0 10px rgba(0,0,0,0.3)';
-    panel.style.width = '200px';
-
-    panel.innerHTML = `
-      <b>Coordenadas capturadas</b><br><br>
-      <div id="coord-list" style="max-height: 120px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; background: #fff;"></div>
-      <br>
-      <button id="copy-coords" style="width:100%; margin-bottom:5px;">Copiar</button>
-      <button id="clear-coords" style="width:100%;">Limpar</button>
+    const html = `
+      <p>Clique em aldeias no <strong>mapa</strong> para capturar coordenadas.</p>
+      <div id="coord-list" class="ra-table-container ra-mb10" style="max-height: 120px; border: 1px solid #ccc; padding: 5px; background: #fff;"></div>
+      <button id="copy-coords" class="btn" style="width:100%; margin-bottom:5px;">Copiar</button>
+      <button id="clear-coords" class="btn" style="width:100%;">Limpar</button>
     `;
 
-    document.body.appendChild(panel);
+    twSDK.renderFixedWidget(html, 'coord-capture-widget', 'coord-capture', '', '360px', 'Captura de Coordenadas');
 
     // Eventos
     document.getElementById('copy-coords').addEventListener('click', () => {
       if (coords.length === 0) return UI.InfoMessage('Nenhuma coordenada para copiar.');
-      navigator.clipboard.writeText(coords.join(' '));
+      twSDK.copyToClipboard(coords.join(' '));
       UI.SuccessMessage('Coordenadas copiadas!');
     });
 
@@ -53,17 +70,10 @@
   }
 
   function updateList() {
-    const listEl = document.getElementById('coord-list');
-    listEl.innerHTML = coords.map(coord => `<div>${coord}</div>`).join('');
-  }
-
-  function addVillageClickListeners() {
-    const villageEls = document.querySelectorAll('.village');
-
-    villageEls.forEach(el => {
-      el.removeEventListener('click', onVillageClick); // evita múltiplos binds
-      el.addEventListener('click', onVillageClick);
-    });
+    const el = document.getElementById('coord-list');
+    el.innerHTML = coords
+      .map((c) => `<div>${c} (K${twSDK.getContinentByCoord(c)})</div>`)
+      .join('');
   }
 
   function onVillageClick(e) {
@@ -75,22 +85,29 @@
     if (!coords.includes(coord)) {
       coords.push(coord);
       updateList();
-      UI.SuccessMessage(`Capturado: ${coord}`);
+      UI.SuccessMessage(`Capturado: ${coord} (K${twSDK.getContinentByCoord(coord)})`);
     } else {
       UI.InfoMessage(`Coordenada ${coord} já está na lista.`);
     }
 
-    // permite clique normal (como abrir popup de aldeia)
-    e.stopPropagation();
+    e.stopPropagation(); // permite o clique normal no jogo
   }
 
-  function observeVillageRendering() {
-    const observer = new MutationObserver(addVillageClickListeners);
+  function addListeners() {
+    const villageEls = document.querySelectorAll('.village');
+    villageEls.forEach(el => {
+      el.removeEventListener('click', onVillageClick);
+      el.addEventListener('click', onVillageClick);
+    });
+  }
+
+  function observeMap() {
+    const observer = new MutationObserver(addListeners);
     observer.observe(document.body, { childList: true, subtree: true });
-    addVillageClickListeners(); // executa uma vez inicial
+    addListeners();
   }
 
-  // Inicializa
+  // Inicialização
   buildUI();
-  observeVillageRendering();
+  observeMap();
 })();
