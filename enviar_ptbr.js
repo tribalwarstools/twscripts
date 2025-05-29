@@ -43,7 +43,7 @@ var langShinko = [
     "Clay",
     "Iron",
     "Send resources",
-    "Created by Sophie 'Shinko to Kuma'"
+    
 ]
 if (game_data.locale == "en_DK") {
     langShinko = [
@@ -65,7 +65,7 @@ if (game_data.locale == "en_DK") {
         "Clay",
         "Iron",
         "Send resources",
-        "Created by Sophie 'Shinko to Kuma'"
+        
     ]
 }
 if (game_data.locale == "el_GR") {
@@ -88,7 +88,7 @@ if (game_data.locale == "el_GR") {
         "Î Î·Î»ÏŒÏ‚",
         "Î£Î¯Î´ÎµÏÎ¿",
         "Î‘Ï€Î¿ÏƒÏ„Î¿Î»Î® Ï€ÏŒÏÏ‰Î½",
-        "Î”Î·Î¼Î¹Î¿Ï…ÏÎ³Î®Î¸Î·ÎºÎµ Î±Ï€ÏŒ Ï„Î·Î½ Sophie 'Shinko to Kuma'"
+       
     ]
 }
 if (game_data.locale == "nl_NL") {
@@ -111,7 +111,7 @@ if (game_data.locale == "nl_NL") {
         "Leem",
         "Ijzer",
         "Verstuur grondstoffen",
-        "Gemaakt door Sophie 'Shinko to Kuma'"
+       
     ]
 }
 if (game_data.locale == "it_IT") {
@@ -134,7 +134,7 @@ if (game_data.locale == "it_IT") {
         "Argilla",
         "Ferro",
         "Manda risorse",
-        "Creato da Sophie 'Shinko to Kuma'"
+        
     ]
 }
 if (game_data.locale == "pt_BR") {
@@ -157,7 +157,7 @@ if (game_data.locale == "pt_BR") {
         "Argila",
         "Ferro",
         "Enviar recursos",
-        "Criado por Sophie 'Shinko to Kuma'"
+        
     ]
 }
 
