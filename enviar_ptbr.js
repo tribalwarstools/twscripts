@@ -552,7 +552,7 @@ function askCoordinate() {
     <br>
     <hr>
     <center><img id="sophieImg" class="tooltip-delayed"
-       title="<font color=darkgreen>Sophie -Shinko to Kuma-</font>"
+       title="<font color=darkgreen></font>"
        src="https://dl.dropboxusercontent.com/s/bxoyga8wa6yuuz4/sophie2.gif"
        style="cursor:help; position: relative"></center>
     <br>
