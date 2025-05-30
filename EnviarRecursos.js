@@ -723,7 +723,7 @@ function sortTableTest(n) {
             }
         }
 
-})();
+
     }
 }
 
