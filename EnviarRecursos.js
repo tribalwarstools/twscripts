@@ -95,17 +95,17 @@ if (game_data.locale == "pt_BR") {
 ClassesTw = `
 <style>
 .TwRowA {
-background-color: #f0e2be;
-color: #000000;
+background-: #f0e2be;
+: #000000;
 }
 .TwRowB {
-background-color: #f0e2be;
-color: #000000;
+background-: #f0e2be;
+: #000000;
 }
 .TwHeader {
-background-color: #f0e2be;
+background-: #f0e2be;
 font-weight: bold;
-color: #000000;
+: #000000;
 }
 </style>`
 
@@ -387,7 +387,7 @@ function createList() {
             listHTML += `
         <tr ${tempRow} height="40">
             <td><a href="${villagesData[i].url}" style="color:#7d510f;">${villagesData[i].name} </a></td>
-            <td> <a href="" style="color:#7d510f;">${sendBack[1]}</a> </td>
+            <td> <a href="" style="color:red;">${sendBack[1]}</a> </td>
             <td>${checkDistance(sendBack[5], sendBack[6], villagesData[i].coord.substring(0, 3), villagesData[i].coord.substring(4, 7))}</td>
             <td width="50" style="text-align:center">${res.wood}<span class="icon header wood"> </span></td>
             <td width="50" style="text-align:center">${res.stone}<span class="icon header stone"> </span></td>
