@@ -1,10 +1,8 @@
 ﻿(function () {
     'use strict';
 
-    // Painel simples com botão
     const panelId = 'twSDK-panel';
 
-    // Evita duplicar
     if (document.getElementById(panelId)) return;
 
     const panel = document.createElement('div');
@@ -25,15 +23,15 @@
 
     panel.innerHTML = `
         <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">Painel Teste</div>
-        <div style="margin-bottom: 10px;">Painel funcionando!</div>
-        <button id="btn-action" style="margin-right: 5px;">Executar</button>
-        <button id="btn-close">Fechar</button>
+        <div style="margin-bottom: 10px;">Painel com botões do jogo.</div>
+        <button id="btn-action" class="btn btn-confirm" style="margin-right: 5px;">Executar</button>
+        <button id="btn-close" class="btn btn-cancel">Fechar</button>
     `;
 
     document.body.appendChild(panel);
 
     document.getElementById('btn-action').addEventListener('click', () => {
-        UI.InfoMessage('Painel funcionando corretamente!', 3000, 'success');
+        UI.InfoMessage('Ação executada com sucesso!', 3000, 'success');
     });
 
     document.getElementById('btn-close').addEventListener('click', () => {
