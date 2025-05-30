@@ -1,56 +1,52 @@
 (function () {
     'use strict';
 
-    const mapElement = document.getElementById('map');
+    const map = document.getElementById('map');
     const popup = document.getElementById('map_popup');
 
-    if (!mapElement || !popup) {
-        UI.ErrorMessage('Mapa ou popup não encontrados.');
+    if (!map || !popup) {
+        UI.ErrorMessage('❌ Mapa ou popup não encontrados.');
         return;
     }
 
-    // Função para criar ou atualizar o botão
-    function addCopyButton(coord) {
-        // Verifica se o botão já existe
-        if (document.getElementById('btn-copy-coord')) return;
+    function getCoordFromPopup() {
+        const match = popup.innerText.match(/\d{3}\|\d{3}/);
+        return match ? match[0] : null;
+    }
 
-        // Cria o botão
+    function insertCopyButton(coord) {
+        // Evita inserir botão duplicado
+        if (popup.querySelector('#btn-copy-coord')) return;
+
         const btn = document.createElement('a');
         btn.href = '#';
         btn.id = 'btn-copy-coord';
         btn.className = 'btn';
-        btn.innerText = 'Copiar Coordenada';
-        btn.style.marginTop = '5px';
+        btn.innerText = '📋 Copiar Coordenada';
         btn.style.display = 'inline-block';
+        btn.style.marginTop = '5px';
 
-        // Ao clicar, copia a coordenada
         btn.addEventListener('click', function (e) {
             e.preventDefault();
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(coord).then(() => {
-                    UI.SuccessMessage(`📍 Coordenada ${coord} copiada!`);
-                }).catch(() => {
-                    UI.ErrorMessage('Erro ao copiar.');
-                });
-            } else {
-                UI.ErrorMessage('Clipboard não suportado.');
-            }
+            navigator.clipboard.writeText(coord).then(() => {
+                UI.SuccessMessage(`📍 Coordenada ${coord} copiada!`);
+            }).catch(() => {
+                UI.ErrorMessage('Erro ao copiar coordenada.');
+            });
         });
 
-        // Adiciona ao popup
-        popup.querySelector('.popup_box_content').appendChild(btn);
+        // Tenta encontrar local apropriado dentro do popup
+        const buttonContainer = popup.querySelector('.popup_menu') || popup;
+
+        buttonContainer.appendChild(btn);
     }
 
-    // Escuta clique no mapa
-    mapElement.addEventListener('click', function () {
+    map.addEventListener('click', () => {
         setTimeout(() => {
             if (popup.style.display !== 'none') {
-                const match = popup.innerText.match(/\d{3}\|\d{3}/);
-                if (match) {
-                    const coord = match[0];
-                    addCopyButton(coord);
-                }
+                const coord = getCoordFromPopup();
+                if (coord) insertCopyButton(coord);
             }
-        }, 100); // pequeno delay para garantir que o popup foi preenchido
+        }, 100); // pequeno delay para garantir o preenchimento do popup
     });
 })();
