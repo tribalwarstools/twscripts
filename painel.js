@@ -60,5 +60,5 @@
 
     observer.observe(document.body, { childList: true, subtree: true });
 
-    UI.InfoMessage('📌 Script "Copiar Coordenada" ativo!', 3000);
+    UI.InfoMessage('📌 Script "Copiar Coordenada" ativo!1', 3000);
 })();
