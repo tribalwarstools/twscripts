@@ -24,7 +24,7 @@ var backgroundColor = "#7d510f";
 var borderColor = "#7d510f";
 var headerColor = "#7d510f";
 var titleColor = "#7d510f";
-var langShinko = [
+var langTrad = [
     "Resource sender for flag boost minting",
     "Enter coordinate to send to",
     "Save",
@@ -46,7 +46,7 @@ var langShinko = [
     
 ]
 if (game_data.locale == "en_DK") {
-    langShinko = [
+    langTrad = [
         "Resource sender for flag boost minting",
         "Enter coordinate to send to",
         "Save",
@@ -69,7 +69,7 @@ if (game_data.locale == "en_DK") {
     ]
 }
 if (game_data.locale == "el_GR") {
-    langShinko = [
+     = [
         "Î‘Ï€Î¿ÏƒÏ„Î¿Î»Î® Ï€ÏŒÏÏ‰Î½",
         "Î•Î¹ÏƒÎ¬Î³ÎµÏ„Îµ Ï„Î¹Ï‚ ÏƒÏ…Î½Ï„ÎµÏ„Î±Î³Î¼Î­Î½ÎµÏ‚ - ÏƒÏ„ÏŒÏ‡Î¿",
         "Î‘Ï€Î¿Î¸Î®ÎºÎµÏ…ÏƒÎ·",
@@ -92,7 +92,7 @@ if (game_data.locale == "el_GR") {
     ]
 }
 if (game_data.locale == "nl_NL") {
-    langShinko = [
+    langTrad = [
         "Grondstoffen versturen voor vlagfarmen",
         "Geef coordinaat in om naar te sturen",
         "Opslaan",
@@ -115,7 +115,7 @@ if (game_data.locale == "nl_NL") {
     ]
 }
 if (game_data.locale == "it_IT") {
-    langShinko = [
+    langTrad = [
         "Script pushing per coniare",
         "Inserire le coordinate a cui mandare risorse",
         "Salva",
@@ -138,7 +138,7 @@ if (game_data.locale == "it_IT") {
     ]
 }
 if (game_data.locale == "pt_BR") {
-    langShinko = [
+    langTrad = [
         "Enviar recursos para cunhagem de moedas",
         "Insira coordenada para enviar recursos",
         "Salvar",
@@ -161,25 +161,25 @@ if (game_data.locale == "pt_BR") {
     ]
 }
 
-cssClassesSophie = `
+ClassesTw = `
 <style>
-.sophRowA {
+.TwRowA {
 background-color: #7d510f;
 color: #000000;
 }
-.sophRowB {
+.TwRowB {
 background-color: #7d510f;
 color: #000000;
 }
-.sophHeader {
+.TwHeader {
 background-color: #7d510f;
 font-weight: bold;
 color: #000000;
 }
 </style>`
 
-$("#contentContainer").eq(0).prepend(cssClassesSophie);
-$("#mobileHeader").eq(0).prepend(cssClassesSophie);
+$("#contentContainer").eq(0).prepend(ClassesTw);
+$("#mobileHeader").eq(0).prepend(ClassesTw);
 
 
 //check if we have a limit set for the res we want to keep in the villages
@@ -345,25 +345,25 @@ function createList() {
                     <table id="Settings" width="600">
                         <thead>
                             <tr>
-                                <td class="sophHeader">${langShinko[7]}</td>
-                                <td class="sophHeader">${langShinko[8]}</td>
-                                <td class="sophHeader"></td>
-                                <td class="sophHeader"></td>
+                                <td class="TwHeader">${langTrad[7]}</td>
+                                <td class="TwHeader">${langTrad[8]}</td>
+                                <td class="TwHeader"></td>
+                                <td class="TwHeader"></td>
                             </tr>
                         </tdead>
                         <tbody>
                         <tr >
-                            <td class="sophRowA">
+                            <td class="TwRowA">
                                 <input type="text" ID="coordinateTarget" name="coordinateTarget" size="20" margin="5" align=left>
                             </td>
-                            <td class="sophRowA" align="right">
+                            <td class="TwRowA" align="right">
                                 <input type="text" ID="resPercent" name="resPercent" size="1" align=right>%
                             </td>
-                            <td class="sophRowA" margin="5">
-                                <button type="button" ID="button" class="btn-confirm-yes" >${langShinko[2]}</button>
+                            <td class="TwRowA" margin="5">
+                                <button type="button" ID="button" class="btn-confirm-yes" >${langTrad[2]}</button>
                             </td>
-                            <td class="sophRowA">
-                                <button type="button" ID="sendRes" class="btn" name="sendRes" onclick=reDo()> ${langShinko[9]}</button>
+                            <td class="TwRowA">
+                                <button type="button" ID="sendRes" class="btn" name="sendRes" onclick=reDo()> ${langTrad[9]}</button>
                             </td>
                             </tr>
                         </tbody>
@@ -380,17 +380,17 @@ function createList() {
                 <table id="tableSend" width="100%">
                     <tbody id="appendHere">
                         <tr>
-                            <td class="sophHeader" colspan=7 width=â€œ550â€ style="text-align:center" >${langShinko[10]}</td>
+                            <td class="TwHeader" colspan=7 width=â€œ550â€ style="text-align:center" >${langTrad[10]}</td>
                         </tr>
                         <tr>
-                            <td class="sophHeader" width="25%" style="text-align:center">${langShinko[11]}</td>
-                            <td class="sophHeader" width="25%" style="text-align:center">${langShinko[12]}</td>
-                            <td class="sophHeader" width="5%" style="text-align:center">${langShinko[13]}</td>
-                            <td class="sophHeader" width="10%" style="text-align:center">${langShinko[14]}</td>
-                            <td class="sophHeader" width="10%" style="text-align:center">${langShinko[15]}</td>
-                            <td class="sophHeader" width="10%" style="text-align:center">${langShinko[16]}</td>
-                            <td class="sophHeader" width="15%">
-                                <font size="1">${langShinko[18]}</font>
+                            <td class="TwHeader" width="25%" style="text-align:center">${langTrad[11]}</td>
+                            <td class="TwHeader" width="25%" style="text-align:center">${langTrad[12]}</td>
+                            <td class="TwHeader" width="5%" style="text-align:center">${langTrad[13]}</td>
+                            <td class="TwHeader" width="10%" style="text-align:center">${langTrad[14]}</td>
+                            <td class="TwHeader" width="10%" style="text-align:center">${langTrad[15]}</td>
+                            <td class="TwHeader" width="10%" style="text-align:center">${langTrad[16]}</td>
+                            <td class="TwHeader" width="15%">
+                                <font size="1">${langTrad[18]}</font>
                             </td>
                         </tr>
                     </tbody>
@@ -421,23 +421,23 @@ function createList() {
     $("#resourceSender").eq(0).prepend(`<table id="playerTarget" width="600">
     <tbody>
         <tr>
-            <td class="sophHeader" rowspan="3"><img src="`+ sendBack[2] + `"></td>
-            <td class="sophHeader">${langShinko[4]}:</td>
-            <td class="sophRowA">`+ sendBack[3] + `</td>
-            <td class="sophHeader"><span class="icon header wood"> </span></td>
-            <td class="sophRowB" id="woodSent"></td>
+            <td class="TwHeader" rowspan="3"><img src="`+ sendBack[2] + `"></td>
+            <td class="TwHeader">${langTrad[4]}:</td>
+            <td class="TwRowA">`+ sendBack[3] + `</td>
+            <td class="TwHeader"><span class="icon header wood"> </span></td>
+            <td class="TwRowB" id="woodSent"></td>
         </tr>
         <tr>
-            <td class="sophHeader">${langShinko[5]}:</td>
-            <td class="sophRowB">`+ sendBack[1] + `</td>
-            <td class="sophHeader"><span class="icon header stone"> </span></td>
-            <td class="sophRowA" id="stoneSent"></td>
+            <td class="TwHeader">${langTrad[5]}:</td>
+            <td class="TwRowB">`+ sendBack[1] + `</td>
+            <td class="TwHeader"><span class="icon header stone"> </span></td>
+            <td class="TwRowA" id="stoneSent"></td>
         </tr>
         <tr>
-            <td class="sophHeader">${langShinko[6]}: </td>
-            <td class="sophRowA">`+ sendBack[4] + `</td>
-            <td class="sophHeader"><span class="icon header iron"> </span></td>
-            <td class="sophRowB" id="ironSent"></td>
+            <td class="TwHeader">${langTrad[6]}: </td>
+            <td class="TwRowA">`+ sendBack[4] + `</td>
+            <td class="TwHeader"><span class="icon header iron"> </span></td>
+            <td class="TwRowB" id="ironSent"></td>
         </tr>
     </tbody>
 </table>`);
@@ -446,10 +446,10 @@ function createList() {
     //creating table rows
     for (var i = 0; i < villagesData.length; i++) {
         if (i % 2 == 0) {
-            tempRow = " id='" + i + "' class='sophRowB'";
+            tempRow = " id='" + i + "' class='TwRowB'";
         }
         else {
-            tempRow = " id='" + i + "' class='sophRowA'";
+            tempRow = " id='" + i + "' class='TwRowA'";
         }
         res = calculateResAmounts(villagesData[i].wood, villagesData[i].stone, villagesData[i].iron, villagesData[i].warehouseCapacity, villagesData[i].availableMerchants);
         if (res.wood + res.stone + res.iron != 0 && villagesData[i].id != sendBack[0]) {
@@ -461,7 +461,7 @@ function createList() {
             <td width="50" style="text-align:center">${res.wood}<span class="icon header wood"> </span></td>
             <td width="50" style="text-align:center">${res.stone}<span class="icon header stone"> </span></td>
             <td width="50" style="text-align:center">${res.iron}<span class="icon header iron"> </span></td>
-            <td style="text-align:center"><input type="button" class="btn evt-confirm-btn btn-confirm-yes" id="sendResources" value="${langShinko[17]}" onclick=sendResource(${villagesData[i].id},${sendBack[0]},${res.wood},${res.stone},${res.iron},${i})></td>
+            <td style="text-align:center"><input type="button" class="btn evt-confirm-btn btn-confirm-yes" id="sendResources" value="${langTrad[17]}" onclick=sendResource(${villagesData[i].id},${sendBack[0]},${res.wood},${res.stone},${res.iron},${i})></td>
         </tr>`
         }
     }
@@ -529,14 +529,14 @@ function askCoordinate() {
     var content = `<div style=max-width:1000px;>
     <h2 class="popup_box_header">
        <center><u>
-          <font color="#000000">${langShinko[0]}</font>
+          <font color="#000000">${langTrad[0]}</font>
           </u>
        </center>
     </h2>
     <hr>
     <p>
     <center>
-       <font color=#000000><b>${langShinko[1]}</b>
+       <font color=#000000><b>${langTrad[1]}</b>
        </font>
     </center>
     </p>
@@ -545,7 +545,7 @@ function askCoordinate() {
        <tr></tr>
        <tr><td><center><input type="button"
           class="btn evt-cancel-btn btn-confirm-yes" id="saveCoord"
-          value="${langShinko[2]}">&emsp;</center></td></tr>
+          value="${langTrad[2]}">&emsp;</center></td></tr>
           <tr></tr>
           </table>
     </center>
@@ -557,7 +557,7 @@ function askCoordinate() {
        style="cursor:help; position: relative"></center>
     <br>
     <center>
-       <p>${langShinko[3]}: <a
+       <p>${langTrad[3]}: <a
           href=""
           title=""</a>
        </p>
@@ -661,10 +661,10 @@ function formatTable() {
     var tableRows = $("#table tr");
     for (var i = 1; i < tableRows.length; i++) {
         if (i % 2 == 0) {
-            $("#table tr")[i].className = "sophRowB";
+            $("#table tr")[i].className = "TwRowB";
         }
         else {
-            $("#table tr")[i].className = "sophRowA";
+            $("#table tr")[i].className = "TwRowA";
         }
     }
 }
