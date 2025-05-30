@@ -1,59 +1,64 @@
 (function () {
     'use strict';
 
-    // Função para injetar o botão no popup
-    function addCopyButtonToPopup() {
+    function insertCopyButton() {
         const popup = document.getElementById('map_popup');
-        if (!popup || popup.querySelector('#copy-coord-btn')) return;
+        if (!popup || popup.style.display === 'none') return;
 
+        // Já existe botão? Não fazer nada
+        if (popup.querySelector('#copy-coord-btn')) return;
+
+        // Buscar título que contém a coordenada
         const th = popup.querySelector('th[colspan="2"]');
         if (!th) return;
 
-        const coordMatch = th.textContent.match(/\((\d{3}\|\d{3})\)/);
-        if (!coordMatch) return;
+        const match = th.textContent.match(/\((\d{3}\|\d{3})\)/);
+        if (!match) return;
 
-        const coord = coordMatch[1];
+        const coord = match[1];
 
-        // Encontrar a linha que contém os botões padrão
-        const actionRow = Array.from(popup.querySelectorAll('tr')).find(row =>
-            row.querySelector('a[href*="info_player"]') || row.querySelector('a[href*="screen=info_village"]')
-        );
+        // Encontrar o local correto onde os botões ficam
+        const actionContainer = popup.querySelector('table:last-of-type');
+        if (!actionContainer || actionContainer.querySelector('#copy-coord-btn')) return;
 
-        if (!actionRow) return;
-
-        const td = actionRow.querySelector('td[colspan="2"]');
-        if (!td) return;
-
-        // Criar botão e estilizar
         const btn = document.createElement('a');
         btn.href = '#';
-        btn.className = 'btn';
         btn.id = 'copy-coord-btn';
+        btn.className = 'btn';
         btn.textContent = '📌 Copiar Coordenada';
-        btn.style.marginLeft = '5px';
+        btn.style.margin = '5px';
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             navigator.clipboard.writeText(coord).then(() => {
                 UI.SuccessMessage(`Coordenada ${coord} copiada!`);
             }).catch(() => {
-                UI.ErrorMessage('Erro ao copiar coordenada.');
+                UI.ErrorMessage('Erro ao copiar.');
             });
         });
 
-        // Inserir botão no mesmo local dos demais
-        td.appendChild(btn);
+        // Criar nova linha abaixo da tabela para colocar o botão
+        const newRow = document.createElement('tr');
+        const newCell = document.createElement('td');
+        newCell.colSpan = 2;
+        newCell.style.textAlign = 'center';
+        newCell.appendChild(btn);
+        newRow.appendChild(newCell);
+
+        const tbody = popup.querySelector('#info_content tbody');
+        if (tbody) {
+            tbody.appendChild(newRow);
+        }
     }
 
-    // Observar mudanças no corpo do documento
+    // Observar DOM para detectar quando popup aparece
     const observer = new MutationObserver(() => {
         const popup = document.getElementById('map_popup');
         if (popup && popup.style.display !== 'none') {
-            addCopyButtonToPopup();
+            setTimeout(insertCopyButton, 100); // aguarda carregamento interno
         }
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Mostrar aviso de que o script está rodando
     UI.InfoMessage('📌 Script "Copiar Coordenada" ativo!', 3000);
 })();
