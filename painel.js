@@ -4,7 +4,7 @@
     const btnId = 'btn-copy-map-coord';
     let currentCoord = null;
 
-    // Remove botão antigo, se existir
+    // Remove botão antigo se existir
     const oldBtn = document.getElementById(btnId);
     if (oldBtn) oldBtn.remove();
 
@@ -14,9 +14,7 @@
     btn.textContent = 'Copiar Coordenada';
     btn.style = `
         position: fixed;
-        top: 100px;
-        right: 40px;
-        padding: 8px 12px;
+        padding: 6px 10px;
         background: #f4e4bc;
         border: 2px solid #804000;
         border-radius: 8px;
@@ -24,15 +22,26 @@
         cursor: pointer;
         z-index: 9999;
         display: none;
+        pointer-events: auto;
+        user-select: none;
     `;
     document.body.appendChild(btn);
 
-    // Função para atualizar botão
+    // Atualiza a posição do botão perto do mouse
+    function moveButton(e) {
+        const offsetX = 15; // deslocamento horizontal do cursor
+        const offsetY = 15; // deslocamento vertical do cursor
+        btn.style.left = (e.clientX + offsetX) + 'px';
+        btn.style.top = (e.clientY + offsetY) + 'px';
+    }
+
+    // Função para atualizar visibilidade e coordenada do botão
     function updateButton() {
         const popup = document.getElementById('map_popup');
         if (!popup || popup.style.display === 'none') {
             btn.style.display = 'none';
             currentCoord = null;
+            document.removeEventListener('mousemove', moveButton);
             return;
         }
 
@@ -40,17 +49,17 @@
         if (!match) {
             btn.style.display = 'none';
             currentCoord = null;
+            document.removeEventListener('mousemove', moveButton);
             return;
         }
 
         currentCoord = match[0];
         btn.style.display = 'block';
+        document.addEventListener('mousemove', moveButton);
     }
 
-    // Atualiza o botão sempre que o mouse se move na página (podemos filtrar para mapa)
-    document.addEventListener('mousemove', () => {
-        updateButton();
-    });
+    // Atualiza a cada movimento do mouse
+    document.addEventListener('mousemove', updateButton);
 
     // Copiar coordenada ao clicar no botão
     btn.addEventListener('click', () => {
