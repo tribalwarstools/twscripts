@@ -1,10 +1,3 @@
-/**
- * CopyCoord.js
- * Painel rápido para exibir dados da aldeia e copiar coordenadas no Tribal Wars
- * Autor: [tribalwarstools]
- * Versão: 1.0
- * Compatível com: Tribal Wars BR
- */
 (function () {
     'use strict';
 
@@ -19,7 +12,7 @@
         position: fixed;
         top: 120px;
         right: 40px;
-        width: 300px;
+        width: 320px;
         background: #f4e4bc;
         border: 2px solid #804000;
         border-radius: 10px;
@@ -36,12 +29,13 @@
             <b>Pontos:</b> ${village.points.toLocaleString()}
         </div>
         <button id="btn-copy" class="btn btn-confirm" style="margin-right: 5px;">Copiar Coordenada</button>
+        <button id="btn-copy-all" class="btn btn-default" style="margin-right: 5px;">Copiar Todas Coordenadas</button>
         <button id="btn-close" class="btn btn-cancel">Fechar</button>
     `;
 
     document.body.appendChild(panel);
 
-    // Botão: Copiar coordenada
+    // Copiar coordenada da aldeia atual
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
         if (navigator.clipboard) {
@@ -55,7 +49,25 @@
         }
     });
 
-    // Botão: Fechar painel
+    // Copiar coordenadas de todas as aldeias do jogador
+    document.getElementById('btn-copy-all').addEventListener('click', () => {
+        if (!game_data.villages || !Array.isArray(game_data.villages) || game_data.villages.length === 0) {
+            UI.ErrorMessage('Lista de aldeias não disponível nesta tela.');
+            return;
+        }
+        const coordsList = game_data.villages.map(v => `${v.name} - ${v.coord}`).join('\n');
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(coordsList).then(() => {
+                UI.SuccessMessage('Coordenadas de todas as suas aldeias copiadas!');
+            }).catch(() => {
+                UI.ErrorMessage('Erro ao copiar coordenadas.');
+            });
+        } else {
+            UI.ErrorMessage('Clipboard não suportado.');
+        }
+    });
+
+    // Fechar painel
     document.getElementById('btn-close').addEventListener('click', () => {
         panel.remove();
     });
