@@ -168,7 +168,7 @@ background-color: #7d510f;
 color: #000000;
 }
 .sophRowB {
-background-color: #c1a264;
+background-color: #7d510f;
 color: #000000;
 }
 .sophHeader {
