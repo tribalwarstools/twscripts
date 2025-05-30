@@ -551,9 +551,9 @@ function askCoordinate() {
     </center>
     <br>
     <hr>
-    <center><img id="sophieImg" class="tooltip-delayed"
-       title="<font color=darkgreen></font>"
-       src="https://dl.dropboxusercontent.com/s/bxoyga8wa6yuuz4/sophie2.gif"
+    <center><img id="TwImg" class="tooltip-delayed"
+       title="<font color=#000000></font>"
+       src=""
        style="cursor:help; position: relative"></center>
     <br>
     <center>
@@ -566,7 +566,7 @@ function askCoordinate() {
  </div>`;
     Dialog.show('Supportfilter', content);
     if (game_data.locale == "ar_AE") {
-        $("#sophieImg").attr("src", "https://media2.giphy.com/media/qYr8p3Dzbet5S/giphy.gif");
+        $("#TwImg").attr("src", "");
     }
     $("#saveCoord").click(function () {
         coordinate = $("#coordinateTargetFirstTime")[0].value.match(/\d+\|\d+/)[0];
