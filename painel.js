@@ -1,71 +1,44 @@
 (function () {
     'use strict';
 
-    const scriptName = 'CopyCoord.js';
-    const map = document.getElementById('map');
-    const popup = document.getElementById('map_popup');
+    // Cria um observador para detectar quando #map_popup for exibido
+    const observer = new MutationObserver(() => {
+        const popup = document.getElementById('map_popup');
+        if (!popup || !popup.innerHTML.includes('K')) return;
 
-    if (!map || !popup) {
-        UI.ErrorMessage(`[${scriptName}] Mapa ou popup não encontrados.`);
-        return;
-    }
+        const table = popup.querySelector('table.vis');
+        if (!table || table.querySelector('#copy-coord-btn')) return;
 
-    // Mostra painel de status
-    const statusPanel = document.createElement('div');
-    statusPanel.style = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #f4e4bc;
-        color: #000;
-        padding: 10px 14px;
-        border: 2px solid #804000;
-        border-radius: 10px;
-        font-weight: bold;
-        z-index: 9999;
-        box-shadow: 2px 2px 6px rgba(0,0,0,0.5);
-        font-family: Verdana, sans-serif;
-    `;
-    statusPanel.innerText = `✅ ${scriptName} está ativo`;
-    document.body.appendChild(statusPanel);
-    setTimeout(() => statusPanel.remove(), 4000); // remove após 4s
+        const titleCell = table.querySelector('th[colspan="2"]');
+        const coordMatch = titleCell?.innerText.match(/\((\d{3}\|\d{3})\)/);
+        if (!coordMatch) return;
 
-    // Função para inserir o botão no popup
-    function insertCopyButton(coord) {
-        // Evita duplicar botão
-        if (document.getElementById('btn-copy-coord')) return;
+        const coord = coordMatch[1];
 
-        const btn = document.createElement('a');
-        btn.href = '#';
-        btn.id = 'btn-copy-coord';
-        btn.className = 'btn';
-        btn.innerText = '📋 Copiar Coordenada';
-        btn.style.display = 'inline-block';
-        btn.style.marginTop = '5px';
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 2;
+        cell.style.textAlign = 'center';
 
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
+        const button = document.createElement('button');
+        button.id = 'copy-coord-btn';
+        button.className = 'btn';
+        button.textContent = '📌 Copiar Coordenada';
+        button.addEventListener('click', () => {
             navigator.clipboard.writeText(coord).then(() => {
-                UI.SuccessMessage(`📍 Coordenada ${coord} copiada!`);
+                UI.SuccessMessage(`Coordenada ${coord} copiada!`);
             }).catch(() => {
                 UI.ErrorMessage('Erro ao copiar coordenada.');
             });
         });
 
-        // Tenta adicionar logo abaixo do conteúdo do popup
-        const popupContent = popup.querySelector('.popup_content') || popup;
-        popupContent.appendChild(btn);
-    }
-
-    // Aguarda clique no mapa
-    map.addEventListener('click', () => {
-        setTimeout(() => {
-            if (popup.style.display !== 'none') {
-                const match = popup.innerText.match(/\d{3}\|\d{3}/);
-                if (match) {
-                    insertCopyButton(match[0]);
-                }
-            }
-        }, 150); // espera o conteúdo do popup carregar
+        cell.appendChild(button);
+        row.appendChild(cell);
+        table.appendChild(row);
     });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Mensagem inicial
+    UI.InfoMessage('📌 Script Copiar Coordenada ativo!', 3000);
 })();
