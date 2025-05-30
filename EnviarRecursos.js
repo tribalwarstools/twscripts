@@ -455,8 +455,8 @@ function createList() {
         if (res.wood + res.stone + res.iron != 0 && villagesData[i].id != sendBack[0]) {
             listHTML += `
         <tr ${tempRow} height="40">
-            <td><a href="${villagesData[i].url}" style="color:#40D0E0;">${villagesData[i].name} </a></td>
-            <td> <a href="" style="color:#40D0E0;">${sendBack[1]}</a> </td>
+            <td><a href="${villagesData[i].url}" style="color:#000000;">${villagesData[i].name} </a></td>
+            <td> <a href="" style="color:#000000;">${sendBack[1]}</a> </td>
             <td>${checkDistance(sendBack[5], sendBack[6], villagesData[i].coord.substring(0, 3), villagesData[i].coord.substring(4, 7))}</td>
             <td width="50" style="text-align:center">${res.wood}<span class="icon header wood"> </span></td>
             <td width="50" style="text-align:center">${res.stone}<span class="icon header stone"> </span></td>
@@ -529,14 +529,14 @@ function askCoordinate() {
     var content = `<div style=max-width:1000px;>
     <h2 class="popup_box_header">
        <center><u>
-          <font color="darkgreen">${langShinko[0]}</font>
+          <font color="#000000">${langShinko[0]}</font>
           </u>
        </center>
     </h2>
     <hr>
     <p>
     <center>
-       <font color=maroon><b>${langShinko[1]}</b>
+       <font color=#000000><b>${langShinko[1]}</b>
        </font>
     </center>
     </p>
