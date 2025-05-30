@@ -9,7 +9,7 @@
         <label for="arrival-time" style="font-weight: bold; display: block; margin: 10px 0 5px; color: #4a2c00;">Hora de chegada do ataque (hh:mm:ss):</label>
         <input type="text" id="arrival-time" placeholder="00:00:00" style="padding: 8px; width: 100%; font-size: 1em; border: 1px solid #7d510f; background-color: #f8f4e8; border-radius: 4px; box-sizing: border-box;">
         
-        <button onclick="calculateTimes()" style="display: block; width: 100%; padding: 10px; margin-top: 10px; font-size: 1em; font-weight: bold; color: #fff; background: linear-gradient(to bottom, #947a62 0%, #6c4824 100%); border: 1px solid #000; border-radius: 5px; cursor: pointer;">Calcular</button>
+        <button id="calculate-btn" style="display: block; width: 100%; padding: 10px; margin-top: 10px; font-size: 1em; font-weight: bold; color: #fff; background: linear-gradient(to bottom, #947a62 0%, #6c4824 100%); border: 1px solid #000; border-radius: 5px; cursor: pointer;">Calcular</button>
         <button onclick="limparCampos()" style="display: block; width: 100%; padding: 10px; margin-top: 10px; font-size: 1em; font-weight: bold; color: #fff; background: linear-gradient(to bottom, #947a62 0%, #6c4824 100%); border: 1px solid #000; border-radius: 5px; cursor: pointer;">Limpar</button>
 
         <table style="width: 100%; margin-top: 20px; border-collapse: collapse;">
@@ -32,6 +32,8 @@
 
         function calculateTimes() {
             const arrivalTimeInput = document.getElementById("arrival-time").value;
+            console.log('Hora de chegada inserida:', arrivalTimeInput);  // Depuração
+
             if (!arrivalTimeInput) {
                 showAlert("⚠️ Por favor, insira a hora de chegada do ataque.");
                 return;
@@ -55,6 +57,7 @@
 
             const now = new Date();
             now.setHours(hours, minutes, seconds, 0);
+            console.log('Hora do ataque ajustada:', now);  // Depuração
 
             const times = [20, 18, 16, 14, 12, 10, 8, 6, 4, 2];
             const resultTable = document.getElementById("result-table");
@@ -67,6 +70,8 @@
 
                 const sendTimeFormatted = sendTime.toLocaleTimeString("pt-BR");
                 const cancelTimeFormatted = cancelTime.toLocaleTimeString("pt-BR");
+
+                console.log(\`Temp: \${time}, Envio: \${sendTimeFormatted}, Cancelamento: \${cancelTimeFormatted}\`);  // Depuração
 
                 const row = \`
                     <tr>
@@ -84,6 +89,9 @@
             document.getElementById("result-table").innerHTML = "";
             document.getElementById("alert-box").style.display = "none";
         }
+
+        // Adiciona o evento de clique ao botão "Calcular"
+        document.getElementById("calculate-btn").addEventListener("click", calculateTimes);
     </script>
     </script>
     `;
