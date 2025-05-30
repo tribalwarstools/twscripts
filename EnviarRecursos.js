@@ -164,15 +164,15 @@ if (game_data.locale == "pt_BR") {
 cssClassesSophie = `
 <style>
 .sophRowA {
-background-color: #fff5da;
+background-color: #c1a264;
 color: white;
 }
 .sophRowB {
-background-color: #fff5da;
+background-color: #c1a264;
 color: white;
 }
 .sophHeader {
-background-color: #fff5da;
+background-color: #c1a264;
 font-weight: bold;
 color: white;
 }
