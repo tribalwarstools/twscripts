@@ -165,16 +165,16 @@ cssClassesSophie = `
 <style>
 .sophRowA {
 background-color: #c1a264;
-color: white;
+color: #000000;
 }
 .sophRowB {
 background-color: #c1a264;
-color: white;
+color: #000000;
 }
 .sophHeader {
 background-color: #c1a264;
 font-weight: bold;
-color: white;
+color: #000000;
 }
 </style>`
 
