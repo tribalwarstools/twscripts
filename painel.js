@@ -5,6 +5,7 @@
     let currentCoord = null;
     let isFollowing = false;
     let hideTimeout = null;
+    let mouseOverButton = false; // NOVO: flag que indica se mouse está no botão
 
     // Remove botão antigo se existir
     const oldBtn = document.getElementById(btnId);
@@ -29,7 +30,6 @@
     `;
     document.body.appendChild(btn);
 
-    // Atualiza a posição do botão perto do mouse
     function moveButton(e) {
         if (!isFollowing) return;
         const offsetX = 15;
@@ -38,27 +38,29 @@
         btn.style.top = (e.clientY + offsetY) + 'px';
     }
 
-    // Mostra botão e começa a seguir o mouse
     function startFollowing() {
+        if (isFollowing) return; // evita duplicar evento
         isFollowing = true;
         btn.style.display = 'block';
         document.addEventListener('mousemove', moveButton);
         clearTimeout(hideTimeout);
     }
 
-    // Para de seguir e fixa a posição
     function stopFollowing() {
         isFollowing = false;
         document.removeEventListener('mousemove', moveButton);
-        // Esconde depois de 3 segundos se não clicar
         hideTimeout = setTimeout(() => {
-            btn.style.display = 'none';
-            currentCoord = null;
+            if (!mouseOverButton) {
+                btn.style.display = 'none';
+                currentCoord = null;
+            }
         }, 3000);
     }
 
-    // Atualiza botão conforme tooltip
     function updateButton() {
+        // Se mouse estiver no botão, não ativa seguimento nem altera botão
+        if (mouseOverButton) return;
+
         const popup = document.getElementById('map_popup');
         if (!popup || popup.style.display === 'none') {
             btn.style.display = 'none';
@@ -85,28 +87,28 @@
         }
     }
 
-    // Atualiza a cada movimento do mouse
     document.addEventListener('mousemove', updateButton);
 
-    // Quando mouse entrar no botão, para de seguir
+    // Quando mouse entra no botão
     btn.addEventListener('mouseenter', () => {
+        mouseOverButton = true;
         stopFollowing();
+        clearTimeout(hideTimeout);
     });
 
-    // Quando mouse sair do botão, volta a seguir (se tooltip ativo)
+    // Quando mouse sai do botão
     btn.addEventListener('mouseleave', () => {
+        mouseOverButton = false;
         if (currentCoord) {
             startFollowing();
         }
     });
 
-    // Copiar coordenada ao clicar no botão
     btn.addEventListener('click', () => {
         if (!currentCoord) return;
 
         navigator.clipboard.writeText(currentCoord).then(() => {
             UI.SuccessMessage(`Coordenada ${currentCoord} copiada!`);
-            // Esconde o botão logo após clicar
             btn.style.display = 'none';
             currentCoord = null;
             isFollowing = false;
