@@ -1,3 +1,11 @@
+/**
+ * CopyCoord.js
+ * Painel rápido para exibir dados da aldeia e copiar coordenadas no Tribal Wars
+ * Autor: [tribalwarstools]
+ * Versão: 1.0
+ * Compatível com: Tribal Wars BR
+ */
+
 ﻿(function () {
     'use strict';
 
