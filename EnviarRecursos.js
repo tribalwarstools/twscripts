@@ -724,3 +724,6 @@ function sortTableTest(n) {
         }
     }
 }
+// Mensagem inicial
+    UI.InfoMessage('📌 Script "Copiar Coordenada" ativo e arrastável!', 3000);
+})();
