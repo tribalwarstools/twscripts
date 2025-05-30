@@ -5,8 +5,7 @@
  * Versão: 1.0
  * Compatível com: Tribal Wars BR
  */
-
-﻿(function () {
+(function () {
     'use strict';
 
     const panelId = 'twSDK-panel';
@@ -31,12 +30,10 @@
     `;
 
     panel.innerHTML = `
-        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">🏰 Aldeia Atual</div>
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">🏰 ${village.name}</div>
         <div style="margin-bottom: 10px;">
-            <b>Nome:</b> ${village.name}<br>
             <b>Coordenadas:</b> <span id="village-coord">${village.coord}</span><br>
-            <b>Pontos:</b> ${village.points.toLocaleString()}<br>
-            <b>ID:</b> ${village.id}
+            <b>Pontos:</b> ${village.points.toLocaleString()}
         </div>
         <button id="btn-copy" class="btn btn-confirm" style="margin-right: 5px;">Copiar Coordenada</button>
         <button id="btn-close" class="btn btn-cancel">Fechar</button>
@@ -44,7 +41,7 @@
 
     document.body.appendChild(panel);
 
-    // Copiar coordenada para a área de transferência
+    // Botão: Copiar coordenada
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
         if (navigator.clipboard) {
@@ -58,7 +55,7 @@
         }
     });
 
-    // Fechar painel
+    // Botão: Fechar painel
     document.getElementById('btn-close').addEventListener('click', () => {
         panel.remove();
     });
