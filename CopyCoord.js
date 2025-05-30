@@ -45,25 +45,37 @@
         });
     });
 
-    // Copiar todas as coordenadas via AJAX do seletor de aldeia
+    // Forçar clique no seletor e aguardar lista
     document.getElementById('btn-copy-all').addEventListener('click', () => {
-        const url = `/game.php?village=${village.id}&ajax=menu_village_list`;
+        const dropdown = document.getElementById('village_switch_right');
+        if (!dropdown) {
+            UI.ErrorMessage('Não foi possível localizar o seletor de aldeias.');
+            return;
+        }
 
-        $.get(url, data => {
-            if (!data || !data.villages) {
-                UI.ErrorMessage('Erro ao carregar lista de aldeias.');
+        dropdown.click(); // Abre o menu de aldeias
+
+        setTimeout(() => {
+            const entries = document.querySelectorAll('#village_switch_list a');
+            if (!entries.length) {
+                UI.ErrorMessage('Falha ao carregar aldeias. Tente novamente.');
                 return;
             }
 
-            const coordsList = data.villages.map(v => `${v.name} - ${v.coord}`).join('\n');
+            const coordsList = Array.from(entries).map(el => {
+                const text = el.textContent.trim();
+                const match = text.match(/\d+\|\d+/);
+                const coord = match ? match[0] : '';
+                const name = text.replace(/\(\d+\|\d+\)/, '').trim();
+                return `${name} - ${coord}`;
+            }).join('\n');
+
             navigator.clipboard.writeText(coordsList).then(() => {
-                UI.SuccessMessage('Coordenadas de todas as suas aldeias copiadas!');
+                UI.SuccessMessage('Coordenadas copiadas com sucesso!');
             }).catch(() => {
-                UI.ErrorMessage('Erro ao copiar coordenadas.');
+                UI.ErrorMessage('Erro ao copiar.');
             });
-        }).fail(() => {
-            UI.ErrorMessage('Erro ao buscar lista de aldeias.');
-        });
+        }, 300); // tempo para o menu abrir (ajustável)
     });
 
     // Fechar painel
