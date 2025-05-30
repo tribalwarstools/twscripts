@@ -38,37 +38,31 @@
     // Copiar coordenada da aldeia atual
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(coord).then(() => {
-                UI.SuccessMessage(`Coordenada ${coord} copiada!`);
-            }).catch(() => {
-                UI.ErrorMessage('Erro ao copiar coordenada.');
-            });
-        } else {
-            UI.ErrorMessage('Clipboard não suportado.');
-        }
+        navigator.clipboard.writeText(coord).then(() => {
+            UI.SuccessMessage(`Coordenada ${coord} copiada!`);
+        }).catch(() => {
+            UI.ErrorMessage('Erro ao copiar coordenada.');
+        });
     });
 
-    // Copiar todas as coordenadas das aldeias (extraído da lista superior)
+    // Copiar todas as coordenadas via AJAX do seletor de aldeia
     document.getElementById('btn-copy-all').addEventListener('click', () => {
-        const entries = Array.from(document.querySelectorAll('#village_switch_list a'));
-        if (!entries.length) {
-            UI.ErrorMessage('Não foi possível encontrar a lista de aldeias.');
-            return;
-        }
+        const url = `/game.php?village=${village.id}&ajax=menu_village_list`;
 
-        const coordsList = entries.map(el => {
-            const name = el.textContent.trim();
-            const match = name.match(/\d+\|\d+/);
-            const coord = match ? match[0] : '';
-            const label = name.replace(/\(\d+\|\d+\)/, '').trim();
-            return `${label} - ${coord}`;
-        }).join('\n');
+        $.get(url, data => {
+            if (!data || !data.villages) {
+                UI.ErrorMessage('Erro ao carregar lista de aldeias.');
+                return;
+            }
 
-        navigator.clipboard.writeText(coordsList).then(() => {
-            UI.SuccessMessage('Coordenadas de todas as suas aldeias copiadas!');
-        }).catch(() => {
-            UI.ErrorMessage('Erro ao copiar coordenadas.');
+            const coordsList = data.villages.map(v => `${v.name} - ${v.coord}`).join('\n');
+            navigator.clipboard.writeText(coordsList).then(() => {
+                UI.SuccessMessage('Coordenadas de todas as suas aldeias copiadas!');
+            }).catch(() => {
+                UI.ErrorMessage('Erro ao copiar coordenadas.');
+            });
+        }).fail(() => {
+            UI.ErrorMessage('Erro ao buscar lista de aldeias.');
         });
     });
 
