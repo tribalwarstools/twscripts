@@ -35,7 +35,7 @@
 
     document.body.appendChild(panel);
 
-    // Copiar coordenada da aldeia atual
+    // Botão: Copiar coordenada da aldeia atual
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
         navigator.clipboard.writeText(coord).then(() => {
@@ -45,40 +45,27 @@
         });
     });
 
-    // Forçar clique no seletor e aguardar lista
+    // Botão: Copiar todas as aldeias sem clicar em links
     document.getElementById('btn-copy-all').addEventListener('click', () => {
-        const dropdown = document.getElementById('village_switch_right');
-        if (!dropdown) {
-            UI.ErrorMessage('Não foi possível localizar o seletor de aldeias.');
-            return;
-        }
-
-        dropdown.click(); // Abre o menu de aldeias
-
-        setTimeout(() => {
-            const entries = document.querySelectorAll('#village_switch_list a');
-            if (!entries.length) {
-                UI.ErrorMessage('Falha ao carregar aldeias. Tente novamente.');
+        $.get(`/game.php?village=${village.id}&ajax=menu_village_list`, data => {
+            if (!data || !data.villages || !Array.isArray(data.villages)) {
+                UI.ErrorMessage('Não foi possível carregar suas aldeias.');
                 return;
             }
 
-            const coordsList = Array.from(entries).map(el => {
-                const text = el.textContent.trim();
-                const match = text.match(/\d+\|\d+/);
-                const coord = match ? match[0] : '';
-                const name = text.replace(/\(\d+\|\d+\)/, '').trim();
-                return `${name} - ${coord}`;
-            }).join('\n');
+            const lista = data.villages.map(v => `${v.name} - ${v.coord}`).join('\n');
 
-            navigator.clipboard.writeText(coordsList).then(() => {
-                UI.SuccessMessage('Coordenadas copiadas com sucesso!');
+            navigator.clipboard.writeText(lista).then(() => {
+                UI.SuccessMessage('Coordenadas de todas as aldeias copiadas!');
             }).catch(() => {
                 UI.ErrorMessage('Erro ao copiar.');
             });
-        }, 300); // tempo para o menu abrir (ajustável)
+        }).fail(() => {
+            UI.ErrorMessage('Erro ao buscar lista de aldeias.');
+        });
     });
 
-    // Fechar painel
+    // Botão: Fechar painel
     document.getElementById('btn-close').addEventListener('click', () => {
         panel.remove();
     });
