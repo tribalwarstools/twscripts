@@ -49,22 +49,27 @@
         }
     });
 
-    // Copiar coordenadas de todas as aldeias do jogador
+    // Copiar todas as coordenadas das aldeias (extraído da lista superior)
     document.getElementById('btn-copy-all').addEventListener('click', () => {
-        if (!game_data.villages || !Array.isArray(game_data.villages) || game_data.villages.length === 0) {
-            UI.ErrorMessage('Lista de aldeias não disponível nesta tela.');
+        const entries = Array.from(document.querySelectorAll('#village_switch_list a'));
+        if (!entries.length) {
+            UI.ErrorMessage('Não foi possível encontrar a lista de aldeias.');
             return;
         }
-        const coordsList = game_data.villages.map(v => `${v.name} - ${v.coord}`).join('\n');
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(coordsList).then(() => {
-                UI.SuccessMessage('Coordenadas de todas as suas aldeias copiadas!');
-            }).catch(() => {
-                UI.ErrorMessage('Erro ao copiar coordenadas.');
-            });
-        } else {
-            UI.ErrorMessage('Clipboard não suportado.');
-        }
+
+        const coordsList = entries.map(el => {
+            const name = el.textContent.trim();
+            const match = name.match(/\d+\|\d+/);
+            const coord = match ? match[0] : '';
+            const label = name.replace(/\(\d+\|\d+\)/, '').trim();
+            return `${label} - ${coord}`;
+        }).join('\n');
+
+        navigator.clipboard.writeText(coordsList).then(() => {
+            UI.SuccessMessage('Coordenadas de todas as suas aldeias copiadas!');
+        }).catch(() => {
+            UI.ErrorMessage('Erro ao copiar coordenadas.');
+        });
     });
 
     // Fechar painel
