@@ -109,5 +109,5 @@
     observer.observe(document.body, { childList: true, subtree: true });
 
     // Mensagem inicial
-    UI.InfoMessage('📌 Script "Copiar Coordenada" ativo e arrastável!', 3000);
+    UI.InfoMessage('📌 Script "Copiar Coordenada" ativo e arrastável!4', 3000);
 })();
