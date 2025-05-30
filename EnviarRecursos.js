@@ -558,9 +558,8 @@ function askCoordinate() {
     <br>
     <center>
        <p>${langShinko[3]}: <a
-          href="https://shinko-to-kuma.my-free.website/"
-          title="Sophie profile" target="_blank">Sophie "Shinko
-          to Kuma"</a>
+          href=""
+          title=""</a>
        </p>
     </center>
  </div>`;
