@@ -20,10 +20,10 @@ if (typeof woodPercentage == 'undefined') {
 }
 // percentages for coins, 83000 is how much all 3 is combined
 
-var backgroundColor = "#6c4824";
-var borderColor = "#ffffff";
-var headerColor = "#ffffff";
-var titleColor = "#ffffff";
+var backgroundColor = "#7d510f";
+var borderColor = "#7d510f";
+var headerColor = "#7d510f";
+var titleColor = "#7d510f";
 var langShinko = [
     "Resource sender for flag boost minting",
     "Enter coordinate to send to",
@@ -164,15 +164,15 @@ if (game_data.locale == "pt_BR") {
 cssClassesSophie = `
 <style>
 .sophRowA {
-background-color: #6c4824;
+background-color: #fff5da;
 color: white;
 }
 .sophRowB {
-background-color: #6c4824;
+background-color: #fff5da;
 color: white;
 }
 .sophHeader {
-background-color: #6c4824;
+background-color: #fff5da;
 font-weight: bold;
 color: white;
 }
