@@ -27,7 +27,7 @@
         <div style="margin-bottom: 10px;">
             <b>Nome:</b> ${village.name}<br>
             <b>Coordenadas:</b> <span id="village-coord">${village.coord}</span><br>
-            <b>Pontos:</b> ${TWUtils.formatNumber(village.points)}<br>
+            <b>Pontos:</b> ${village.points.toLocaleString()}<br>
             <b>ID:</b> ${village.id}
         </div>
         <button id="btn-copy" class="btn btn-confirm" style="margin-right: 5px;">Copiar Coordenada</button>
@@ -36,17 +36,21 @@
 
     document.body.appendChild(panel);
 
-    // Botão: Copiar coordenada
+    // Copiar coordenada para a área de transferência
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
-        navigator.clipboard.writeText(coord).then(() => {
-            UI.SuccessMessage(`Coordenada ${coord} copiada!`);
-        }).catch(() => {
-            UI.ErrorMessage('Erro ao copiar coordenada.');
-        });
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(coord).then(() => {
+                UI.SuccessMessage(`Coordenada ${coord} copiada!`);
+            }).catch(() => {
+                UI.ErrorMessage('Erro ao copiar coordenada.');
+            });
+        } else {
+            UI.ErrorMessage('Clipboard não suportado.');
+        }
     });
 
-    // Botão: Fechar painel
+    // Fechar painel
     document.getElementById('btn-close').addEventListener('click', () => {
         panel.remove();
     });
