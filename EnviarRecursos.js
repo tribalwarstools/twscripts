@@ -722,12 +722,5 @@ function sortTableTest(n) {
                 switching = true;
             }
         }
-
-
     }
 }
-
-// Mensagem inicial
-    UI.InfoMessage('Script  ativo!', 3000);
-})();
-
