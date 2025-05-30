@@ -2,8 +2,9 @@
     'use strict';
 
     const panelId = 'twSDK-panel';
-
     if (document.getElementById(panelId)) return;
+
+    const village = game_data.village;
 
     const panel = document.createElement('div');
     panel.id = panelId;
@@ -22,18 +23,30 @@
     `;
 
     panel.innerHTML = `
-        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">Painel Teste</div>
-        <div style="margin-bottom: 10px;">Painel com botões do jogo.</div>
-        <button id="btn-action" class="btn btn-confirm" style="margin-right: 5px;">Executar</button>
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">🏰 Aldeia Atual</div>
+        <div style="margin-bottom: 10px;">
+            <b>Nome:</b> ${village.name}<br>
+            <b>Coordenadas:</b> <span id="village-coord">${village.coord}</span><br>
+            <b>Pontos:</b> ${TWUtils.formatNumber(village.points)}<br>
+            <b>ID:</b> ${village.id}
+        </div>
+        <button id="btn-copy" class="btn btn-confirm" style="margin-right: 5px;">Copiar Coordenada</button>
         <button id="btn-close" class="btn btn-cancel">Fechar</button>
     `;
 
     document.body.appendChild(panel);
 
-    document.getElementById('btn-action').addEventListener('click', () => {
-        UI.InfoMessage('Ação executada com sucesso!', 3000, 'success');
+    // Botão: Copiar coordenada
+    document.getElementById('btn-copy').addEventListener('click', () => {
+        const coord = village.coord;
+        navigator.clipboard.writeText(coord).then(() => {
+            UI.SuccessMessage(`Coordenada ${coord} copiada!`);
+        }).catch(() => {
+            UI.ErrorMessage('Erro ao copiar coordenada.');
+        });
     });
 
+    // Botão: Fechar painel
     document.getElementById('btn-close').addEventListener('click', () => {
         panel.remove();
     });
