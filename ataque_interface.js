@@ -88,13 +88,22 @@ javascript:
         const coordsText = document.getElementById('coords').value.trim();
         if (!coordsText) return alert("Insira pelo menos uma coordenada!");
 
-        const coordsList = coordsText.split(" ").filter(c => c.match(/^\\d{3}\\|\\d{3}$/));
+        const rawCoords = coordsText.split(" ");
+        const coordsList = rawCoords.map(c => c.trim()).filter(Boolean);
+
+        console.log("Coordenadas processadas:", coordsList);
+
         if (coordsList.length === 0) return alert("Nenhuma coordenada válida encontrada!");
 
         let index = parseInt(localStorage.getItem(coordIndexKey) || "0");
         if (index >= coordsList.length) index = 0;
 
-        const [x, y] = coordsList[index].split('|');
+        const coord = coordsList[index];
+        if (!coord.includes('|')) return alert("Coordenada inválida: " + coord);
+
+        const [x, y] = coord.split('|');
+        if (!x || !y) return alert("Erro ao processar coordenada: " + coord);
+
         win.$('input[name=x]').val(x);
         win.$('input[name=y]').val(y);
 
