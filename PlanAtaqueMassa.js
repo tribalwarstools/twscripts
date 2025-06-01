@@ -52,14 +52,14 @@ function init(unitInfo) {
 
     const content = `
 			<div class="ra-mb15">
-				<label for="arrival_time">Arrival Time</label>
+				<label for="arrival_time">Horário de Chegada</label>
 				<input id="arrival_time" type="text" placeholder="yyyy-mm-dd hh:mm:ss" value="${currentDateTime}">
 			</div>
 			<input type="hidden" id="nobleSpeed" value="${unitInfo.config['snob'].speed}" />
 			<div class="ra-flex">
 				<div class="ra-flex-6">
 					<div class="ra-mb15">
-						<label for="nuke_unit">Slowest Nuke unit</label>
+						<label for="nuke_unit">Unidade mais lenta do Ataque</label>
 						<select id="nuke_unit">
 							<option value="${unitInfo.config['axe'].speed}">Axe</option>
 							<option value="${unitInfo.config['light'].speed}">LC/MA/Paladin</option>
@@ -70,7 +70,7 @@ function init(unitInfo) {
 				</div>
 				<div class="ra-flex-6">
 					<div class="ra-mb15">
-						<label for="support_unit">Slowest Support unit</label>
+						<label for="support_unit">Unidade mais lenta do Apoio</label>
 						<select id="support_unit">
 							<option value="${unitInfo.config['spear'].speed}">Spear/Archer</option>
 							<option value="${unitInfo.config['sword'].speed}" selected="selected">Sword</option>
@@ -83,46 +83,46 @@ function init(unitInfo) {
 				</div>
 			</div>
 			<div class="ra-mb15">
-				<label for="target_coords">Targets Coords</label>
+				<label for="target_coords">Coordenadas dos Alvos</label>
 				<textarea id="target_coords"></textarea>
 			</div>
 			<div class="ra-flex">
 				<div class="ra-flex-4">
 					<div class="ra-mb15">
-						<label for="nobel_coords">Nobles Coords</label>
+						<label for="nobel_coords">Coordenadas dos Nobres</label>
 						<textarea id="nobel_coords"></textarea>
 					</div>
 					<div class="ra-mb15">
-						<label for="nobel_count">Nobles per Target</label>
+						<label for="nobel_count">Nobres por Alvo</label>
 						<input id="nobel_count" type="text" value="1">
 					</div>
 				</div>
 				<div class="ra-flex-4">
 					<div class="ra-mb15">
-						<label for="nuke_coords">Nukes Coords</label>
+						<label for="nuke_coords">Coordenadas dos Ataques</label>
 						<textarea id="nuke_coords"></textarea>
 					</div>
 					<div class="ra-mb15">
-						<label for="nuke_count">Nukes per Target</label>
+						<label for="nuke_count">Ataques por Alvo</label>
 						<input id="nuke_count" type="text" value="1">
 					</div>
 				</div>
 				<div class="ra-flex-4">
 					<div class="ra-mb15">
-						<label for="support_coords">Support Coords</label>
+						<label for="support_coords">Coordenadas dos Apoios</label>
 						<textarea id="support_coords"></textarea>
 					</div>
 					<div class="ra-mb15">
-						<label for="support_count">Support per Target</label>
+						<label for="support_count">Apoios por Alvo</label>
 						<input id="support_count" type="text" value="1">
 					</div>
 				</div>
 			</div>
 			<div class="ra-mb15">
-				<a id="submit_btn" class="button" onClick="handleSubmit();">Get Plan!</a>
+				<a id="submit_btn" class="button" onClick="handleSubmit();">Gerar Plano!</a>
 			</div>
 			<div class="ra-mb15">
-				<label for="results">Results</label>
+				<label for="results">Resultados</label>
 				<textarea id="results"></textarea>
 			</div>
 		`;
@@ -136,10 +136,10 @@ function init(unitInfo) {
     attackPlannerWindow.document.write(windowContent);
 }
 
-// Helper: Window Content
+// Ajudaer: Window Content
 function prepareWindowContent(windowBody) {
     const windowHeader = `<h1 class="ra-fs18 ra-fw600">${scriptData.name}</h1>`;
-    const windowFooter = `<small><strong>${scriptData.name} ${scriptData.version}</strong> - <a href="${scriptData.authorUrl}" target="_blank" rel="noreferrer noopener">${scriptData.author}</a> - <a href="${scriptData.helpLink}" target="_blank" rel="noreferrer noopener">Help</a></small>`;
+    const windowFooter = `<small><strong>${scriptData.name} ${scriptData.version}</strong> - <a href="${scriptData.authorUrl}" target="_blank" rel="noreferrer noopener">${scriptData.author}</a> - <a href="${scriptData.helpLink}" target="_blank" rel="noreferrer noopener">Ajuda</a></small>`;
     const windowStyle = `
 		<style>
 			body { background-color: #f4e4bc; font-family: Verdana, Arial, sans-serif; font-size: 14px; line-height: 1; }
@@ -186,8 +186,8 @@ function prepareWindowContent(windowBody) {
 				}
 
 				loadJS('https://code.jquery.com/jquery-3.6.0.min.js', function() {
-					loadJS('https://twscripts.dev/scripts/attackPlannerHelper.js', function() {
-						console.log('Helper libraries loaded!');
+					loadJS('https://twscripts.dev/scripts/attackPlannerAjudaer.js', function() {
+						console.log('Ajudaer libraries loaded!');
 					});
 				});
 			</script>
@@ -198,7 +198,7 @@ function prepareWindowContent(windowBody) {
     return html;
 }
 
-// Helper: Get and format current datetime
+// Ajudaer: Get and format current datetime
 function getCurrentDateTime() {
     let currentDateTime = new Date();
 
@@ -234,7 +234,7 @@ function getCurrentDateTime() {
     return formatted_date;
 }
 
-/* Helper: Fetch World Unit Info */
+/* Ajudaer: Fetch World Unit Info */
 function fetchUnitInfo() {
     jQuery
         .ajax({
@@ -254,7 +254,7 @@ function fetchUnitInfo() {
         });
 }
 
-// Helper: XML to JSON converter
+// Ajudaer: XML to JSON converter
 var xml2json = function ($xml) {
     var data = {};
     $.each($xml.children(), function (i) {
@@ -268,12 +268,12 @@ var xml2json = function ($xml) {
     return data;
 };
 
-// Helper: Generates script info
+// Ajudaer: Generates script info
 function scriptInfo() {
     return `[${scriptData.name} ${scriptData.version}]`;
 }
 
-// Helper: Prints universal debug information
+// Ajudaer: Prints universal debug information
 function initDebug() {
     console.debug(`${scriptInfo()} It works ðŸš€!`);
     console.debug(`${scriptInfo()} HELP:`, scriptData.helpLink);
