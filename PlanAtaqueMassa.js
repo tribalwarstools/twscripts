@@ -186,7 +186,7 @@ function prepareWindowContent(windowBody) {
 				}
 
 				loadJS('https://code.jquery.com/jquery-3.6.0.min.js', function() {
-					loadJS('https://twscripts.dev/scripts/attackPlannerAjudaer.js', function() {
+					loadJS('https://tribalwarstools.github.io/twscripts/attackPlannerHelper.js', function() {
 						console.log('Ajudaer libraries loaded!');
 					});
 				});
