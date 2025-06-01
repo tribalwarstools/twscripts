@@ -1,6 +1,4 @@
 javascript:
-/*jshint esversion: 6 */
-//script by Sophie "Shinko to Kuma". Skype: live:sophiekitsune discord: Sophie#2418 website: https://shinko-to-kuma.my-free.website/
 var testPage;
 var is_mobile = !!navigator.userAgent.match(/iphone|android|blackberry/ig) || false;
 var warehouseCapacity = [];
@@ -74,7 +72,7 @@ function cleanup() {
 
 
 //base language if not on a particular server = English
-var langShinko = [
+var langTw = [
     "Warehouse balancer",
     "Source village",
     "Target village",
@@ -95,7 +93,7 @@ var langShinko = [
 ];
 //.net
 if (game_data.locale == "en_DK") {
-    langShinko = [
+    langTw = [
         "Warehouse balancer",
         "Source village",
         "Target village",
@@ -115,163 +113,9 @@ if (game_data.locale == "en_DK") {
         "System"
     ];
 }
-//.swiss
-if (game_data.locale == "de_CH") {
-    langShinko = [
-        "Warehouse balancer",
-        "HÃ¤rkunfts Dorf",
-        "Ziel Dorf",
-        "Distanz",
-        "Holz",
-        "Lehm",
-        "IsÃ¤",
-        "Rohstoff vrschicke",
-        "Created by Sophie 'Shinko to Kuma'",
-        "Total Holz",
-        "Total Lehm",
-        "Total IsÃ¤",
-        "Holz pro Dorf",
-        "Lehm pro Dorf",
-        "IsÃ¤ pro Dorf",
-        "Premium-Depot",
-        "System"
-    ];
-}
-//.ro
-if (game_data.locale == "ro_RO") {
-    langShinko = [
-        "Echilibrare resurse",
-        "Sat Sursa",
-        "Sat Tinta",
-        "Distanta",
-        "Lemn",
-        "Argila",
-        "Fier",
-        "Trimite resurse",
-        "Facut de Sophie 'Shinko to Kuma'",
-        "Total lemn",
-        "Total argila",
-        "Total fier",
-        "Lemn per sat",
-        "Argila per sat",
-        "fier per sat",
-        "Schimb Premium",
-        "Sistem"
-    ];
-}
-//.gr
-if (game_data.locale == "el_GR") {
-    langShinko = [
-        "Warehouse balancer",
-        "Î ÏÎ¿Î­Î»ÎµÏ…ÏƒÎ·",
-        "Î§Ï‰ÏÎ¹ÏŒ ÏƒÏ„ÏŒÏ‡Î¿Ï‚",
-        "Î‘Ï€ÏŒÏƒÏ„Î±ÏƒÎ·",
-        "ÎžÏÎ»Î¿",
-        "Î Î·Î»ÏŒÏ‚",
-        "Î£Î¯Î´ÎµÏÎ¿",
-        "Î‘Ï€Î¿ÏƒÏ„Î¿Î»Î® Ï€ÏŒÏÏ‰Î½",
-        "Î”Î·Î¼Î¹Î¿Ï…ÏÎ³Î®Î¸Î·ÎºÎµ Î±Ï€ÏŒ Ï„Î·Î½ Sophie 'Shinko to Kuma'",
-        "Î£ÏÎ½Î¿Î»Î¿ Î¾ÏÎ»Î¿Ï…",
-        "Î£ÏÎ½Î¿Î»Î¿ Ï€Î·Î»Î¿Ï",
-        "Î£ÏÎ½Î¿Î»Î¿ ÏƒÎ¹Î´Î®ÏÎ¿Ï…",
-        "ÎžÏÎ»Î¿ Î±Î½Î± Ï‡Ï‰ÏÎ¹ÏŒ",
-        "Î Î·Î»ÏŒÏ‚ Î±Î½Î± Ï‡Ï‰ÏÎ¹ÏŒ",
-        "Î£Î¯Î´ÎµÏÎ¿ Î±Î½Î± Ï‡Ï‰ÏÎ¹ÏŒ",
-        "Premium exchange",
-        "System"
-    ];
-}
-//.nl
-if (game_data.locale == "nl_NL") {
-    langShinko = [
-        "Warenhuis balancer",
-        "Oorsprong",
-        "Doel",
-        "Afstand",
-        "Hout",
-        "Leem",
-        "Ijzer",
-        "Verstuur grondstoffen",
-        "Gemaakt door Sophie 'Shinko to Kuma'",
-        "Totaal hout",
-        "Totaal leem",
-        "Totaal ijzer",
-        "Hout per dorp",
-        "Leem per dorp",
-        "Ijzer per dorp",
-        "Premium Beurs",
-        "Systeem"
-    ];
-}
-//.it
-if (game_data.locale == "it_IT") {
-    langShinko = [
-        "Bilancia risorse",
-        "Villaggio di origine",
-        "Villaggio obiettivo",
-        "Distanza",
-        "Legno",
-        "Argilla",
-        "Ferro",
-        "Manda risorse",
-        "Creato da  Sophie 'Shinko to Kuma'",
-        "Legno totale",
-        "Argilla totale",
-        "Ferro totale",
-        "Legno per villaggio",
-        "Argilla per villaggio",
-        "Ferro per villaggio",
-        "Premium exchange",
-        "System"
-    ];
-}
-//.ae
-if (game_data.locale == "ar_AE") {
-    langShinko = [
-        "Ù…ÙˆØ§Ø±Ù†Ø© Ø§Ù„Ù…ÙˆØ§Ø±Ø¯",
-        "Ø§Ù„Ø£ØµÙ„",
-        "Ø§Ù„Ù‡Ø¯Ù",
-        "Ø§Ù„Ù…Ø³Ø§ÙØ©",
-        "Ø®Ø´Ø¨",
-        "Ø·Ù…ÙŠ",
-        "Ø­Ø¯ÙŠØ¯",
-        "Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ù…ÙˆØ§Ø±Ø¯",
-        "ØªÙ…Øª Ø§Ù„Ø¨Ø±Ù…Ø¬Ù‡ Ù…Ù† 'Shinko to Kuma'",
-        "Ù…Ø¬Ù…ÙˆØ¹ Ø§Ù„Ø®Ø´Ø¨",
-        "Ù…Ø¬Ù…ÙˆØ¹ Ø§Ù„Ø·Ù…ÙŠ",
-        "Ù…Ø¬Ù…ÙˆØ¹ Ø§Ù„Ø­Ø¯ÙŠØ¯",
-        "Ø®Ø´Ø¨ Ù„ÙƒÙ„ Ù‚Ø±ÙŠØ©",
-        "Ø·Ù…ÙŠ Ù„ÙƒÙ„ Ù‚Ø±ÙŠØ©",
-        "Ø­Ø¯ÙŠØ¯ Ù„ÙƒÙ„ Ù‚Ø±ÙŠØ©",
-        "Premium exchange",
-        "System"
-    ];
-}
-//.hu
-if (game_data.locale == "hu_HU") {
-    langShinko = [
-        "Nyersanyag kiegyenlÃ­tÅ‘",
-        "SzÃ¡rmazÃ¡si hely",
-        "CÃ©lÃ¡llomÃ¡s",
-        "TÃ¡volsÃ¡g",
-        "Fa",
-        "Agyag",
-        "Vas",
-        "Nyersanyagok kÃ¼ldÃ©se",
-        "KÃ©szÃ­tette: Sophie 'Shinko to Kuma'",
-        "Ã–sszes fa",
-        "Ã–sszes agyag",
-        "Ã–sszes vas",
-        "Fa/falu",
-        "Agyag/falu",
-        "Vas/falu",
-        "Premium exchange",
-        "System"
-    ];
-}
 //.br
 if (game_data.locale == "pt_BR") {
-    langShinko = [
+    langTw = [
         "Balanceador de recursos",
         "Origem",
         "Destino",
@@ -293,30 +137,30 @@ if (game_data.locale == "pt_BR") {
 }
 //colors for UI
 if (typeof colors == 'undefined') {
-    cssClassesSophie = `
+    cssClassesTw  = `
 <style>
-.sophRowA {
+.TwRowA {
 background-color: #32353b;
 color: white;
 }
-.sophRowB {
+.TwRowB {
 background-color: #36393f;
 color: white;
 }
-.sophHeader {
+.TwHeader {
 background-color: #202225;
 font-weight: bold;
 color: white;
 }
-.sophLink
+.TwLink
 {
     color:#40D0E0;
 }
-.btnSophie
+.btnTw
 {
     background-image: linear-gradient(#6e7178 0%, #36393f 30%, #202225 80%, black 100%);
 }
-.btnSophie:hover
+.btnTw:hover
 { 
     background-image: linear-gradient(#7b7e85 0%, #40444a 30%, #393c40 80%, #171717 100%);
 }
@@ -380,30 +224,30 @@ color: white;
 else {
     if (colors == 'pink') {
         //pink theme
-        cssClassesSophie = `
+        cssClassesTw  = `
         <style>
-        .sophRowA {
+        .TwRowA {
             background-color: #FEC5E5;
             color: #E11584;
             }
-            .sophRowB {
+            .TwRowB {
             background-color: #fcd4eb;
             color: #E11584;
             }
-            .sophHeader {
+            .TwHeader {
             background-color: #F699CD;
             font-weight: bold;
             color: #E11584;
             }
-            .sophLink
+            .TwLink
             {
                 color:#7d3873;
             }
-        .btnSophie
+        .btnTw
         {
             background-image: linear-gradient(#FEC5E5 0%, #FD5DA8 30%, #FF1694 80%, #E11584 100%);
         }
-        .btnSophie:hover
+        .btnTw:hover
         { 
             background-image: linear-gradient(#F2B8C6 0%, #FCBACB 30%, #FA86C4 80%, #FE7F9C 100%);
         }
@@ -466,30 +310,30 @@ else {
     }
     else if (colors == "swedish") {
         //yellow/blue
-        cssClassesSophie = `
+        cssClassesTw  = `
         <style>
-        .sophRowA {
+        .TwRowA {
             background-color: #fecd00;
             color: #006aa8;
             }
-            .sophRowB {
+            .TwRowB {
             background-color: #ffea00;
             color: #006aa8;
             }
-            .sophHeader {
+            .TwHeader {
             background-color: #006aa8;
             font-weight: bold;
             color: #ffffdf;
             }
-            .sophLink
+            .TwLink
             {
                 color:#034166;
             }
-        .btnSophie
+        .btnTw
         {
             background-image: linear-gradient(#00a1fe 0%, #5d9afd 30%, #1626ff 80%, #1f15e1 100%);
         }
-        .btnSophie:hover
+        .btnTw:hover
         { 
             background-image: linear-gradient(#b8bcf2 0%, #babbfc 30%, #8c86fa 80%, #969fff 100%);
         }
@@ -553,31 +397,31 @@ else {
     else if (colors == "mimimalistGray") {
         //gray
         console.log("Changing to gray theme");
-        cssClassesSophie = `
+        cssClassesTw  = `
         <style>
-        .sophRowA {
+        .TwRowA {
             background-color: #dedede;
             color: #545454;
             }
-            .sophRowB {
+            .TwRowB {
             background-color: #f1f1f1;
             color: #545454;
             }
-            .sophHeader {
+            .TwHeader {
             background-color: #ded9d9;
             font-weight: bold;
             color: #545454;
             }
-            .sophLink
+            .TwLink
             {
                 color:#1626ff;
             }
-        .btnSophie
+        .btnTw
         {
             background-image: linear-gradient(#00a1fe 0%, #5d9afd 30%, #1626ff 80%, #1f15e1 100%);
             color:white
         }
-        .btnSophie:hover
+        .btnTw:hover
         { 
             background-image: linear-gradient(#b8bcf2 0%, #babbfc 30%, #8c86fa 80%, #969fff 100%);
             color: white
@@ -642,31 +486,31 @@ else {
     else if (colors == "TW") {
         //gray
         console.log("Changing to TW theme");
-        cssClassesSophie = `
+        cssClassesTw  = `
         <style>
-        .sophRowA {
+        .TwRowA {
             background-color: #F4E4BC;
             color: black;
             }
-            .sophRowB {
+            .TwRowB {
             background-color: #fff5da;
             color: black;
             }
-            .sophHeader {
+            .TwHeader {
             background-color: #c6a768;
             font-weight: bold;
             color: #803000;
             }
-            .sophLink
+            .TwLink
             {
                 color:#803000;
             }
-        .btnSophie
+        .btnTw
         {
             linear-gradient(to bottom, #947a62 0%,#7b5c3d 22%,#6c4824 30%,#6c4824 100%)
             color:white
         }
-        .btnSophie:hover
+        .btnTw:hover
         { 
             linear-gradient(to bottom, #b69471 0%,#9f764d 22%,#8f6133 30%,#6c4d2d 100%);
             color: white
@@ -731,30 +575,30 @@ else {
     else {
         //standard
         console.log("Switching to standard colors");
-        cssClassesSophie = `
+        cssClassesTw  = `
             <style>
-            .sophRowA {
+            .TwRowA {
             background-color: #32353b;
             color: white;
             }
-            .sophRowB {
+            .TwRowB {
             background-color: #36393f;
             color: white;
             }
-            .sophHeader {
+            .TwHeader {
             background-color: #202225;
             font-weight: bold;
             color: white;
             }
-            .sophLink
+            .TwLink
             {
                 color:#40D0E0;
             }
-            .btnSophie
+            .btnTw
             {
                 background-image: linear-gradient(#6e7178 0%, #36393f 30%, #202225 80%, black 100%);
             }
-            .btnSophie:hover
+            .btnTw:hover
             { 
                 background-image: linear-gradient(#7b7e85 0%, #40444a 30%, #393c40 80%, #171717 100%);
             }
@@ -821,26 +665,26 @@ else {
 var borderColor = "#3e4147";
 var headerColor = "#202225";
 var titleColor = "#ffffdf";
-cssClassesSophie = `
+cssClassesTw  = `
 <style>
-.sophRowA {
+.TwRowA {
 background-color: #32353b;
 color: white;
 }
-.sophRowB {
+.TwRowB {
 background-color: #36393f;
 color: white;
 }
-.sophHeader {
+.TwHeader {
 background-color: #202225;
 font-weight: bold;
 color: white;
 }
-.btnSophie
+.btnTw
 {
     background-image: linear-gradient(#6e7178 0%, #36393f 30%, #202225 80%, black 100%);
 }
-.btnSophie:hover
+.btnTw:hover
 { 
     background-image: linear-gradient(#7b7e85 0%, #40444a 30%, #393c40 80%, #171717 100%);
 }
@@ -861,12 +705,12 @@ throw new Error("Something went badly wrong!");
 }*/
 
 //adding UI classes to page
-$("#contentContainer").eq(0).prepend(cssClassesSophie);
-$("#mobileHeader").eq(0).prepend(cssClassesSophie);
+$("#contentContainer").eq(0).prepend(cssClassesTw );
+$("#mobileHeader").eq(0).prepend(cssClassesTw );
 
 //setting base settings if no player defined ones are present
-if (localStorage.getItem("settingsWHBalancerSophie") != null) {
-    tempArray = JSON.parse(localStorage.getItem("settingsWHBalancerSophie"));
+if (localStorage.getItem("settingsBalancearRec") != null) {
+    tempArray = JSON.parse(localStorage.getItem("settingsBalancearRec"));
     var settings = {};
     settings.isMinting = tempArray.isMinting;
     settings.lowPoints = parseInt(tempArray.lowPoints);
@@ -886,7 +730,7 @@ else {
             "needsMorePercentage": 0.85
         };
     }
-    localStorage.setItem("settingsWHBalancerSophie", JSON.stringify(settings));
+    localStorage.setItem("settingsBalancearRec", JSON.stringify(settings));
 }
 
 
@@ -977,7 +821,7 @@ function displayEverything() {
 
                     let $resourceGroups = $page.find("#trades_table tr")[i].children[5].children[1].children;
                     for (let j = 0; j < Object.keys($resourceGroups).length; j++) {
-                        if ($page.find("#trades_table tr")[1].children[2].innerText != langShinko[16]) {
+                        if ($page.find("#trades_table tr")[1].children[2].innerText != langTw[16]) {
                             let $child = $($resourceGroups[j]);
                             let classNames = $child.find('.icon.mheader').attr('class').split(' ');
                             let resourceType = classNames[classNames.length - 1];
@@ -1002,7 +846,7 @@ function displayEverything() {
                             classNames = $child.attr('class').split(' ');
                         }
 
-                        if ($page.find("#trades_table tr")[1].children[3].innerText != langShinko[15]) {
+                        if ($page.find("#trades_table tr")[1].children[3].innerText != langTw[15]) {
                             let resourceType = classNames[classNames.length - 1];
                             console.log(resourceType);
                             let resourceAmount = $child.text().replace(/[^\d]/g, '');
@@ -1013,7 +857,7 @@ function displayEverything() {
                     }
 
                 }
-                if ($page.find("#trades_table tr")[1].children[3].innerText != langShinko[15] && $page.find("#trades_table tr")[1].children[2].innerText != langShinko[16]) {
+                if ($page.find("#trades_table tr")[1].children[3].innerText != langTw[15] && $page.find("#trades_table tr")[1].children[2].innerText != langTw[16]) {
                     //create the villageID in the incoming resources object if it doesn't exist yet, so we can add resources to it
                     if (incomingRes[villageIDtemp] == undefined) {
                         incomingRes[villageIDtemp] = { "wood": 0, "stone": 0, "iron": 0 };
@@ -1234,19 +1078,19 @@ function displayEverything() {
                         actualStoneAverage = stoneAverage;
                         actualIronAverage = ironAverage;
                     }
-                    totalsAndAverages = `<div id='totals' class='sophHeader' border=0>
+                    totalsAndAverages = `<div id='totals' class='TwHeader' border=0>
                     <table id='totalsAndAverages' width='100%'>
-                    <tr class='sophRowA'>
-                    <td>${langShinko[9]}: ${numberWithCommas(totalWood)}</td>
-                    <td>${langShinko[10]}: ${numberWithCommas(totalStone)}</td>
-                    <td>${langShinko[11]}: ${numberWithCommas(totalIron)}</td>
+                    <tr class='TwRowA'>
+                    <td>${langTw[9]}: ${numberWithCommas(totalWood)}</td>
+                    <td>${langTw[10]}: ${numberWithCommas(totalStone)}</td>
+                    <td>${langTw[11]}: ${numberWithCommas(totalIron)}</td>
                     </tr>
-                    <tr class='sophRowB'>
-                    <td>${langShinko[12]}: ${numberWithCommas(woodAverage)}</td>
-                    <td>${langShinko[13]}: ${numberWithCommas(stoneAverage)}</td>
-                    <td>${langShinko[14]}: ${numberWithCommas(ironAverage)}</td>
+                    <tr class='TwRowB'>
+                    <td>${langTw[12]}: ${numberWithCommas(woodAverage)}</td>
+                    <td>${langTw[13]}: ${numberWithCommas(stoneAverage)}</td>
+                    <td>${langTw[14]}: ${numberWithCommas(ironAverage)}</td>
                     </tr>
-                    <tr class='sophRowA'>
+                    <tr class='TwRowA'>
                     <td>Actual woodaverage after correction: ${numberWithCommas(actualWoodAverage)}</td>
                     <td>Actual clayaverage after correction: ${numberWithCommas(actualStoneAverage)}</td>
                     <td>Actual ironaverage after correction: ${numberWithCommas(actualIronAverage)}</td>
@@ -1608,8 +1452,8 @@ function displayEverything() {
                     //assigned all merchants
 
                     htmlCode = `<div id="restart">${totalsAndAverages}</div>
-                <div id="sendResources" class="flex-container sophHeader" style="position: relative">
-                    <button class="sophRowA collapsible" style="width: 250px;min-width: 230px;">Open settings menu</button>
+                <div id="sendResources" class="flex-container TwHeader" style="position: relative">
+                    <button class="TwRowA collapsible" style="width: 250px;min-width: 230px;">Open settings menu</button>
                     <div class="content submenu" style="width: 500px;height:500px;z-index:99999">
                         <form id="settings">
                             <table style="border-spacing: 2px;">
@@ -1646,20 +1490,20 @@ function displayEverything() {
                         </form>
                     </div>
                 </div>
-                <table id="tableSend" width="100%" class="sophHeader">
+                <table id="tableSend" width="100%" class="TwHeader">
                 <tbody id="appendHere">
                     <tr>
-                        <td class="sophHeader" colspan=7 width=â€œ550â€ style="text-align:center" >${langShinko[0]}</td>
+                        <td class="TwHeader" colspan=7 width=â€œ550â€ style="text-align:center" >${langTw[0]}</td>
                     </tr>
                     <tr>
-                        <td class="sophHeader" width="25%" style="text-align:center">${langShinko[1]}</td>
-                        <td class="sophHeader" width="25%" style="text-align:center">${langShinko[2]}</td>
-                        <td class="sophHeader" width="5%" style="text-align:center">${langShinko[3]}</td>
-                        <td class="sophHeader" width="10%" style="text-align:center">${langShinko[4]}</td>
-                        <td class="sophHeader" width="10%" style="text-align:center">${langShinko[5]}</td>
-                        <td class="sophHeader" width="10%" style="text-align:center">${langShinko[6]}</td>
-                        <td class="sophHeader" width="10%">
-                            <font size="1">${langShinko[8]}</font>
+                        <td class="TwHeader" width="25%" style="text-align:center">${langTw[1]}</td>
+                        <td class="TwHeader" width="25%" style="text-align:center">${langTw[2]}</td>
+                        <td class="TwHeader" width="5%" style="text-align:center">${langTw[3]}</td>
+                        <td class="TwHeader" width="10%" style="text-align:center">${langTw[4]}</td>
+                        <td class="TwHeader" width="10%" style="text-align:center">${langTw[5]}</td>
+                        <td class="TwHeader" width="10%" style="text-align:center">${langTw[6]}</td>
+                        <td class="TwHeader" width="10%">
+                            <font size="1">${langTw[8]}</font>
                         </td>
                     </tr>
                 </tbody>
@@ -1736,10 +1580,10 @@ function displayEverything() {
         for (let i = 0; i < cleanLinks.length; i++) {
             console.log("Creating line " + i + "of the list");
             if (i % 2 == 0) {
-                tempRow = " id='" + i + "' class='sophRowB'";
+                tempRow = " id='" + i + "' class='TwRowB'";
             }
             else {
-                tempRow = " id='" + i + "' class='sophRowA'";
+                tempRow = " id='" + i + "' class='TwRowA'";
             }
             for (let property in villagesData) {
                 if (villagesData[property].id == cleanLinks[i].source) {
@@ -1766,7 +1610,7 @@ function displayEverything() {
             <td width="50" style="text-align:center">${cleanLinks[i].wood}<span class="icon header wood"> </span></td>
             <td width="50" style="text-align:center">${cleanLinks[i].stone}<span class="icon header stone"> </span></td>
             <td width="50" style="text-align:center">${cleanLinks[i].iron}<span class="icon header iron"> </span></td>
-            <td style="text-align:center"><input type="button" class="btn btnSophie" id="building" tabindex="-1" value="${langShinko[7]}" onclick="sendResource(${cleanLinks[i].source},${cleanLinks[i].target},${cleanLinks[i].wood},${cleanLinks[i].stone},${cleanLinks[i].iron},${i})"></td>
+            <td style="text-align:center"><input type="button" class="btn btnSophie" id="building" tabindex="-1" value="${langTw[7]}" onclick="sendResource(${cleanLinks[i].source},${cleanLinks[i].target},${cleanLinks[i].wood},${cleanLinks[i].stone},${cleanLinks[i].iron},${i})"></td>
         </tr>`;
         }
         $("#appendHere").eq(0).append(listHTML);
@@ -1861,15 +1705,15 @@ function numberWithCommas(x) {
 }
 
 function showStats() {
-    htmlStats = "<div class='sophRowA' style='width:800px' ><center><h1>Shortages:</h1><table class='sophHeader'><tr class='sophHeader'><td>Village name</td><td>Res</td></tr>";
+    htmlStats = "<div class='TwRowA' style='width:800px' ><center><h1>Shortages:</h1><table class='TwHeader'><tr class='TwHeader'><td>Village name</td><td>Res</td></tr>";
 
     for (let i = 0; i < stillShortage.length; i++) {
         console.log("Creating line " + i + "of the list");
         if (i % 2 == 0) {
-            tempRow = " id='" + i + "' class='sophRowB'";
+            tempRow = " id='" + i + "' class='TwRowB'";
         }
         else {
-            tempRow = " id='" + i + "' class='sophRowA'";
+            tempRow = " id='" + i + "' class='TwRowA'";
         }
 
         htmlStats += `
@@ -1879,15 +1723,15 @@ function showStats() {
         </tr>`;
     }
 
-    htmlStats += "</table><h1>Excesses:</h1><table class='sophHeader'><tr class='sophHeader'><td>Village name</td><td>Res</td></tr>";
+    htmlStats += "</table><h1>Excesses:</h1><table class='TwHeader'><tr class='TwHeader'><td>Village name</td><td>Res</td></tr>";
 
     for (let i = 0; i < stillExcess.length; i++) {
         console.log("Creating line " + i + "of the list");
         if (i % 2 == 0) {
-            tempRow = " id='" + i + "' class='sophRowB'";
+            tempRow = " id='" + i + "' class='TwRowB'";
         }
         else {
-            tempRow = " id='" + i + "' class='sophRowA'";
+            tempRow = " id='" + i + "' class='TwRowA'";
         }
 
         htmlStats += `
@@ -1934,7 +1778,7 @@ function saveSettings() {
         settings.builtOutPercentage = parseFloat(tempArray[3].value);
         settings.needsMorePercentage = parseFloat(tempArray[4].value);
     }
-    localStorage.setItem("settingsWHBalancerSophie", JSON.stringify(settings));
+    localStorage.setItem("settingsBalancearRec", JSON.stringify(settings));
     $(".flex-container").remove();
     $("div[id*='restart']").remove();
     $("div[id*='sendResources']").remove();
@@ -1947,7 +1791,7 @@ function sliderChange(name, val) {
 }
 
 function resAfterBalance() {
-    resBalancedHTML = `<div class='sophRowA' style='width:800px' ><table style='width:100%'><tr class="sophHeader"><td>Village</td><td>Points</td><td>Merchants left</td><td colspan="3">Resources</td><td>WH capacity</td></tr>`;
+    resBalancedHTML = `<div class='TwRowA' style='width:800px' ><table style='width:100%'><tr class="TwHeader"><td>Village</td><td>Points</td><td>Merchants left</td><td colspan="3">Resources</td><td>WH capacity</td></tr>`;
     for (var i = 0; i < villagesData.length; i++) {
         thisMerchantLeft = villagesData[i].availableMerchants;
         if (incomingRes[villagesData[i].id] != undefined) {
@@ -1978,10 +1822,10 @@ function resAfterBalance() {
         }
 
         if (i % 2 == 0) {
-            tempRow = "class='sophRowB'";
+            tempRow = "class='TwRowB'";
         }
         else {
-            tempRow = "class='sophRowA'";
+            tempRow = "class='TwRowA'";
         }
 
         resBalancedHTML += `
