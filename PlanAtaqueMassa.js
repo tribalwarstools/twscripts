@@ -62,9 +62,9 @@ function init(unitInfo) {
 						<label for="nuke_unit">Unidade mais lenta do Ataque</label>
 						<select id="nuke_unit">
 							<option value="${unitInfo.config['axe'].speed}">Machado</option>
-							<option value="${unitInfo.config['light'].speed}">Cav. Leve / Arqueiro Montado / Paladinoo</option>
-							<option value="${unitInfo.config['heavy'].speed}">Cav. Pesado</option>
-							<option value="${unitInfo.config['ram'].speed}" selected="selected">Ariete / Catapultaapulta</option>
+							<option value="${unitInfo.config['light'].speed}">Cav. Leve / Arqueiro Montado / Paladino</option>
+							<option value="${unitInfo.config['heavy'].speed}">Cav. Pesada</option>
+							<option value="${unitInfo.config['ram'].speed}" selected="selected">Ariete / Catapulta</option>
 						</select>
 					</div>
 				</div>
@@ -74,9 +74,9 @@ function init(unitInfo) {
 						<select id="support_unit">
 							<option value="${unitInfo.config['spear'].speed}">Lança / Arqueiro</option>
 							<option value="${unitInfo.config['sword'].speed}" selected="selected">Espada</option>
-							<option value="${unitInfo.config['spy'].speed}">Espião</option>
+							<option value="${unitInfo.config['spy'].speed}">Explorador</option>
 							<option value="${knightSpeed}" data-option-unit="knight">Paladino</option>
-							<option value="${unitInfo.config['heavy'].speed}">Cav. Pesado</option>
+							<option value="${unitInfo.config['heavy'].speed}">Cav. Pesada</option>
 							<option value="${unitInfo.config['catapult'].speed}">Catapulta</option>
 						</select>
 					</div>
