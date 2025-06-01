@@ -1,26 +1,9 @@
-/*
- * Script Name: Single Village Planner
- * Version: v2.1.1
- * Last Updated: 2025-04-23
- * Author: RedAlert
- * Author URL: https://twscripts.dev/
- * Author Contact: redalert_tw (Discord)
- * Approved: t14559753
- * Approved Date: 2021-02-11
- * Mod: JawJaw
- */
-
-/*--------------------------------------------------------------------------------------
- * This script can NOT be cloned and modified without permission from the script author.
- --------------------------------------------------------------------------------------*/
-
 var scriptData = {
-    name: 'Single Village Planner',
-    version: 'v2.1.1',
-    author: 'RedAlert',
-    authorUrl: 'https://twscripts.dev/',
-    helpLink:
-        'https://forum.tribalwars.net/index.php?threads/single-village-planner.286667/',
+    name: '',
+    version: '',
+    author: '',
+    authorUrl: '',
+    helpLink:'',
 };
 
 // User Input
