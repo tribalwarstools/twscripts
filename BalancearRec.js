@@ -149,7 +149,7 @@ if (typeof colors == 'undefined') {
             }
             .TwHeader {
             background-color: #c6a768;
-            font-weight: bold;
+            font-weight: normal;
             color: #803000;
             }
             .TwLink
@@ -185,7 +185,7 @@ if (typeof colors == 'undefined') {
             .collapsible:after {
             content: '+';
             color: white;
-            font-weight: bold;
+            font-weight: normal;
             float: right;
             margin-left: 5px;
             }
@@ -238,7 +238,7 @@ else {
             }
             .TwHeader {
             background-color: #c6a768;
-            font-weight: bold;
+            font-weight: normal;
             color: #803000;
             }
             .TwLink
@@ -274,7 +274,7 @@ else {
             .collapsible:after {
             content: '+';
             color: white;
-            font-weight: bold;
+            font-weight: normal;
             float: right;
             margin-left: 5px;
             }
@@ -326,7 +326,7 @@ else {
             }
             .TwHeader {
             background-color: #c6a768;
-            font-weight: bold;
+            font-weight: normal;
             color: #803000;
             }
             .TwLink
@@ -362,7 +362,7 @@ else {
             .collapsible:after {
             content: '+';
             color: white;
-            font-weight: bold;
+            font-weight: normal;
             float: right;
             margin-left: 5px;
             }
@@ -415,7 +415,7 @@ else {
             }
             .TwHeader {
             background-color: #c6a768;
-            font-weight: bold;
+            font-weight: normal;
             color: #803000;
             }
             .TwLink
@@ -451,7 +451,7 @@ else {
             .collapsible:after {
             content: '+';
             color: white;
-            font-weight: bold;
+            font-weight: normal;
             float: right;
             margin-left: 5px;
             }
@@ -504,7 +504,7 @@ else {
             }
             .TwHeader {
             background-color: #c6a768;
-            font-weight: bold;
+            font-weight: normal;
             color: #803000;
             }
             .TwLink
@@ -540,7 +540,7 @@ else {
             .collapsible:after {
             content: '+';
             color: white;
-            font-weight: bold;
+            font-weight: normal;
             float: right;
             margin-left: 5px;
             }
@@ -596,7 +596,7 @@ color: white;
 }
 .TwHeader {
 background-color: #202225;
-font-weight: bold;
+font-weight: normal;
 color: white;
 }
 .btnTw
