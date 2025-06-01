@@ -144,7 +144,7 @@ if (typeof colors == 'undefined') {
             color: black;
             }
             .TwRowB {
-            background-color: ##fff5da;
+            background-color: #fff5da;
             color: black;
             }
             .TwHeader {
@@ -229,11 +229,11 @@ else {
         cssClassesTw  = `
                 <style>
         .TwRowA {
-            background-color: #c6a768;
+            background-color: #f4e4bc;
             color: black;
             }
             .TwRowB {
-            background-color: #c6a768;
+            background-color: #fff5da;
             color: black;
             }
             .TwHeader {
