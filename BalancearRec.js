@@ -140,7 +140,7 @@ if (typeof colors == 'undefined') {
     cssClassesTw  = `
 <style>
 .TwRowA {
-background-color: #32353b;
+background-color: #f4e4bc;
 color: white;
 }
 .TwRowB {
