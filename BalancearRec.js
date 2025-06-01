@@ -140,7 +140,7 @@ if (typeof colors == 'undefined') {
     cssClassesTw  = `
         <style>
         .TwRowA {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: black;
             }
             .TwRowB {
@@ -167,7 +167,7 @@ if (typeof colors == 'undefined') {
             color: white
         }
         .collapsible {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: white;
             cursor: pointer;
             padding: 10px;
@@ -229,7 +229,7 @@ else {
         cssClassesTw  = `
                 <style>
         .TwRowA {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: black;
             }
             .TwRowB {
@@ -256,7 +256,7 @@ else {
             color: white
         }
         .collapsible {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: white;
             cursor: pointer;
             padding: 10px;
@@ -317,7 +317,7 @@ else {
         cssClassesTw  = `
                 <style>
         .TwRowA {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: black;
             }
             .TwRowB {
@@ -344,7 +344,7 @@ else {
             color: white
         }
         .collapsible {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: white;
             cursor: pointer;
             padding: 10px;
@@ -406,7 +406,7 @@ else {
         cssClassesTw  = `
                 <style>
         .TwRowA {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: black;
             }
             .TwRowB {
@@ -433,7 +433,7 @@ else {
             color: white
         }
         .collapsible {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: white;
             cursor: pointer;
             padding: 10px;
@@ -495,7 +495,7 @@ else {
         cssClassesTw  = `
                     <style>
         .TwRowA {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: black;
             }
             .TwRowB {
@@ -522,7 +522,7 @@ else {
             color: white
         }
         .collapsible {
-            background-color: #F4E4BC;
+            background-color: #c6a768;
             color: white;
             cursor: pointer;
             padding: 10px;
