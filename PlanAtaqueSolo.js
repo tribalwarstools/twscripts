@@ -1,9 +1,26 @@
+/*
+ * Script Name: Single Village Planner
+ * Version: v2.1.1
+ * Last Updated: 2025-04-23
+ * Author: RedAlert
+ * Author URL: https://twscripts.dev/
+ * Author Contact: redalert_tw (Discord)
+ * Approved: t14559753
+ * Approved Date: 2021-02-11
+ * Mod: JawJaw
+ */
+
+/*--------------------------------------------------------------------------------------
+ * This script can NOT be cloned and modified without permission from the script author.
+ --------------------------------------------------------------------------------------*/
+
 var scriptData = {
-    name: '',
-    version: '',
-    author: '',
-    authorUrl: '',
-    helpLink: '',
+    name: 'Single Village Planner',
+    version: 'v2.1.1',
+    author: 'RedAlert',
+    authorUrl: 'https://twscripts.dev/',
+    helpLink:
+        'https://forum.tribalwars.net/index.php?threads/single-village-planner.286667/',
 };
 
 // User Input
@@ -18,6 +35,323 @@ var LAST_UPDATED_TIME = localStorage.getItem(`${LS_PREFIX}_last_updated`) ?? 0;
 // Globals
 var unitInfo,
     troopCounts = [];
+
+// Translations
+var translations = {
+    en_DK: {
+        'Single Village Planner': 'Single Village Planner',
+        Help: 'Help',
+        'This script can only be run on a single village screen!':
+            'This script can only be run on a single village screen!',
+        Village: 'Village',
+        'Calculate Launch Times': 'Calculate Launch Times',
+        Reset: 'Reset',
+        'Launch times are being calculated ...':
+            'Launch times are being calculated ...',
+        'Missing user input!': 'Missing user input!',
+        'Landing Time': 'Landing Time',
+        'This village has no unit selected!':
+            'This village has no unit selected!',
+        'Prio.': 'Prio.',
+        'No possible combinations found!': 'No possible combinations found!',
+        'Export Plan as BB Code': 'Export Plan as BB Code',
+        'Plan for:': 'Plan for:',
+        'Landing Time:': 'Landing Time:',
+        Unit: 'Unit',
+        'Launch Time': 'Launch Time',
+        Command: 'Command',
+        Status: 'Status',
+        Send: 'Send',
+        From: 'From',
+        Priority: 'Priority',
+        'Early send': 'Early send',
+        'Landing time was updated!': 'Landing time was updated!',
+        'Error fetching village groups!': 'Error fetching village groups!',
+        'Dist.': 'Dist.',
+        'Villages list could not be fetched!':
+            'Villages list could not be fetched!',
+        Group: 'Group',
+        'Export Plan without tables': 'Export Plan without tables',
+        'Chosen group was reset!': 'Chosen group was reset!',
+        'Reset Chosen Group': 'Reset Chosen Group',
+        'Script configuration was reset!': 'Script configuration was reset!',
+    },
+    sk_SK: {
+        'Single Village Planner': 'PlÃ¡novaÄ pre jednu dedinu',
+        Help: 'Pomoc',
+        'This script can only be run on a single village screen!':
+            'Tento skript sa dÃ¡ spustiÅ¥ iba v nÃ¡hÄ¾ade dediny z mapy',
+        Village: 'Dedina',
+        'Calculate Launch Times': 'VÃ½poÄet Äasov odoslania',
+        Reset: 'Reset',
+        'Launch times are being calculated ...':
+            'ÄŒasy odoslania sa vypoÄÃ­tavajÃº ...',
+        'Missing user input!': 'ChÃ½ba oznaÄenie jednotiek!',
+        'Landing Time': 'ÄŒas dopadu',
+        'This village has no unit selected!':
+            'TÃ¡to dedina nemÃ¡ oznaÄenÃº jednotku!',
+        'Prio.': 'Prio.',
+        'No possible combinations found!':
+            'Å½iadne moÅ¾nÃ© kombinÃ¡cie sa nenaÅ¡li!',
+        'Export Plan as BB Code': 'ExportovaÅ¥ PlÃ¡n ako BB KÃ³dy',
+        'Plan for:': 'PlÃ¡n pre:',
+        'Landing Time:': 'ÄŒas dopadu:',
+        Unit: 'Jednotka',
+        'Launch Time': 'ÄŒas odoslania:',
+        Command: 'PrÃ­kaz',
+        Status: 'Stav',
+        Send: 'OdoslaÅ¥',
+        From: 'Z',
+        Priority: 'Priorita',
+        'Early send': 'SkorÃ© odoslanie',
+        'Landing time was updated!': 'ÄŒas dopadu aktualizovanÃ½!',
+        'Error fetching village groups!': 'Chyba pri naÄÃ­tanÃ­ skupiny dedÃ­n',
+        'Dist.': 'VzdialenosÅ¥',
+        'Villages list could not be fetched!':
+            'Villages list could not be fetched!',
+        Group: 'Group',
+        'Export Plan without tables': 'Export Plan without tables',
+        'Chosen group was reset!': 'Chosen group was reset!',
+        'Reset Chosen Group': 'Reset Chosen Group',
+        'Script configuration was reset!': 'Script configuration was reset!',
+    },
+    nl_NL: {
+        'Single Village Planner': 'Enkel Dorp Planner',
+        Help: 'Help',
+        'This script can only be run on a single village screen!':
+            'Het script kan enkel worden uitgevoerd op het dorpsoverzicht via de kaart!',
+        Village: 'Dorp',
+        'Calculate Launch Times': 'Bereken verzendtijden',
+        Reset: 'Reset',
+        'Launch times are being calculated ...':
+            'Verzendtijden worden berekend ...',
+        'Missing user input!': 'Mis spelersinvoer!',
+        'Landing Time': 'Landingstijd',
+        'This village has no unit selected!':
+            'Dit dorp heeft geen troepen geselecteerd!',
+        'Prio.': 'Prioriteit.',
+        'No possible combinations found!': 'Geen mogelijkheden gevonden!',
+        'Export Plan as BB Code': 'Exporteer plan als BB Code',
+        'Plan for:': 'Plan voor:',
+        'Landing Time:': 'Landingstijd:',
+        Unit: 'Eenheid',
+        'Launch Time': 'Verzendtijd',
+        Command: 'Bevel',
+        Status: 'Status',
+        Send: 'Zend',
+        From: 'Van',
+        Priority: 'Prioriteit',
+        'Early send': 'Vroeg verzenden',
+        'Landing time was updated!': 'Aankomsttijd is geupdate!',
+        'Error fetching village groups!':
+            'Fout met ophalen van dorpen uit groep!',
+        'Dist.': 'Afstand',
+        'Villages list could not be fetched!':
+            'Villages list could not be fetched!',
+        Group: 'Group',
+        'Export Plan without tables': 'Export Plan without tables',
+        'Chosen group was reset!': 'Chosen group was reset!',
+        'Reset Chosen Group': 'Reset Chosen Group',
+        'Script configuration was reset!': 'Script configuration was reset!',
+    },
+    el_GR: {
+        'Single Village Planner': 'Î‘Ï„Î¿Î¼Î¹ÎºÏŒ Î Î»Î¬Î½Î¿ Î§Ï‰ÏÎ¹Î¿Ï',
+        Help: 'Î’Î¿Î®Î¸ÎµÎ¹Î±',
+        'This script can only be run on a single village screen!':
+            'Î‘Ï…Ï„Î¿ Ï„Î¿ Script Ï„ÏÎ­Ï‡ÎµÎ¹ Î±Ï€Î¿ Î Î»Î·ÏÎ¿Ï†Î¿ÏÎ¯ÎµÏ‚ Î§Ï‰ÏÎ¹Î¿Ï!',
+        Village: 'Î§Ï‰ÏÎ¹ÏŒ',
+        'Calculate Launch Times': 'Î¥Ï€Î¿Î»ÏŒÎ³Î¹ÏƒÎµ ÎÏÎ± Î•ÎºÎºÎ¯Î½Î·ÏƒÎ·Ï‚',
+        Reset: 'Î•Ï€Î±Î½Î±Ï†Î¿ÏÎ¬',
+        'Launch times are being calculated ...':
+            'ÎŸÎ¹ Ï‡ÏÏŒÎ½Î¿Î¹ ÎµÎºÎºÎ¯Î½Î·ÏƒÎ·Ï‚ Ï…Ï€Î¿Î»Î¿Î³Î¯Î¶Î¿Î½Ï„Î±Î¹ ...',
+        'Missing user input!': 'Î›ÎµÎ¯Ï€Î¿Ï…Î½ Ï„Î± Î´ÎµÎ´Î¿Î¼Î­Î½Î±!',
+        'Landing Time': 'ÎÏÎ± Î¬Ï†Î¹Î¾Î·Ï‚',
+        'This village has no unit selected!':
+            'Î¤Î¿ Ï‡Ï‰ÏÎ¹ÏŒ Î´ÎµÎ½ Î­Ï‡ÎµÎ¹ ÎµÏ€Î¹Î»ÎµÎ³Î¼Î­Î½ÎµÏ‚ Î¼Î¿Î½Î¬Î´ÎµÏ‚!',
+        'Prio.': 'Î ÏÎ¿Ï„.',
+        'No possible combinations found!': 'No possible combinations found!',
+        'Export Plan as BB Code': 'Î•Î¾Î±Î³Ï‰Î³Î® Ï€Î»Î¬Î½Î¿Ï… ÏƒÎµ BB Code',
+        'Plan for:': 'Î Î»Î¬Î½Î¿ Î³Î¹Î±:',
+        'Landing Time:': 'ÎÏÎ± Î¬Ï†Î¹Î¾Î·Ï‚:',
+        Unit: 'ÎœÎ¿Î½Î¬Î´Î±',
+        'Launch Time': 'ÎÏÎ± ÎµÎºÎºÎ¯Î½Î·ÏƒÎ·Ï‚',
+        Command: 'Î•Î½Ï„Î¿Î»Î®',
+        Status: 'ÎšÎ±Ï„Î¬ÏƒÏ„Î±ÏƒÎ·',
+        Send: 'Î£Ï„ÎµÎ¯Î»Îµ',
+        From: 'Î‘Ï€ÏŒ',
+        Priority: 'Î ÏÎ¿Ï„ÎµÏÎ±Î¹ÏŒÏ„Î·Ï„Î±',
+        'Early send': 'Î£Ï„Î¬Î»Î¸Î·ÎºÎ±Î½ Î½Ï‰ÏÎ¯Ï„ÎµÏÎ±',
+        'Landing time was updated!': 'Î— ÏŽÏÎ± Î¬Ï†Î¹Î¾Î·Ï‚ Î±Î½Î±Î½ÎµÏŽÎ¸Î·ÎºÎµ!',
+        'Error fetching village groups!':
+            'Î£Ï†Î¬Î»Î¼Î± ÎºÎ±Ï„Î¬ Ï„Î·Î½ Î±Î½Î¬ÎºÏ„Î·ÏƒÎ· Î¿Î¼Î¬Î´Ï‰Î½ Ï‡Ï‰ÏÎ¹ÏŽÎ½!',
+        'Dist.': 'Î‘Ï€ÏŒÏƒÏ„Î±ÏƒÎ·',
+        'Villages list could not be fetched!':
+            'Villages list could not be fetched!',
+        Group: 'Group',
+        'Export Plan without tables': 'Export Plan without tables',
+        'Chosen group was reset!': 'Chosen group was reset!',
+        'Reset Chosen Group': 'Reset Chosen Group',
+        'Script configuration was reset!': 'Script configuration was reset!',
+    },
+    it_IT: {
+        'Single Village Planner': 'Planner Singolo Villo',
+        Help: 'Aiuto',
+        'This script can only be run on a single village screen!':
+            'Questo script puÃ² essere lanciato solo dalla panoramica del villaggio!',
+        Village: 'Villaggio',
+        Coords: 'Coordinate',
+        Continent: 'Continente',
+        'Calculate Launch Times': 'Calcola tempi di lancio',
+        Reset: 'Reset',
+        'Launch times are being calculated ...':
+            'I tempi di lancio sono stati calcolati ...',
+        'Missing user input!': 'Manca selezione truppe!',
+        'Landing Time': 'Tempo di arrivo',
+        'This village has no unit selected!':
+            'Questo villaggio non ha le unitÃ  selezionate!',
+        'Prio.': 'Prio.',
+        'No possible combinations found!': 'Nessuna combinazione possibile!',
+        'Export Plan as BB Code': 'Esporta il plan in BB code',
+        'Plan for:': 'Plan per:',
+        'Landing Time:': 'Tempo di arrivo:',
+        Unit: 'UnitÃ ',
+        'Launch Time': 'Tempo di lancio',
+        Command: 'Comando',
+        Status: 'Status',
+        Send: 'Invia',
+        From: 'Da',
+        Priority: 'PrioritÃ ',
+        'Early send': 'Anticipa invio',
+        'Landing time was updated!': 'Il tempo di arrivo Ã¨ stato aggiornato!',
+        'Error fetching village groups!': 'Errore nel recupero gruppo!',
+        Group: 'Gruppo',
+        'Export Plan without tables': 'Export Plan without tables',
+        'Chosen group was reset!': 'Chosen group was reset!',
+        'Reset Chosen Group': 'Reset Chosen Group',
+        'Script configuration was reset!': 'Script configuration was reset!',
+    },
+    tr_TR: {
+        'Single Village Planner': 'Tek KÃ¶y PlanlayÄ±cÄ±sÄ±',
+        Help: 'YardÄ±m',
+        'This script can only be run on a single village screen!':
+            'Bu komut dosyasÄ± yalnÄ±zca tek bir kÃ¶y ekranÄ±nda Ã§alÄ±ÅŸtÄ±rÄ±labilir',
+        Village: 'KÃ¶y',
+        Coords: 'Koordinat',
+        Continent: 'KÄ±ta',
+        'Calculate Launch Times': 'BaÅŸlatma SÃ¼relerini HesaplayÄ±n',
+        Reset: 'Reset',
+        'Launch times are being calculated ...':
+            'BaÅŸlatma sÃ¼releri hesaplanÄ±yor ...',
+        'Missing user input!': 'Eksik kullanÄ±cÄ± giriÅŸi!',
+        'Landing Time': 'iniÅŸ zamanÄ±',
+        'This village has no unit selected!': 'Bu kÃ¶yde seÃ§ili birim yok!',
+        'Prio.': 'Prio.',
+        'No possible combinations found!': 'OlasÄ± kombinasyon bulunamadÄ±!',
+        'Export Plan as BB Code': 'PlanÄ± BB Kodu Olarak DÄ±ÅŸa Aktar',
+        'Plan for:': 'Plan iÃ§in:',
+        'Landing Time:': 'Ä°niÅŸ zamanÄ±:',
+        Unit: 'Birim',
+        'Launch Time': 'BaÅŸlatma ZamanÄ±:',
+        Command: 'Komut',
+        Status: 'Durum',
+        Send: 'GÃ¶nder',
+        From: 'Z',
+        Priority: 'Ã–ncelik',
+        'Early send': 'erken gÃ¶nder',
+        'Landing time was updated!': 'Ä°niÅŸ zamanÄ± gÃ¼ncellendi!',
+        'Error fetching village groups!':
+            'KÃ¶y gruplarÄ± getirilirken hata oluÅŸtu',
+        'Dist.': 'Dist.',
+        'Villages list could not be fetched!':
+            'Villages list could not be fetched!',
+        Group: 'Group',
+        'Export Plan without tables': 'Export Plan without tables',
+        'Chosen group was reset!': 'Chosen group was reset!',
+        'Reset Chosen Group': 'Reset Chosen Group',
+        'Script configuration was reset!': 'Script configuration was reset!',
+    },
+    pt_BR: {
+        'Single Village Planner': 'Planeador para ataques em uma sÃ³ aldeia',
+        Help: 'Ajuda',
+        'This script can only be run on a single village screen!':
+            'Este script sÃ³ pode ser usado na pÃ¡gina de uma sÃ³ aldeia!',
+        Village: 'Aldeia',
+        Coords: 'Coords',
+        Continent: 'Continente',
+        'Calculate Launch Times': 'Calcular tempos de envio',
+        Reset: 'Reset',
+        'Launch times are being calculated ...':
+            'Os tempos de envio estÃ£o a ser calculados ...',
+        'Missing user input!': 'Falta o input do utilizador!',
+        'Landing Time': 'Tempo de chegada',
+        'This village has no unit selected!':
+            'Esta aldeia nÃ£o tem unidades selecionadas!',
+        'Prio.': 'Prioridade',
+        'No possible combinations found!':
+            'NÃ£o foram encontradas combinaÃ§Ãµes possÃ­veis!',
+        'Export Plan as BB Code': 'Exportar plano em cÃ³digo BB',
+        'Plan for:': 'Plano para:',
+        'Landing Time:': 'Tempo de chegada:',
+        Unit: 'Unidade',
+        'Launch Time': 'Tempo de envio',
+        Command: 'Comando',
+        Status: 'Estado',
+        Send: 'Send',
+        From: 'From',
+        Priority: 'Prioridade',
+        'Early send': 'Enviar cedo',
+        'Landing time was updated!': 'O tempo de chegada foi atualizado!',
+        'Error fetching village groups!':
+            'Erro a ir buscar os grupos de aldeias!',
+        'Dist.': 'Dist.',
+        'Villages list could not be fetched!':
+            'Villages list could not be fetched!',
+        Group: 'Group',
+        'Export Plan without tables': 'Export Plan without tables',
+        'Chosen group was reset!': 'Chosen group was reset!',
+        'Reset Chosen Group': 'Reset Chosen Group',
+        'Script configuration was reset!': 'Script configuration was reset!',
+    },
+    fr_FR: {
+        'Single Village Planner': "Planificateur d'attaque village unique",
+        Help: 'Aide',
+        'This script can only be run on a single village screen!':
+            "Ce script doit Ãªtre lancÃ© depuis la vu d'un village!",
+        Village: 'Village',
+        'Calculate Launch Times': "Calcul heure d'envoi",
+        Reset: 'RÃ©initialiser',
+        'Launch times are being calculated ...':
+            "Heures d'envoi en cours de calcul ...",
+        'Missing user input!': 'Aucun joueur renseignÃ©!',
+        'Landing Time': "Heure d'arrivÃ©",
+        'This village has no unit selected!':
+            "Ce village n'a aucune unitÃ© sÃ©lectionnÃ©e!",
+        'Prio.': 'Prio.',
+        'No possible combinations found!': 'Aucune combinaison possible!',
+        'Export Plan as BB Code': "Exporter le plan d'attaque en bb-code",
+        'Plan for:': 'Plan pour:',
+        'Landing Time:': "Heure d'arrivÃ©:",
+        Unit: 'UnitÃ©',
+        'Launch Time': "Heure d'envoi",
+        Command: 'Ordre',
+        Status: 'Status',
+        Send: 'Envoyer',
+        From: 'Origine',
+        Priority: 'PrioritÃ©',
+        'Early send': 'Envoi tÃ´t',
+        'Landing time was updated!': "Heure d'arrivÃ© mis Ã  jour!",
+        'Error fetching village groups!':
+            'Erreur lors de la rÃ©cupÃ©ration des groupes de villages!',
+        'Dist.': 'Dist.',
+        'Villages list could not be fetched!':
+            'Impossible de rÃ©cupÃ©rer la liste des villages!',
+        Group: 'Groupe',
+        'Export Plan without tables': 'Exporter le plan sans tableau',
+        'Chosen group was reset!': 'Groupe sÃ©lectionnÃ© rÃ©initialisÃ©!',
+        'Reset Chosen Group': 'RÃ©initialiser groupe(s) sÃ©lectionnÃ©e(s)',
+        'Script configuration was reset!': 'Configuration rÃ©initialisÃ©e!',
+    },
+};
 
 // Init Debug
 initDebug();
