@@ -119,7 +119,7 @@ function init(unitInfo) {
 				</div>
 			</div>
 			<div class="ra-mb15">
-				<a id="submit_btn" class="button" onClick="handleSubmit();">Gerar Plano!</a>
+				<a id="submit_btn" class="button" onClick="handleSubmit();">Gerar Plano</a>
 			</div>
 			<div class="ra-mb15">
 				<label for="results">Resultados</label>
