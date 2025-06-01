@@ -136,7 +136,7 @@ function init(unitInfo) {
     attackPlannerWindow.document.write(windowContent);
 }
 
-// Ajudaer: Window Content
+// Ajuda: Window Content
 function prepareWindowContent(windowBody) {
     const windowHeader = `<h1 class="ra-fs18 ra-fw600">${scriptData.name}</h1>`;
     const windowFooter = `<small><strong>${scriptData.name} ${scriptData.version}</strong> - <a href="${scriptData.authorUrl}" target="_blank" rel="noreferrer noopener">${scriptData.author}</a> - <a href="${scriptData.helpLink}" target="_blank" rel="noreferrer noopener">Ajuda</a></small>`;
@@ -187,7 +187,7 @@ function prepareWindowContent(windowBody) {
 
 				loadJS('https://code.jquery.com/jquery-3.6.0.min.js', function() {
 					loadJS('https://tribalwarstools.github.io/twscripts/attackPlannerHelper.js', function() {
-						console.log('Ajudaer libraries loaded!');
+						console.log('Ajuda libraries loaded!');
 					});
 				});
 			</script>
@@ -198,7 +198,7 @@ function prepareWindowContent(windowBody) {
     return html;
 }
 
-// Ajudaer: Get and format current datetime
+// Ajuda: Get and format current datetime
 function getCurrentDateTime() {
     let currentDateTime = new Date();
 
@@ -234,7 +234,7 @@ function getCurrentDateTime() {
     return formatted_date;
 }
 
-/* Ajudaer: Fetch World Unit Info */
+/* Ajuda: Fetch World Unit Info */
 function fetchUnitInfo() {
     jQuery
         .ajax({
@@ -254,7 +254,7 @@ function fetchUnitInfo() {
         });
 }
 
-// Ajudaer: XML to JSON converter
+// Ajuda: XML to JSON converter
 var xml2json = function ($xml) {
     var data = {};
     $.each($xml.children(), function (i) {
@@ -268,12 +268,12 @@ var xml2json = function ($xml) {
     return data;
 };
 
-// Ajudaer: Generates script info
+// Ajuda: Generates script info
 function scriptInfo() {
     return `[${scriptData.name} ${scriptData.version}]`;
 }
 
-// Ajudaer: Prints universal debug information
+// Ajuda: Prints universal debug information
 function initDebug() {
     console.debug(`${scriptInfo()} It works ðŸš€!`);
     console.debug(`${scriptInfo()} HELP:`, scriptData.helpLink);
