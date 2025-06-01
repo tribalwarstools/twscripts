@@ -1373,7 +1373,7 @@ function displayEverything() {
                     htmlCode = `<div id="restart">${totalsAndAverages}</div>
                 <div id="sendResources" class="flex-container TwHeader" style="position: relative">
                     <button class="TwRowA collapsible" style="width: 250px;min-width: 230px;">Open settings menu</button>
-                    <div class="content submenu" style="width: 500px;height:500px;z-index:99999" background-color: #F4E4BC>
+                    <div class="content submenu" style="width: 500px;height:500px;z-index:99999" >
                         <form id="settings">
                             <table style="border-spacing: 2px;">
                             <tr>
