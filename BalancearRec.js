@@ -141,16 +141,16 @@ if (typeof colors == 'undefined') {
 <style>
 .TwRowA {
 background-color: #f4e4bc;
-color: white;
+color: #000000;
 }
 .TwRowB {
 background-color: #f0e2be;
-color: white;
+color: #000000;
 }
 .TwHeader {
 background-color: #202225;
 font-weight: bold;
-color: white;
+color: #000000;
 }
 .TwLink
 {
