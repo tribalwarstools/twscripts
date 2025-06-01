@@ -138,121 +138,36 @@ if (game_data.locale == "pt_BR") {
 //colors for UI
 if (typeof colors == 'undefined') {
     cssClassesTw  = `
-<style>
-.TwRowA {
-background-color: #f4e4bc;
-color: #000000;
-}
-.TwRowB {
-background-color: #f0e2be;
-color: #000000;
-}
-.TwHeader {
-background-color: #f0e2be;
-font-weight: bold;
-color: #000000;
-}
-.TwLink
-{
-    color:#40D0E0;
-}
-.btnTw
-{
-    background-image: linear-gradient(#6e7178 0%, #36393f 30%, #202225 80%, black 100%);
-}
-.btnTw:hover
-{ 
-    background-image: linear-gradient(#7b7e85 0%, #40444a 30%, #393c40 80%, #171717 100%);
-}
-.collapsible {
-    background-color: #32353b;
-    color: white;
-    cursor: pointer;
-    padding: 10px;
-    width: 100%;
-    border: none;
-    text-align: left;
-    outline: none;
-    font-size: 15px;
-    }
-    
-    .active, .collapsible:hover {
-    background-color:  #36393f;
-    }
-    
-    .collapsible:after {
-    content: '+';
-    color: white;
-    font-weight: bold;
-    float: right;
-    margin-left: 5px;
-    }
-    
-    .active:after {
-    content: "-";
-    }
-    
-    .content {
-    padding: 0 5px;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.2s ease-out;
-    background-color:  #5b5f66;
-    color: white;
-    }
-    
-    .item-padded {
-    padding: 5px;
-    }
-    
-    .flex-container {
-    display: flex; 
-    justify-content: space-between;
-    align-items:center
-    }
-    
-    .submenu{
-        display:flex;
-        flex-direction:column;
-        position: absolute;
-        left:0px;
-        top:37px;
-        min-width:240px;
-    }
-</style>`;
-}
-else {
-    if (colors == 'pink') {
-        //pink theme
-        cssClassesTw  = `
         <style>
         .TwRowA {
-            background-color: #FEC5E5;
-            color: #E11584;
+            background-color: #F4E4BC;
+            color: black;
             }
             .TwRowB {
-            background-color: #fcd4eb;
-            color: #E11584;
+            background-color: #fff5da;
+            color: black;
             }
             .TwHeader {
-            background-color: #F699CD;
+            background-color: #c6a768;
             font-weight: bold;
-            color: #E11584;
+            color: #803000;
             }
             .TwLink
             {
-                color:#7d3873;
+                color:#803000;
             }
         .btnTw
         {
-            background-image: linear-gradient(#FEC5E5 0%, #FD5DA8 30%, #FF1694 80%, #E11584 100%);
+            linear-gradient(to bottom, #947a62 0%,#7b5c3d 22%,#6c4824 30%,#6c4824 100%)
+            color:white
         }
         .btnTw:hover
         { 
-            background-image: linear-gradient(#F2B8C6 0%, #FCBACB 30%, #FA86C4 80%, #FE7F9C 100%);
+            linear-gradient(to bottom, #b69471 0%,#9f764d 22%,#8f6133 30%,#6c4d2d 100%);
+            color: white
         }
         .collapsible {
-            background-color: #FEC5E5;
+            background-color: #F4E4BC;
             color: white;
             cursor: pointer;
             padding: 10px;
@@ -264,7 +179,96 @@ else {
             }
             
             .active, .collapsible:hover {
-            background-color:  #fcd4eb;
+            background-color:  #fff5da;
+            }
+            
+            .collapsible:after {
+            content: '+';
+            color: white;
+            font-weight: bold;
+            float: right;
+            margin-left: 5px;
+            }
+            
+            .active:after {
+            content: "-";
+            }
+            
+            .content {
+            padding: 0 5px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            background-color:  #5b5f66;
+            color: white;
+            }
+            
+            .item-padded {
+            padding: 5px;
+            }
+            
+            .flex-container {
+            display: flex; 
+            justify-content: space-between;
+            align-items:center
+            }
+            
+            .submenu{
+                display:flex;
+                flex-direction:column;
+                position: absolute;
+                left:0px;
+                top:37px;
+                min-width:240px;
+            }
+        </style>`;
+}
+else {
+    if (colors == 'pink') {
+        //pink theme
+        cssClassesTw  = `
+                <style>
+        .TwRowA {
+            background-color: #F4E4BC;
+            color: black;
+            }
+            .TwRowB {
+            background-color: #fff5da;
+            color: black;
+            }
+            .TwHeader {
+            background-color: #c6a768;
+            font-weight: bold;
+            color: #803000;
+            }
+            .TwLink
+            {
+                color:#803000;
+            }
+        .btnTw
+        {
+            linear-gradient(to bottom, #947a62 0%,#7b5c3d 22%,#6c4824 30%,#6c4824 100%)
+            color:white
+        }
+        .btnTw:hover
+        { 
+            linear-gradient(to bottom, #b69471 0%,#9f764d 22%,#8f6133 30%,#6c4d2d 100%);
+            color: white
+        }
+        .collapsible {
+            background-color: #F4E4BC;
+            color: white;
+            cursor: pointer;
+            padding: 10px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
+            }
+            
+            .active, .collapsible:hover {
+            background-color:  #fff5da;
             }
             
             .collapsible:after {
@@ -311,34 +315,36 @@ else {
     else if (colors == "swedish") {
         //yellow/blue
         cssClassesTw  = `
-        <style>
+                <style>
         .TwRowA {
-            background-color: #fecd00;
-            color: #006aa8;
+            background-color: #F4E4BC;
+            color: black;
             }
             .TwRowB {
-            background-color: #ffea00;
-            color: #006aa8;
+            background-color: #fff5da;
+            color: black;
             }
             .TwHeader {
-            background-color: #006aa8;
+            background-color: #c6a768;
             font-weight: bold;
-            color: #ffffdf;
+            color: #803000;
             }
             .TwLink
             {
-                color:#034166;
+                color:#803000;
             }
         .btnTw
         {
-            background-image: linear-gradient(#00a1fe 0%, #5d9afd 30%, #1626ff 80%, #1f15e1 100%);
+            linear-gradient(to bottom, #947a62 0%,#7b5c3d 22%,#6c4824 30%,#6c4824 100%)
+            color:white
         }
         .btnTw:hover
         { 
-            background-image: linear-gradient(#b8bcf2 0%, #babbfc 30%, #8c86fa 80%, #969fff 100%);
+            linear-gradient(to bottom, #b69471 0%,#9f764d 22%,#8f6133 30%,#6c4d2d 100%);
+            color: white
         }
         .collapsible {
-            background-color: #fecd00;
+            background-color: #F4E4BC;
             color: white;
             cursor: pointer;
             padding: 10px;
@@ -350,7 +356,7 @@ else {
             }
             
             .active, .collapsible:hover {
-            background-color:  #ffea00;
+            background-color:  #fff5da;
             }
             
             .collapsible:after {
@@ -398,96 +404,7 @@ else {
         //gray
         console.log("Changing to gray theme");
         cssClassesTw  = `
-        <style>
-        .TwRowA {
-            background-color: #dedede;
-            color: #545454;
-            }
-            .TwRowB {
-            background-color: #f1f1f1;
-            color: #545454;
-            }
-            .TwHeader {
-            background-color: #ded9d9;
-            font-weight: bold;
-            color: #545454;
-            }
-            .TwLink
-            {
-                color:#1626ff;
-            }
-        .btnTw
-        {
-            background-image: linear-gradient(#00a1fe 0%, #5d9afd 30%, #1626ff 80%, #1f15e1 100%);
-            color:white
-        }
-        .btnTw:hover
-        { 
-            background-image: linear-gradient(#b8bcf2 0%, #babbfc 30%, #8c86fa 80%, #969fff 100%);
-            color: white
-        }
-        .collapsible {
-            background-color: #dedede;
-            color: white;
-            cursor: pointer;
-            padding: 10px;
-            width: 100%;
-            border: none;
-            text-align: left;
-            outline: none;
-            font-size: 15px;
-            }
-            
-            .active, .collapsible:hover {
-            background-color:  #f1f1f1;
-            }
-            
-            .collapsible:after {
-            content: '+';
-            color: white;
-            font-weight: bold;
-            float: right;
-            margin-left: 5px;
-            }
-            
-            .active:after {
-            content: "-";
-            }
-            
-            .content {
-            padding: 0 5px;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.2s ease-out;
-            background-color:  #5b5f66;
-            color: white;
-            }
-            
-            .item-padded {
-            padding: 5px;
-            }
-            
-            .flex-container {
-            display: flex; 
-            justify-content: space-between;
-            align-items:center
-            }
-            
-            .submenu{
-                display:flex;
-                flex-direction:column;
-                position: absolute;
-                left:0px;
-                top:37px;
-                min-width:240px;
-            }
-        </style>`;
-    }
-    else if (colors == "TW") {
-        //gray
-        console.log("Changing to TW theme");
-        cssClassesTw  = `
-        <style>
+                <style>
         .TwRowA {
             background-color: #F4E4BC;
             color: black;
@@ -576,88 +493,90 @@ else {
         //standard
         console.log("Switching to standard colors");
         cssClassesTw  = `
-            <style>
-            .TwRowA {
-            background-color: #32353b;
-            color: white;
+                    <style>
+        .TwRowA {
+            background-color: #F4E4BC;
+            color: black;
             }
             .TwRowB {
-            background-color: #36393f;
-            color: white;
+            background-color: #fff5da;
+            color: black;
             }
             .TwHeader {
-            background-color: #202225;
+            background-color: #c6a768;
             font-weight: bold;
-            color: white;
+            color: #803000;
             }
             .TwLink
             {
-                color:#40D0E0;
+                color:#803000;
             }
-            .btnTw
-            {
-                background-image: linear-gradient(#6e7178 0%, #36393f 30%, #202225 80%, black 100%);
+        .btnTw
+        {
+            linear-gradient(to bottom, #947a62 0%,#7b5c3d 22%,#6c4824 30%,#6c4824 100%)
+            color:white
+        }
+        .btnTw:hover
+        { 
+            linear-gradient(to bottom, #b69471 0%,#9f764d 22%,#8f6133 30%,#6c4d2d 100%);
+            color: white
+        }
+        .collapsible {
+            background-color: #F4E4BC;
+            color: white;
+            cursor: pointer;
+            padding: 10px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
             }
-            .btnTw:hover
-            { 
-                background-image: linear-gradient(#7b7e85 0%, #40444a 30%, #393c40 80%, #171717 100%);
+            
+            .active, .collapsible:hover {
+            background-color:  #fff5da;
             }
-            .collapsible {
-                background-color: #32353b;
-                color: white;
-                cursor: pointer;
-                padding: 10px;
-                width: 100%;
-                border: none;
-                text-align: left;
-                outline: none;
-                font-size: 15px;
-                }
-                
-                .active, .collapsible:hover {
-                background-color:  #36393f;
-                }
-                
-                .collapsible:after {
-                content: '+';
-                color: white;
-                font-weight: bold;
-                float: right;
-                margin-left: 5px;
-                }
-                
-                .active:after {
-                content: "-";
-                }
-                
-                .content {
-                padding: 0 5px;
-                max-height: 0;
-                overflow: hidden;
-                transition: max-height 0.2s ease-out;
-                background-color:  #5b5f66;
-                color: white;
-                }
-                
-                .item-padded {
-                padding: 5px;
-                }
-                
-                .flex-container {
-                display: flex; 
-                justify-content: space-between;
-                align-items:center
-                }
-                
-                .submenu{
-                    display:flex;
-                    flex-direction:column;
-                    position: absolute;
-                    left:0px;
-                    top:37px;
-                    min-width:240px;
-                }
-            </style>`;
+            
+            .collapsible:after {
+            content: '+';
+            color: white;
+            font-weight: bold;
+            float: right;
+            margin-left: 5px;
+            }
+            
+            .active:after {
+            content: "-";
+            }
+            
+            .content {
+            padding: 0 5px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            background-color:  #5b5f66;
+            color: white;
+            }
+            
+            .item-padded {
+            padding: 5px;
+            }
+            
+            .flex-container {
+            display: flex; 
+            justify-content: space-between;
+            align-items:center
+            }
+            
+            .submenu{
+                display:flex;
+                flex-direction:column;
+                position: absolute;
+                left:0px;
+                top:37px;
+                min-width:240px;
+            }
+        </style>`;
     }
 }
 //UI elements CSS
