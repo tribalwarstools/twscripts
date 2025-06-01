@@ -61,10 +61,10 @@ function init(unitInfo) {
 					<div class="ra-mb15">
 						<label for="nuke_unit">Unidade mais lenta do Ataque</label>
 						<select id="nuke_unit">
-							<option value="${unitInfo.config['axe'].speed}">Axe</option>
-							<option value="${unitInfo.config['light'].speed}">LC/MA/Paladin</option>
-							<option value="${unitInfo.config['heavy'].speed}">HC</option>
-							<option value="${unitInfo.config['ram'].speed}" selected="selected">Ram/Cat</option>
+							<option value="${unitInfo.config['axe'].speed}">Machado</option>
+							<option value="${unitInfo.config['light'].speed}">Cav. Leve / Arqueiro Montado / Paladinoo</option>
+							<option value="${unitInfo.config['heavy'].speed}">Cav. Pesado</option>
+							<option value="${unitInfo.config['ram'].speed}" selected="selected">Ariete / Catapultaapulta</option>
 						</select>
 					</div>
 				</div>
@@ -72,12 +72,12 @@ function init(unitInfo) {
 					<div class="ra-mb15">
 						<label for="support_unit">Unidade mais lenta do Apoio</label>
 						<select id="support_unit">
-							<option value="${unitInfo.config['spear'].speed}">Spear/Archer</option>
-							<option value="${unitInfo.config['sword'].speed}" selected="selected">Sword</option>
-							<option value="${unitInfo.config['spy'].speed}">Spy</option>
-							<option value="${knightSpeed}" data-option-unit="knight">Paladin</option>
-							<option value="${unitInfo.config['heavy'].speed}">HC</option>
-							<option value="${unitInfo.config['catapult'].speed}">Cat</option>
+							<option value="${unitInfo.config['spear'].speed}">Lança / Arqueiro</option>
+							<option value="${unitInfo.config['sword'].speed}" selected="selected">Espada</option>
+							<option value="${unitInfo.config['spy'].speed}">Espião</option>
+							<option value="${knightSpeed}" data-option-unit="knight">Paladino</option>
+							<option value="${unitInfo.config['heavy'].speed}">Cav. Pesado</option>
+							<option value="${unitInfo.config['catapult'].speed}">Catapulta</option>
 						</select>
 					</div>
 				</div>
