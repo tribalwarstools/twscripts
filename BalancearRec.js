@@ -144,7 +144,7 @@ if (typeof colors == 'undefined') {
             color: black;
             }
             .TwRowB {
-            background-color: #c6a768;
+            background-color: ##fff5da;
             color: black;
             }
             .TwHeader {
