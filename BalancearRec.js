@@ -140,7 +140,7 @@ if (typeof colors == 'undefined') {
     cssClassesTw  = `
         <style>
         .TwRowA {
-            background-color: #c6a768;
+            background-color: #f4e4bc;
             color: black;
             }
             .TwRowB {
@@ -288,7 +288,7 @@ else {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.2s ease-out;
-            background-color:  #5b5f66;
+            background-color:  #c6a768;
             color: white;
             }
             
