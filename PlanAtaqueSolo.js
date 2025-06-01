@@ -214,7 +214,7 @@ function prepareContent(villages, groups) {
 			<div class="ra-grid">
 				<div>
 					<label for="raLandingTime">
-						${tt('Landing Time')} (dd/mm/yyyy HH:mm:ss)
+						${tt('Landing Time')} (dd/mm/yyyy hh:mm:ss)
 					</label>
 					<input id="raLandingTime" type="text" value="" />
 				</div>
