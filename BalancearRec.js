@@ -1523,13 +1523,13 @@ function displayEverything() {
 
             listHTML += `
         <tr ${tempRow} height="40">
-            <td><a href="${sourceURL}" class="sophLink">${sourceName} </a></td>
-            <td> <a href="${targetURL}" class="sophLink" data-toggle="tooltip" title="Wood in WH: ${targetWood} &#10;Clay in WH: ${targetStone}&#10;Iron in WH: ${targetIron}&#10;Warehouse capacity: ${targetCapacity}">${targetName}</a> </td>
+            <td><a href="${sourceURL}" class="TwLink">${sourceName} </a></td>
+            <td> <a href="${targetURL}" class="TwLink" data-toggle="tooltip" title="Wood in WH: ${targetWood} &#10;Clay in WH: ${targetStone}&#10;Iron in WH: ${targetIron}&#10;Warehouse capacity: ${targetCapacity}">${targetName}</a> </td>
             <td width="50" style="text-align:center">${cleanLinks[i].distance}</td>
             <td width="50" style="text-align:center">${cleanLinks[i].wood}<span class="icon header wood"> </span></td>
             <td width="50" style="text-align:center">${cleanLinks[i].stone}<span class="icon header stone"> </span></td>
             <td width="50" style="text-align:center">${cleanLinks[i].iron}<span class="icon header iron"> </span></td>
-            <td style="text-align:center"><input type="button" class="btn btnSophie" id="building" tabindex="-1" value="${langTw[7]}" onclick="sendResource(${cleanLinks[i].source},${cleanLinks[i].target},${cleanLinks[i].wood},${cleanLinks[i].stone},${cleanLinks[i].iron},${i})"></td>
+            <td style="text-align:center"><input type="button" class="btn Twbtn" id="building" tabindex="-1" value="${langTw[7]}" onclick="sendResource(${cleanLinks[i].source},${cleanLinks[i].target},${cleanLinks[i].wood},${cleanLinks[i].stone},${cleanLinks[i].iron},${i})"></td>
         </tr>`;
         }
         $("#appendHere").eq(0).append(listHTML);
@@ -1557,8 +1557,8 @@ function displayEverything() {
         }
 
         $("#totals").eq(0).append(`<div id='aftermath'><center>
-        <button type="button" class="btn btnSophie" name="showStats" style="padding: 10px;width: 300px" onclick="showStats()">Show excess/shortage</button>
-        <button type="button" class="btn btnSophie" name="showEndResult" style="padding: 10px;width: 300px" onclick="resAfterBalance()">Show result of balance</button>
+        <button type="button" class="btn Twbtn" name="showStats" style="padding: 10px;width: 300px" onclick="showStats()">Mostrar excesso/escassez</button>
+        <button type="button" class="btn Twbtn" name="showEndResult" style="padding: 10px;width: 300px" onclick="resAfterBalance()">Resultado do balanceamento</button>
         </center></div>`);
         console.log("Finished");
 
