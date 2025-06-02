@@ -1403,7 +1403,7 @@ function displayEverything() {
                             <td style="padding: 6px;">
                             <input type="button" class="btn evt-confirm-btn btn-confirm-yes" value="Save" onclick="saveSettings();"/></td></tr>
                             <td colspan="2" style="padding: 6px;">
-                            <p style="padding:5px"><font size="1">Script by Sophie "Shinko to Kuma"</font></p>
+                            <p style="padding:5px"><font size="1">"</font></p>
                             </td>
                             </table>
                         </form>
