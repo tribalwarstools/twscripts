@@ -45,7 +45,9 @@
 
         const rows = doc.querySelectorAll('#combined_table tr');
         const villages = [];
-        rows.forEach(row => {
+        rows.forEach((row, index) => {
+            if (index === 0) return; // pular cabeçalho
+
             const link = row.querySelector('td:nth-child(2) a');
             if (link) {
                 const name = link.textContent.trim();
