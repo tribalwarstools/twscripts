@@ -1,97 +1,139 @@
-(async function () {
-    if (document.getElementById('tw-village-panel')) return;
+// ==UserScript==
+// @name         Painel de Aldeias por Grupo
+// @namespace    https://exemplo.com
+// @version      1.0
+// @description  Exibe painel flutuante com aldeias filtradas por grupo
+// @author       ChatGPT
+// @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
+// @grant        none
+// ==/UserScript==
 
-    const panel = document.createElement('div');
-    panel.id = 'tw-village-panel';
-    panel.style = `
-        position: fixed;
-        top: 100px;
-        right: 40px;
-        width: 350px;
-        max-height: 500px;
-        overflow-y: auto;
-        background: #fffbea;
-        border: 2px solid #a5884a;
-        border-radius: 8px;
-        padding: 10px;
-        z-index: 9999;
-        font-family: Verdana, sans-serif;
-        font-size: 13px;
+(async function () {
+    'use strict';
+
+    const styles = `
+        #tw-panel {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            width: 400px;
+            max-height: 500px;
+            overflow-y: auto;
+            background: #f4e4bc;
+            border: 2px solid #804000;
+            padding: 10px;
+            z-index: 9999;
+            font-size: 12px;
+        }
+        #tw-panel h3 {
+            margin-top: 0;
+            font-size: 14px;
+        }
+        #tw-panel select, #tw-panel table {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        #tw-panel table {
+            border-collapse: collapse;
+        }
+        #tw-panel td, #tw-panel th {
+            padding: 4px;
+            border: 1px solid #d4c19c;
+        }
+        #tw-panel-close {
+            float: right;
+            cursor: pointer;
+            color: red;
+        }
     `;
 
-    panel.innerHTML = `<b>Grupos:</b> <select id="groupSelect"></select>
-        <div id="villagesList" style="margin-top: 10px;"></div>`;
+    function injectStyles(css) {
+        const style = document.createElement('style');
+        style.textContent = css;
+        document.head.appendChild(style);
+    }
 
-    document.body.appendChild(panel);
+    function createPanel(content) {
+        const panel = document.createElement('div');
+        panel.id = 'tw-panel';
+        panel.innerHTML = `
+            <h3>Minhas Aldeias <span id="tw-panel-close">[Fechar]</span></h3>
+            ${content}
+        `;
+        document.body.appendChild(panel);
 
-    // Fetch groups
+        document.getElementById('tw-panel-close').addEventListener('click', () => {
+            panel.remove();
+        });
+    }
+
+    function renderGroupsFilter(groups) {
+        return `
+            <label for="tw-group-select">Grupo:</label>
+            <select id="tw-group-select">
+                ${groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+            </select>
+        `;
+    }
+
+    function renderVillagesTable(villages) {
+        return `
+            <table class="vis">
+                <tr><th>Nome</th><th>Coordenadas</th></tr>
+                ${villages.map(v => `<tr><td>${v.name}</td><td>${v.coords}</td></tr>`).join('')}
+            </table>
+        `;
+    }
+
+    function prepareContent(villages, groups) {
+        const groupsFilter = renderGroupsFilter(groups);
+        const villagesTable = renderVillagesTable(villages);
+        return groupsFilter + villagesTable;
+    }
+
     async function fetchVillageGroups() {
-        const res = await fetch(`/game.php?village=${game_data.village.id}&screen=overview_villages&ajax=load_group_menu`);
-        const html = await res.text();
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-        const options = Array.from(tempDiv.querySelectorAll('option'));
-        return options.map(opt => ({ id: opt.value, name: opt.textContent }));
+        const response = await $.get('/game.php?screen=overview_villages&mode=combined');
+        const html = $(response);
+        const options = html.find('select[name="group"] option');
+
+        return options.map((i, el) => ({
+            id: el.value,
+            name: el.textContent.trim()
+        })).get();
     }
 
-    // Fetch villages by group
     async function fetchAllPlayerVillagesByGroup(groupId) {
-        const res = await fetch(`/game.php?village=${game_data.village.id}&screen=overview_villages&mode=combined&group=${groupId}`);
-        const html = await res.text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const rows = Array.from(doc.querySelectorAll('table.vis.overview_table tr'));
-        return rows
-            .slice(1)
-            .map(row => {
-                const label = row.querySelector('.quickedit-label');
-                if (!label) return null;
-                const full = label.textContent.trim();
-                const coordMatch = full.match(/\((\d+\|\d+)\)/);
-                if (!coordMatch) return null;
-                return {
-                    name: full.replace(/\(\d+\|\d+\)\s*K\d+/, '').trim(),
-                    coord: coordMatch[1],
-                };
-            })
-            .filter(Boolean);
+        const response = await $.get(`/game.php?screen=overview_villages&mode=combined&group=${groupId}`);
+        const html = $(response);
+
+        const rows = html.find('table.vis.overview_table tr:has(a[href*="screen=overview"])');
+        return rows.map((i, row) => {
+            const $row = $(row);
+            const link = $row.find('a[href*="screen=overview"]');
+            const name = link.text().trim();
+            const coordsMatch = name.match(/\((\d+\|\d+)\)/);
+            const coords = coordsMatch ? coordsMatch[1] : '??|??';
+            return {
+                name: name.replace(/\(\d+\|\d+\)/, '').trim(),
+                coords
+            };
+        }).get();
     }
 
-    // Render village list
-    async function renderVillages(groupId) {
-        const listEl = document.getElementById('villagesList');
-        listEl.innerHTML = 'Carregando...';
-        try {
-            const villages = await fetchAllPlayerVillagesByGroup(groupId);
-            if (villages.length === 0) {
-                listEl.innerHTML = '<i>Nenhuma aldeia encontrada.</i>';
-                return;
-            }
+    injectStyles(styles);
 
-            listEl.innerHTML = villages.map(v => `
-                <div style="margin: 3px 0;">
-                    🏰 <b>${v.name}</b> <span style="color: #888">(${v.coord})</span>
-                    <button style="float:right;" onclick="navigator.clipboard.writeText('${v.coord}'); UI.SuccessMessage('Copiado: ${v.coord}');">📋</button>
-                </div>
-            `).join('');
-        } catch (e) {
-            listEl.innerHTML = '<span style="color:red;">Erro ao carregar as aldeias.</span>';
-            console.error(e);
-        }
-    }
-
-    // Inicializa painel
     const groups = await fetchVillageGroups();
-    const select = document.getElementById('groupSelect');
-    groups.forEach(g => {
-        const opt = document.createElement('option');
-        opt.value = g.id;
-        opt.textContent = g.name;
-        select.appendChild(opt);
-    });
+    const defaultGroupId = groups[0]?.id || 0;
+    let villages = await fetchAllPlayerVillagesByGroup(defaultGroupId);
+    const content = prepareContent(villages, groups);
+    createPanel(content);
 
-    select.addEventListener('change', () => {
-        renderVillages(select.value);
+    document.addEventListener('change', async function (e) {
+        if (e.target.id === 'tw-group-select') {
+            const newGroupId = e.target.value;
+            const newVillages = await fetchAllPlayerVillagesByGroup(newGroupId);
+            const tableHTML = renderVillagesTable(newVillages);
+            document.querySelector('#tw-panel table').outerHTML = tableHTML;
+        }
     });
-
-    renderVillages(select.value);
 })();
