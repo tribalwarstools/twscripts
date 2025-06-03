@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      1.6
-// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar, link para aldeia e nome limpo sem coordenadas duplicadas)
+// @version      1.7
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (corrige grupo atual, links nos nomes, nome limpo, copiar coordenada, arrastável e com rolagem)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
 // @grant        none
@@ -17,21 +17,30 @@
         const parser = new DOMParser();
         const doc = parser.parseFromString(text, 'text/html');
         const groupMenu = doc.querySelector('.vis_item');
-        const groupLinks = groupMenu?.querySelectorAll('a[href*="group="]');
+
         const groups = [];
 
-        if (groupLinks) {
-            groupLinks.forEach(link => {
-                const href = link.getAttribute('href');
-                const idMatch = href.match(/group=(\d+)/);
-                if (idMatch) {
-                    groups.push({
-                        id: idMatch[1],
-                        name: link.textContent.trim().replace(/^\s*\[|\]\s*$/g, '')
-                    });
-                }
+        // Adicionar grupo atual (destacado no menu)
+        const activeSpan = groupMenu?.querySelector('span.menu-highlight');
+        if (activeSpan) {
+            groups.push({
+                id: game_data.group || '0',
+                name: activeSpan.textContent.trim().replace(/^\s*\[|\]\s*$/g, '')
             });
         }
+
+        // Adicionar outros grupos (links)
+        const groupLinks = groupMenu?.querySelectorAll('a[href*="group="]');
+        groupLinks?.forEach(link => {
+            const href = link.getAttribute('href');
+            const idMatch = href.match(/group=(\d+)/);
+            if (idMatch) {
+                groups.push({
+                    id: idMatch[1],
+                    name: link.textContent.trim().replace(/^\s*\[|\]\s*$/g, '')
+                });
+            }
+        });
 
         return groups.length > 0 ? groups : [{ id: 0, name: 'Todas as aldeias' }];
     }
