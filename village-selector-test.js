@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      1.4
-// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar coordenada, botão fechar e painel arrastável com altura limitada)
+// @version      1.5
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar coordenada, botão fechar funcional e painel arrastável com altura limitada)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
 // @grant        none
@@ -65,11 +65,13 @@
         let offsetY = 0;
 
         el.addEventListener('mousedown', function (e) {
-            isDragging = true;
-            offsetX = e.clientX - el.offsetLeft;
-            offsetY = e.clientY - el.offsetTop;
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', stop);
+            if (e.target.classList.contains('drag-handle')) {
+                isDragging = true;
+                offsetX = e.clientX - el.offsetLeft;
+                offsetY = e.clientY - el.offsetTop;
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', stop);
+            }
         });
 
         function move(e) {
@@ -95,33 +97,36 @@
             right: 30px;
             background: #f4e4bc;
             border: 2px solid #804000;
-            padding: 10px 10px 10px 10px;
             z-index: 10000;
             width: 320px;
             font-size: 12px;
-            max-height: 400px;
-            overflow-y: auto;
         `;
 
-        const closeBtn = document.createElement('div');
+        const header = document.createElement('div');
+        header.style = 'background: #dec196; padding: 5px; cursor: move; font-weight: bold; display: flex; justify-content: space-between; align-items: center;';
+        header.classList.add('drag-handle');
+        header.innerHTML = '<span>🟤 Painel de Aldeias</span>';
+
+        const closeBtn = document.createElement('span');
         closeBtn.textContent = '✖';
-        closeBtn.style = 'position: absolute; top: 5px; right: 10px; cursor: pointer; color: #800000; font-weight: bold;';
+        closeBtn.style = 'cursor: pointer; color: #800000; font-weight: bold;';
         closeBtn.addEventListener('click', () => panel.remove());
-        panel.appendChild(closeBtn);
+        header.appendChild(closeBtn);
 
-        const dragBar = document.createElement('div');
-        dragBar.style = 'cursor: move; font-weight: bold; margin-bottom: 5px;';
-        dragBar.textContent = '🟤 Painel de Aldeias';
-        panel.appendChild(dragBar);
+        const content = document.createElement('div');
+        content.id = 'panel-content';
+        content.style = 'padding: 10px; max-height: 400px; overflow-y: auto;';
+        content.innerHTML = '<b>Carregando grupos e aldeias...</b>';
 
+        panel.appendChild(header);
+        panel.appendChild(content);
         document.body.appendChild(panel);
         makeDraggable(panel);
-        return panel;
+        return content;
     }
 
     async function init() {
-        const panel = createPanel();
-        panel.innerHTML += '<div id="panel-content"><b>Carregando grupos e aldeias...</b></div>';
+        const content = createPanel();
 
         const groups = await fetchVillageGroups();
         let groupSelect = '<select id="village-group-select">';
@@ -130,7 +135,7 @@
         });
         groupSelect += '</select>';
 
-        document.getElementById('panel-content').innerHTML = `
+        content.innerHTML = `
             <div>
                 <label><b>Grupo:</b></label><br>${groupSelect}
                 <div id="village-list" style="margin-top: 10px; max-height: 300px; overflow-y: auto;"></div>
