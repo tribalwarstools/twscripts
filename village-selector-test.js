@@ -140,10 +140,10 @@
 
         const groups = await fetchVillageGroups();
         let groupSelect = '<select id="village-group-select">';
-        groups.forEach(group => {
-            groupSelect += `<option value="${group.id}"${group.id === '0' ? ' selected' : ''}>${group.name}</option>`;
-        });
-        groupSelect += '</select>';
+groups.forEach(group => {
+    groupSelect += `<option value="${group.id}"${group.id === '0' || group.name.toLowerCase().includes('todas') ? ' selected' : ''}>${group.name}</option>`;
+});
+groupSelect += '</select>';
 
         content.innerHTML = `
             <div>
