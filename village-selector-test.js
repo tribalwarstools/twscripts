@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (correção: inclui grupo atual no select e inicia em "Todas as aldeias")
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
@@ -122,8 +122,8 @@
         const header = document.createElement('div');
         header.style = 'background: #dec196; padding: 5px; cursor: move; font-weight: bold; display: flex; justify-content: space-between; align-items: center;';
         header.classList.add('drag-handle');
-        header.innerHTML = '<span>🟤 Painel de Aldeias 2.0</span>';
- 
+        header.innerHTML = '<span>🟤 Painel de Aldeias 2.1</span>';
+
         const closeBtn = document.createElement('span');
         closeBtn.textContent = '✖';
         closeBtn.style = 'cursor: pointer; color: #800000; font-weight: bold;';
@@ -147,10 +147,11 @@
 
         const groups = await fetchVillageGroups();
         let groupSelect = '<select id="village-group-select">';
-        groups.forEach(group => {
-            groupSelect += `<option value="${group.id}"${group.id === '0' ? ' selected' : ''}>${group.name}</option>`;
-        });
-        groupSelect += '</select>';
+const preferredGroupId = '0';
+groups.forEach(group => {
+    groupSelect += `<option value="${group.id}"${group.id === preferredGroupId ? ' selected' : ''}>${group.name}</option>`;
+});
+groupSelect += '</select>';
 
         content.innerHTML = `
             <div>
@@ -176,6 +177,7 @@
             updateVillages(this.value);
         });
 
+        document.getElementById('village-group-select').value = '0';
         updateVillages('0');
     }
 
