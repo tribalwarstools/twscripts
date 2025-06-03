@@ -7,7 +7,6 @@
     const village = game_data.village;
     const STORAGE_KEY = 'tw_favoritos';
 
-    // Recupera favoritos salvos
     const loadFavoritos = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     const saveFavoritos = (list) => localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 
@@ -29,20 +28,22 @@
     `;
 
     panel.innerHTML = `
-        <div id="drag-header" style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">🏰 ${village.name}</div>
+        <div id="drag-header" style="font-weight: bold; font-size: 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>🏰 ${village.name}</span>
+            <button id="btn-close" style="background: transparent; border: none; font-size: 16px; cursor: pointer;">✖</button>
+        </div>
         <div style="margin-bottom: 10px;">
             <b>Coordenadas:</b> <span id="village-coord">${village.coord}</span><br>
             <b>Pontos:</b> ${village.points.toLocaleString()}
         </div>
         <button id="btn-copy" class="btn btn-confirm" style="margin-right: 5px;">Copiar Coordenada</button>
         <button id="btn-favoritar" class="btn btn-confirm" style="margin-right: 5px;">⭐ Favoritar</button>
-        <button id="btn-close" class="btn btn-cancel">Fechar</button>
         <div id="favoritos-list" style="margin-top: 10px;"></div>
     `;
 
     document.body.appendChild(panel);
 
-    // Copiar coordenada atual
+    // Botões
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
         navigator.clipboard.writeText(coord).then(() => {
@@ -52,11 +53,9 @@
         });
     });
 
-    // Favoritar aldeia atual
     document.getElementById('btn-favoritar').addEventListener('click', () => {
         const favoritos = loadFavoritos();
-        const jaExiste = favoritos.find(v => v.coord === village.coord);
-        if (jaExiste) {
+        if (favoritos.find(v => v.coord === village.coord)) {
             UI.InfoMessage('Essa aldeia já está nos favoritos.');
             return;
         }
@@ -66,12 +65,10 @@
         renderFavoritos();
     });
 
-    // Fechar painel
     document.getElementById('btn-close').addEventListener('click', () => {
         panel.remove();
     });
 
-    // Renderiza lista de favoritos
     function renderFavoritos() {
         const container = document.getElementById('favoritos-list');
         const favoritos = loadFavoritos();
@@ -94,7 +91,6 @@
         });
     }
 
-    // Função para remover favorito (precisa estar fora do escopo local)
     window.removeFavorito = function (index) {
         const favoritos = loadFavoritos();
         favoritos.splice(index, 1);
@@ -105,7 +101,7 @@
 
     renderFavoritos();
 
-    // Arrastar painel
+    // Tornar painel arrastável
     const header = document.getElementById('drag-header');
     let isDragging = false, offsetX = 0, offsetY = 0;
 
