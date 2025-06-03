@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      1.5
-// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar coordenada, botão fechar funcional e painel arrastável com altura limitada)
+// @version      1.6
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar, link para aldeia e nome limpo sem coordenadas duplicadas)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
 // @grant        none
@@ -50,10 +50,12 @@
 
             const link = row.querySelector('td:nth-child(2) a');
             if (link) {
-                const name = link.textContent.trim();
-                const coordsMatch = link.innerHTML.match(/\((\d+\|\d+)\)/);
+                const fullText = link.textContent.trim();
+                const coordsMatch = fullText.match(/\((\d+\|\d+)\)/);
                 const coords = coordsMatch ? coordsMatch[1] : '??|??';
-                villages.push({ name, coords });
+                const name = fullText.replace(/\s*\(\d+\|\d+\)\s*K\d+/, '').trim();
+                const href = link.getAttribute('href');
+                villages.push({ name, coords, url: href });
             }
         });
         return villages;
@@ -151,7 +153,7 @@
             }
             listDiv.innerHTML = '<table class="vis" width="100%">' +
                 '<tr><th>Aldeia</th><th>Coord.</th><th></th></tr>' +
-                villages.map(v => `<tr><td>${v.name}</td><td>${v.coords}</td><td><button onclick="navigator.clipboard.writeText('${v.coords}'); UI.SuccessMessage('Copiado: ${v.coords}');">📋</button></td></tr>`).join('') +
+                villages.map(v => `<tr><td><a href="${v.url}" target="_self">${v.name}</a></td><td>${v.coords}</td><td><button onclick="navigator.clipboard.writeText('${v.coords}'); UI.SuccessMessage('Copiado: ${v.coords}');">📋</button></td></tr>`).join('') +
                 '</table>';
         }
 
