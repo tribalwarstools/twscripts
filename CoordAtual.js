@@ -117,7 +117,7 @@
             const copiar = document.createElement('button');
             copiar.className = 'btn btn-confirm';
             copiar.style.padding = '2px 6px';
-            copiar.innerText = 'Copiar';
+            copiar.innerText = '📋';
             copiar.addEventListener('click', () => {
                 navigator.clipboard.writeText(v.coord);
                 UI.SuccessMessage(`Copiado: ${v.coord}`);
