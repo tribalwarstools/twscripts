@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.8
 // @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (corrige grupo atual, links nos nomes, nome limpo, copiar coordenada, arrastável e com rolagem)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
