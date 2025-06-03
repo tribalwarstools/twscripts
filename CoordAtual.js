@@ -113,7 +113,7 @@
             });
 
             const remover = document.createElement('button');
-            remover.className = 'btn btn-cancel';
+            remover.className = 'btn btn-remov';
             remover.style.padding = '2px 6px';
             remover.innerText = 'Remover';
             remover.title = 'Remover aldeia dos favoritos';
