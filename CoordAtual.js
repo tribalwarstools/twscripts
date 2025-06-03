@@ -43,7 +43,7 @@
 
     document.body.appendChild(panel);
 
-    // Botões
+    // Botões principais
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
         navigator.clipboard.writeText(coord).then(() => {
@@ -115,7 +115,8 @@
             const remover = document.createElement('button');
             remover.className = 'btn btn-cancel';
             remover.style.padding = '2px 6px';
-            remover.innerText = 'Remover';
+            remover.innerText = '✖';
+            remover.title = 'Remover aldeia dos favoritos';
             remover.addEventListener('click', () => {
                 window.removeFavorito(index);
             });
@@ -129,7 +130,7 @@
 
     renderFavoritos();
 
-    // Tornar painel arrastável
+    // Painel arrastável
     const header = document.getElementById('drag-header');
     let isDragging = false, offsetX = 0, offsetY = 0;
 
