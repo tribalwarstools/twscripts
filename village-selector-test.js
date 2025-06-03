@@ -1,72 +1,58 @@
 (function () {
     'use strict';
 
-    if (document.getElementById('tw-test-village-panel')) return;
+    if (document.getElementById('tw-village-switcher')) return;
 
-    const mobile = false;
+    const villages = window.villages || game_data.villages || [];
 
-    // Simula as funções do jogo
-    window.selectVillage = function (village_id, group_id, new_tab) {
-        UI.SuccessMessage(`Selecionada aldeia ID: ${village_id}, Grupo: ${group_id}, Nova aba: ${new_tab}`);
-    };
+    if (!villages.length) {
+        UI.ErrorMessage("Não foi possível carregar as aldeias.");
+        return;
+    }
 
-    window.MDS = {
-        selectVillage: function (village_id, group_id) {
-            UI.SuccessMessage(`[Mobile] Aldeia ID: ${village_id}, Grupo: ${group_id}`);
-        }
-    };
-
-    // Cria painel
     const panel = document.createElement('div');
-    panel.id = 'tw-test-village-panel';
+    panel.id = 'tw-village-switcher';
     panel.style = `
         position: fixed;
-        top: 100px;
-        left: 50px;
-        background: #f0e0b0;
+        top: 120px;
+        left: 40px;
+        width: 320px;
+        max-height: 400px;
+        overflow-y: auto;
+        background: #f4e4bc;
         border: 2px solid #804000;
+        border-radius: 10px;
+        box-shadow: 2px 2px 6px rgba(0,0,0,0.5);
         padding: 10px;
-        border-radius: 8px;
         z-index: 9999;
         font-family: Verdana, sans-serif;
-        box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
     `;
 
     panel.innerHTML = `
-        <b>Selecione uma aldeia de teste:</b>
-        <ul style="list-style: none; padding: 0; margin: 8px 0;">
-            <li><a href="#" class="select-village" data-village-id="123" data-group-id="1">🏰 Aldeia 123 (Grupo 1)</a></li>
-            <li><a href="#" class="select-village" data-village-id="456" data-group-id="2">🏰 Aldeia 456 (Grupo 2)</a></li>
-            <li><a href="#" class="select-village" data-village-id="789">🏰 Aldeia 789 (Sem grupo)</a></li>
-        </ul>
-        <button id="close-panel" class="btn btn-cancel">Fechar</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <b style="font-size: 16px;">🏰 Minhas Aldeias</b>
+            <button id="close-village-switcher" style="background: transparent; border: none; font-size: 16px; cursor: pointer;">✖</button>
+        </div>
+        <div id="village-list" style="display: flex; flex-direction: column; gap: 5px;"></div>
     `;
 
     document.body.appendChild(panel);
 
-    // Eventos de clique
-    document.querySelectorAll('.select-village').forEach(el => {
-        el.addEventListener('click', function (e) {
-            e.preventDefault();
-            const village_id = this.dataset.villageId;
-            const group_id = this.dataset.groupId ?? 0;
+    const listContainer = panel.querySelector('#village-list');
 
-            if (mobile) {
-                MDS.selectVillage(village_id, group_id);
-            } else {
-                const new_tab = (e.which === 2 || e.button === 4 || e.ctrlKey);
-                selectVillage(village_id, group_id, new_tab);
-            }
+    villages.forEach(v => {
+        const item = document.createElement('button');
+        item.className = 'btn btn-confirm';
+        item.style = 'text-align: left;';
+        item.textContent = `🏰 ${v.name} (${v.coord})`;
+        item.addEventListener('click', () => {
+            selectVillage(v.id);
+            UI.SuccessMessage(`Mudando para: ${v.name} (${v.coord})`);
         });
-
-        el.addEventListener('auxclick', function (e) {
-            e.preventDefault();
-            const village_id = this.dataset.villageId;
-            const group_id = this.dataset.groupId ?? 0;
-            const new_tab = true;
-            selectVillage(village_id, group_id, new_tab);
-        });
+        listContainer.appendChild(item);
     });
 
-    document.getElementById('close-panel').addEventListener('click', () => panel.remove());
+    document.getElementById('close-village-switcher').addEventListener('click', () => {
+        panel.remove();
+    });
 })();
