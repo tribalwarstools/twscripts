@@ -36,7 +36,7 @@
             const link = row.querySelector('td:nth-child(2) a');
             if (link) {
                 const name = link.textContent.trim();
-                const coordsMatch = name.match(/\((\d+\|\d+)\)/);
+                const coordsMatch = link.innerHTML.match(/\((\d+\|\d+)\)/); // corrigido
                 const coords = coordsMatch ? coordsMatch[1] : '??|??';
                 villages.push({ name, coords });
             }
