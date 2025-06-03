@@ -20,21 +20,23 @@
         padding: 10px;
         z-index: 9999;
         font-family: Verdana, sans-serif;
+        cursor: move;
     `;
 
     panel.innerHTML = `
-        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">🏰 ${village.name}</div>
+        <div id="drag-header" style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">🏰 ${village.name}</div>
         <div style="margin-bottom: 10px;">
             <b>Coordenadas:</b> <span id="village-coord">${village.coord}</span><br>
             <b>Pontos:</b> ${village.points.toLocaleString()}
         </div>
         <button id="btn-copy" class="btn btn-confirm" style="margin-right: 5px;">Copiar Coordenada</button>
+        <button id="btn-copy-multiple" class="btn btn-confirm" style="margin-right: 5px;">Copiar em Massa</button>
         <button id="btn-close" class="btn btn-cancel">Fechar</button>
     `;
 
     document.body.appendChild(panel);
 
-    // Botão: Copiar coordenada
+    // Botão: Copiar coordenada única
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
         if (navigator.clipboard) {
@@ -48,8 +50,53 @@
         }
     });
 
+    // Botão: Copiar coordenadas em massa
+    document.getElementById('btn-copy-multiple').addEventListener('click', () => {
+        const coordSet = new Set();
+        document.querySelectorAll('td.nowrap:has(a[href*="info_village"])').forEach(cell => {
+            const match = cell.innerText.match(/\d{3}\|\d{3}/);
+            if (match) coordSet.add(match[0]);
+        });
+
+        const coords = Array.from(coordSet).join(' ');
+        if (!coords) {
+            UI.ErrorMessage('Nenhuma coordenada encontrada na página.');
+            return;
+        }
+
+        navigator.clipboard.writeText(coords).then(() => {
+            UI.SuccessMessage(`${coordSet.size} coordenadas copiadas!`);
+        }).catch(() => {
+            UI.ErrorMessage('Erro ao copiar coordenadas.');
+        });
+    });
+
     // Botão: Fechar painel
     document.getElementById('btn-close').addEventListener('click', () => {
         panel.remove();
     });
+
+    // Função para tornar o painel arrastável
+    const header = document.getElementById('drag-header');
+    let isDragging = false, offsetX = 0, offsetY = 0;
+
+    header.style.cursor = 'move';
+
+    header.addEventListener('mousedown', function (e) {
+        isDragging = true;
+        offsetX = e.clientX - panel.offsetLeft;
+        offsetY = e.clientY - panel.offsetTop;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+        }, { once: true });
+    });
+
+    function onMouseMove(e) {
+        if (!isDragging) return;
+        panel.style.left = `${e.clientX - offsetX}px`;
+        panel.style.top = `${e.clientY - offsetY}px`;
+        panel.style.right = 'auto'; // Remove alinhamento fixo à direita
+    }
 })();
