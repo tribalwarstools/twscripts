@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      1.2
-// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar coordenada)
+// @version      1.3
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar coordenada e botão fechar)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
 // @grant        none
@@ -75,13 +75,20 @@
             width: 320px;
             font-size: 12px;
         `;
+
+        const closeBtn = document.createElement('div');
+        closeBtn.textContent = '✖';
+        closeBtn.style = 'position: absolute; top: 5px; right: 10px; cursor: pointer; color: #800000; font-weight: bold;';
+        closeBtn.addEventListener('click', () => panel.remove());
+        panel.appendChild(closeBtn);
+
         document.body.appendChild(panel);
         return panel;
     }
 
     async function init() {
         const panel = createPanel();
-        panel.innerHTML = '<b>Carregando grupos e aldeias...</b>';
+        panel.innerHTML += '<b>Carregando grupos e aldeias...</b>';
 
         const groups = await fetchVillageGroups();
         let groupSelect = '<select id="village-group-select">';
@@ -90,7 +97,7 @@
         });
         groupSelect += '</select>';
 
-        panel.innerHTML = `
+        panel.innerHTML += `
             <div>
                 <label><b>Grupo:</b></label><br>${groupSelect}
                 <div id="village-list" style="margin-top: 10px;"></div>
