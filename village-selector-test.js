@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      1.8
-// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (corrige grupo atual, links nos nomes, nome limpo, copiar coordenada, arrastável e com rolagem)
+// @version      1.9
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (inicia com grupo 0 e evita múltiplos painéis)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
 // @grant        none
@@ -10,6 +10,8 @@
 
 (function () {
     'use strict';
+
+    if (document.getElementById('village-group-panel')) return;
 
     async function fetchVillageGroups() {
         const res = await fetch('/game.php?screen=overview_villages&mode=combined');
@@ -20,16 +22,6 @@
 
         const groups = [];
 
-        // Adicionar grupo atual (destacado no menu)
-        const activeSpan = groupMenu?.querySelector('span.menu-highlight');
-        if (activeSpan) {
-            groups.push({
-                id: game_data.group || '0',
-                name: activeSpan.textContent.trim().replace(/^\s*\[|\]\s*$/g, '')
-            });
-        }
-
-        // Adicionar outros grupos (links)
         const groupLinks = groupMenu?.querySelectorAll('a[href*="group="]');
         groupLinks?.forEach(link => {
             const href = link.getAttribute('href');
@@ -41,6 +33,14 @@
                 });
             }
         });
+
+        const activeSpan = groupMenu?.querySelector('span.menu-highlight');
+        if (activeSpan && !groups.find(g => g.id === '0')) {
+            groups.unshift({
+                id: '0',
+                name: activeSpan.textContent.trim().replace(/^\s*\[|\]\s*$/g, '') || 'Todas as aldeias'
+            });
+        }
 
         return groups.length > 0 ? groups : [{ id: 0, name: 'Todas as aldeias' }];
     }
@@ -55,8 +55,7 @@
         const rows = doc.querySelectorAll('#combined_table tr');
         const villages = [];
         rows.forEach((row, index) => {
-            if (index === 0) return; // pular cabeçalho
-
+            if (index === 0) return;
             const link = row.querySelector('td:nth-child(2) a');
             if (link) {
                 const fullText = link.textContent.trim();
@@ -142,7 +141,7 @@
         const groups = await fetchVillageGroups();
         let groupSelect = '<select id="village-group-select">';
         groups.forEach(group => {
-            groupSelect += `<option value="${group.id}">${group.name}</option>`;
+            groupSelect += `<option value="${group.id}"${group.id === '0' ? ' selected' : ''}>${group.name}</option>`;
         });
         groupSelect += '</select>';
 
@@ -170,7 +169,7 @@
             updateVillages(this.value);
         });
 
-        updateVillages(0);
+        updateVillages('0');
     }
 
     init();
