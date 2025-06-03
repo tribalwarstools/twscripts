@@ -33,6 +33,18 @@
         return options;
     }
 
+
+//implementado
+function fetchVillageGroups() {
+    const options = Array.from(document.querySelectorAll('#group_selection option'));
+
+    return options.map(opt => ({
+        id: parseInt(opt.value),
+        name: opt.textContent.trim()
+    }));
+} 
+//implementado
+    
     // Obter aldeias do grupo
     async function fetchAllPlayerVillagesByGroup(groupId) {
         const res = await $.get(`/game.php?screen=overview_villages&mode=combined&group=${groupId}`);
@@ -82,13 +94,3 @@
 
     atualizarAldeias(grupoSelect.value);
 })();
-
-function fetchVillageGroups() {
-    const options = Array.from(document.querySelectorAll('#group_selection option'));
-
-    return options.map(opt => ({
-        id: parseInt(opt.value),
-        name: opt.textContent.trim()
-    }));
-}
-
