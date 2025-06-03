@@ -170,7 +170,7 @@
             updateVillages(this.value);
         });
 
-        updateVillages(groups[0]?.id ?? 0);
+        updateVillages(0);
     }
 
     init();
