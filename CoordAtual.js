@@ -45,9 +45,8 @@
 
     // Botões principais
     document.getElementById('btn-copy').addEventListener('click', () => {
-        const coord = village.coord;
-        navigator.clipboard.writeText(coord).then(() => {
-            UI.SuccessMessage(`Coordenada ${coord} copiada!`);
+        navigator.clipboard.writeText(village.coord).then(() => {
+            UI.SuccessMessage(`Coordenada ${village.coord} copiada!`);
         }).catch(() => {
             UI.ErrorMessage('Erro ao copiar coordenada.');
         });
@@ -77,6 +76,18 @@
         renderFavoritos();
     };
 
+    window.renameFavorito = function (index) {
+        const favoritos = loadFavoritos();
+        const atual = favoritos[index];
+        const novoNome = prompt("Renomear aldeia:", atual.name);
+        if (novoNome && novoNome.trim() !== "") {
+            favoritos[index].name = novoNome.trim();
+            saveFavoritos(favoritos);
+            UI.SuccessMessage("Aldeia renomeada!");
+            renderFavoritos();
+        }
+    };
+
     function renderFavoritos() {
         const container = document.getElementById('favoritos-list');
         const favoritos = loadFavoritos();
@@ -93,7 +104,7 @@
             linha.style.alignItems = 'center';
             linha.style.justifyContent = 'space-between';
             linha.style.margin = '4px 0';
-            linha.style.gap = '5px';
+            linha.style.gap = '4px';
 
             const nome = document.createElement('span');
             nome.title = v.name;
@@ -112,10 +123,19 @@
                 UI.SuccessMessage(`Copiado: ${v.coord}`);
             });
 
+            const renomear = document.createElement('button');
+            renomear.className = 'btn';
+            renomear.style.padding = '2px 6px';
+            renomear.innerText = '✏️';
+            renomear.title = 'Renomear aldeia';
+            renomear.addEventListener('click', () => {
+                window.renameFavorito(index);
+            });
+
             const remover = document.createElement('button');
-            remover.className = 'btn btn-remov';
+            remover.className = 'btn btn-cancel';
             remover.style.padding = '2px 6px';
-            remover.innerText = 'Remover';
+            remover.innerText = '✖';
             remover.title = 'Remover aldeia dos favoritos';
             remover.addEventListener('click', () => {
                 window.removeFavorito(index);
@@ -123,6 +143,7 @@
 
             linha.appendChild(nome);
             linha.appendChild(copiar);
+            linha.appendChild(renomear);
             linha.appendChild(remover);
             container.appendChild(linha);
         });
@@ -130,7 +151,7 @@
 
     renderFavoritos();
 
-    // Painel arrastável
+    // Tornar o painel arrastável
     const header = document.getElementById('drag-header');
     let isDragging = false, offsetX = 0, offsetY = 0;
 
