@@ -5,6 +5,11 @@
     if (document.getElementById(panelId)) return;
 
     const village = game_data.village;
+    const STORAGE_KEY = 'tw_favoritos';
+
+    // Recupera favoritos salvos
+    const loadFavoritos = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const saveFavoritos = (list) => localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 
     const panel = document.createElement('div');
     panel.id = panelId;
@@ -30,58 +35,81 @@
             <b>Pontos:</b> ${village.points.toLocaleString()}
         </div>
         <button id="btn-copy" class="btn btn-confirm" style="margin-right: 5px;">Copiar Coordenada</button>
-        <button id="btn-copy-multiple" class="btn btn-confirm" style="margin-right: 5px;">Copiar em Massa</button>
+        <button id="btn-favoritar" class="btn btn-confirm" style="margin-right: 5px;">⭐ Favoritar</button>
         <button id="btn-close" class="btn btn-cancel">Fechar</button>
+        <div id="favoritos-list" style="margin-top: 10px;"></div>
     `;
 
     document.body.appendChild(panel);
 
-    // Botão: Copiar coordenada única
+    // Copiar coordenada atual
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(coord).then(() => {
-                UI.SuccessMessage(`Coordenada ${coord} copiada!`);
-            }).catch(() => {
-                UI.ErrorMessage('Erro ao copiar coordenada.');
-            });
-        } else {
-            UI.ErrorMessage('Clipboard não suportado.');
-        }
+        navigator.clipboard.writeText(coord).then(() => {
+            UI.SuccessMessage(`Coordenada ${coord} copiada!`);
+        }).catch(() => {
+            UI.ErrorMessage('Erro ao copiar coordenada.');
+        });
     });
 
-    // Botão: Copiar coordenadas em massa
-    document.getElementById('btn-copy-multiple').addEventListener('click', () => {
-        const coordSet = new Set();
-        document.querySelectorAll('td.nowrap:has(a[href*="info_village"])').forEach(cell => {
-            const match = cell.innerText.match(/\d{3}\|\d{3}/);
-            if (match) coordSet.add(match[0]);
-        });
-
-        const coords = Array.from(coordSet).join(' ');
-        if (!coords) {
-            UI.ErrorMessage('Nenhuma coordenada encontrada na página.');
+    // Favoritar aldeia atual
+    document.getElementById('btn-favoritar').addEventListener('click', () => {
+        const favoritos = loadFavoritos();
+        const jaExiste = favoritos.find(v => v.coord === village.coord);
+        if (jaExiste) {
+            UI.InfoMessage('Essa aldeia já está nos favoritos.');
             return;
         }
-
-        navigator.clipboard.writeText(coords).then(() => {
-            UI.SuccessMessage(`${coordSet.size} coordenadas copiadas!`);
-        }).catch(() => {
-            UI.ErrorMessage('Erro ao copiar coordenadas.');
-        });
+        favoritos.push({ name: village.name, coord: village.coord });
+        saveFavoritos(favoritos);
+        UI.SuccessMessage('Aldeia favoritada!');
+        renderFavoritos();
     });
 
-    // Botão: Fechar painel
+    // Fechar painel
     document.getElementById('btn-close').addEventListener('click', () => {
         panel.remove();
     });
 
-    // Função para tornar o painel arrastável
+    // Renderiza lista de favoritos
+    function renderFavoritos() {
+        const container = document.getElementById('favoritos-list');
+        const favoritos = loadFavoritos();
+
+        if (favoritos.length === 0) {
+            container.innerHTML = '<i>Nenhuma aldeia favoritada ainda.</i>';
+            return;
+        }
+
+        container.innerHTML = '<b>⭐ Favoritos:</b><br>';
+        favoritos.forEach((v, index) => {
+            const div = document.createElement('div');
+            div.style.margin = '3px 0';
+            div.innerHTML = `
+                <span>${v.name} (${v.coord})</span>
+                <button class="btn btn-confirm" style="margin-left: 5px;" onclick="navigator.clipboard.writeText('${v.coord}'); UI.SuccessMessage('Copiado: ${v.coord}');">Copiar</button>
+                <button class="btn btn-cancel" style="margin-left: 2px;" onclick="(${removeFavorito})(${index})">Remover</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Função para remover favorito (precisa estar fora do escopo local)
+    window.removeFavorito = function (index) {
+        const favoritos = loadFavoritos();
+        favoritos.splice(index, 1);
+        saveFavoritos(favoritos);
+        UI.SuccessMessage('Aldeia removida dos favoritos.');
+        renderFavoritos();
+    };
+
+    renderFavoritos();
+
+    // Arrastar painel
     const header = document.getElementById('drag-header');
     let isDragging = false, offsetX = 0, offsetY = 0;
 
     header.style.cursor = 'move';
-
     header.addEventListener('mousedown', function (e) {
         isDragging = true;
         offsetX = e.clientX - panel.offsetLeft;
@@ -97,6 +125,6 @@
         if (!isDragging) return;
         panel.style.left = `${e.clientX - offsetX}px`;
         panel.style.top = `${e.clientY - offsetY}px`;
-        panel.style.right = 'auto'; // Remove alinhamento fixo à direita
+        panel.style.right = 'auto';
     }
 })();
