@@ -1,139 +1,106 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
-// @namespace    https://exemplo.com
+// @namespace    http://tampermonkey.net/
 // @version      1.0
-// @description  Exibe painel flutuante com aldeias filtradas por grupo
-// @author       ChatGPT
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars
+// @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
 // @grant        none
 // ==/UserScript==
 
-(async function () {
+(function () {
     'use strict';
 
-    const styles = `
-        #tw-panel {
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            width: 400px;
-            max-height: 500px;
-            overflow-y: auto;
-            background: #f4e4bc;
-            border: 2px solid #804000;
-            padding: 10px;
-            z-index: 9999;
-            font-size: 12px;
-        }
-        #tw-panel h3 {
-            margin-top: 0;
-            font-size: 14px;
-        }
-        #tw-panel select, #tw-panel table {
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        #tw-panel table {
-            border-collapse: collapse;
-        }
-        #tw-panel td, #tw-panel th {
-            padding: 4px;
-            border: 1px solid #d4c19c;
-        }
-        #tw-panel-close {
-            float: right;
-            cursor: pointer;
-            color: red;
-        }
-    `;
-
-    function injectStyles(css) {
-        const style = document.createElement('style');
-        style.textContent = css;
-        document.head.appendChild(style);
-    }
-
-    function createPanel(content) {
-        const panel = document.createElement('div');
-        panel.id = 'tw-panel';
-        panel.innerHTML = `
-            <h3>Minhas Aldeias <span id="tw-panel-close">[Fechar]</span></h3>
-            ${content}
-        `;
-        document.body.appendChild(panel);
-
-        document.getElementById('tw-panel-close').addEventListener('click', () => {
-            panel.remove();
-        });
-    }
-
-    function renderGroupsFilter(groups) {
-        return `
-            <label for="tw-group-select">Grupo:</label>
-            <select id="tw-group-select">
-                ${groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
-            </select>
-        `;
-    }
-
-    function renderVillagesTable(villages) {
-        return `
-            <table class="vis">
-                <tr><th>Nome</th><th>Coordenadas</th></tr>
-                ${villages.map(v => `<tr><td>${v.name}</td><td>${v.coords}</td></tr>`).join('')}
-            </table>
-        `;
-    }
-
-    function prepareContent(villages, groups) {
-        const groupsFilter = renderGroupsFilter(groups);
-        const villagesTable = renderVillagesTable(villages);
-        return groupsFilter + villagesTable;
-    }
-
     async function fetchVillageGroups() {
-        const response = await $.get('/game.php?screen=overview_villages&mode=combined');
-        const html = $(response);
-        const options = html.find('select[name="group"] option');
-
-        return options.map((i, el) => ({
-            id: el.value,
-            name: el.textContent.trim()
-        })).get();
+        const res = await fetch('/game.php?screen=overview_villages&mode=combined');
+        const text = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        const options = doc.querySelectorAll('select[name="group"] option');
+        return Array.from(options).map(opt => ({
+            id: opt.value,
+            name: opt.textContent.trim()
+        }));
     }
 
     async function fetchAllPlayerVillagesByGroup(groupId) {
-        const response = await $.get(`/game.php?screen=overview_villages&mode=combined&group=${groupId}`);
-        const html = $(response);
+        const url = `/game.php?screen=overview_villages&mode=combined&group=${groupId}`;
+        const res = await fetch(url);
+        const text = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
 
-        const rows = html.find('table.vis.overview_table tr:has(a[href*="screen=overview"])');
-        return rows.map((i, row) => {
-            const $row = $(row);
-            const link = $row.find('a[href*="screen=overview"]');
-            const name = link.text().trim();
-            const coordsMatch = name.match(/\((\d+\|\d+)\)/);
-            const coords = coordsMatch ? coordsMatch[1] : '??|??';
-            return {
-                name: name.replace(/\(\d+\|\d+\)/, '').trim(),
-                coords
-            };
-        }).get();
+        const rows = doc.querySelectorAll('#combined_table tr');
+        const villages = [];
+        rows.forEach(row => {
+            const link = row.querySelector('td:nth-child(2) a');
+            if (link) {
+                const name = link.textContent.trim();
+                const coordsMatch = name.match(/\((\d+\|\d+)\)/);
+                const coords = coordsMatch ? coordsMatch[1] : '??|??';
+                villages.push({ name, coords });
+            }
+        });
+        return villages;
     }
 
-    injectStyles(styles);
+    function createPanel() {
+        const panel = document.createElement('div');
+        panel.id = 'village-group-panel';
+        panel.style = `
+            position: fixed;
+            top: 80px;
+            right: 30px;
+            background: #f4e4bc;
+            border: 2px solid #804000;
+            padding: 10px;
+            z-index: 10000;
+            max-height: 80vh;
+            overflow-y: auto;
+            width: 300px;
+            font-size: 12px;
+        `;
+        document.body.appendChild(panel);
+        return panel;
+    }
 
-    const groups = await fetchVillageGroups();
-    const defaultGroupId = groups[0]?.id || 0;
-    let villages = await fetchAllPlayerVillagesByGroup(defaultGroupId);
-    const content = prepareContent(villages, groups);
-    createPanel(content);
+    async function init() {
+        const panel = createPanel();
+        panel.innerHTML = '<b>Carregando grupos e aldeias...</b>';
 
-    document.addEventListener('change', async function (e) {
-        if (e.target.id === 'tw-group-select') {
-            const newGroupId = e.target.value;
-            const newVillages = await fetchAllPlayerVillagesByGroup(newGroupId);
-            const tableHTML = renderVillagesTable(newVillages);
-            document.querySelector('#tw-panel table').outerHTML = tableHTML;
+        const groups = await fetchVillageGroups();
+        let groupSelect = '<select id="village-group-select">';
+        groups.forEach(group => {
+            groupSelect += `<option value="${group.id}">${group.name}</option>`;
+        });
+        groupSelect += '</select>';
+
+        panel.innerHTML = `
+            <div>
+                <label><b>Grupo:</b></label><br>${groupSelect}
+                <div id="village-list" style="margin-top: 10px;"></div>
+            </div>
+        `;
+
+        async function updateVillages(groupId) {
+            const villages = await fetchAllPlayerVillagesByGroup(groupId);
+            const listDiv = document.getElementById('village-list');
+            if (villages.length === 0) {
+                listDiv.innerHTML = '<i>Nenhuma aldeia encontrada</i>';
+                return;
+            }
+            listDiv.innerHTML = '<table class="vis" width="100%">' +
+                '<tr><th>Aldeia</th><th>Coord.</th></tr>' +
+                villages.map(v => `<tr><td>${v.name}</td><td>${v.coords}</td></tr>`).join('') +
+                '</table>';
         }
-    });
+
+        document.getElementById('village-group-select').addEventListener('change', function () {
+            updateVillages(this.value);
+        });
+
+        updateVillages(groups[0]?.id ?? 0);
+    }
+
+    init();
 })();
