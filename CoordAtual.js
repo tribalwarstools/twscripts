@@ -115,7 +115,7 @@
             const remover = document.createElement('button');
             remover.className = 'btn btn-cancel';
             remover.style.padding = '2px 6px';
-            remover.innerText = 'Excluir';
+            remover.innerText = 'Remover';
             remover.addEventListener('click', () => {
                 window.removeFavorito(index);
             });
