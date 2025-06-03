@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      1.3
-// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar coordenada e botão fechar)
+// @version      1.4
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar coordenada, botão fechar e painel arrastável com altura limitada)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
 // @grant        none
@@ -59,6 +59,33 @@
         return villages;
     }
 
+    function makeDraggable(el) {
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        el.addEventListener('mousedown', function (e) {
+            isDragging = true;
+            offsetX = e.clientX - el.offsetLeft;
+            offsetY = e.clientY - el.offsetTop;
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', stop);
+        });
+
+        function move(e) {
+            if (!isDragging) return;
+            el.style.left = `${e.clientX - offsetX}px`;
+            el.style.top = `${e.clientY - offsetY}px`;
+            el.style.right = 'auto';
+        }
+
+        function stop() {
+            isDragging = false;
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', stop);
+        }
+    }
+
     function createPanel() {
         const panel = document.createElement('div');
         panel.id = 'village-group-panel';
@@ -68,12 +95,12 @@
             right: 30px;
             background: #f4e4bc;
             border: 2px solid #804000;
-            padding: 10px;
+            padding: 10px 10px 10px 10px;
             z-index: 10000;
-            max-height: 80vh;
-            overflow-y: auto;
             width: 320px;
             font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
         `;
 
         const closeBtn = document.createElement('div');
@@ -82,13 +109,19 @@
         closeBtn.addEventListener('click', () => panel.remove());
         panel.appendChild(closeBtn);
 
+        const dragBar = document.createElement('div');
+        dragBar.style = 'cursor: move; font-weight: bold; margin-bottom: 5px;';
+        dragBar.textContent = '🟤 Painel de Aldeias';
+        panel.appendChild(dragBar);
+
         document.body.appendChild(panel);
+        makeDraggable(panel);
         return panel;
     }
 
     async function init() {
         const panel = createPanel();
-        panel.innerHTML += '<b>Carregando grupos e aldeias...</b>';
+        panel.innerHTML += '<div id="panel-content"><b>Carregando grupos e aldeias...</b></div>';
 
         const groups = await fetchVillageGroups();
         let groupSelect = '<select id="village-group-select">';
@@ -97,10 +130,10 @@
         });
         groupSelect += '</select>';
 
-        panel.innerHTML += `
+        document.getElementById('panel-content').innerHTML = `
             <div>
                 <label><b>Grupo:</b></label><br>${groupSelect}
-                <div id="village-list" style="margin-top: 10px;"></div>
+                <div id="village-list" style="margin-top: 10px; max-height: 300px; overflow-y: auto;"></div>
             </div>
         `;
 
