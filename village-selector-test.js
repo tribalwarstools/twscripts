@@ -37,17 +37,16 @@
     async function fetchAllPlayerVillagesByGroup(groupId) {
         const res = await $.get(`/game.php?screen=overview_villages&mode=combined&group=${groupId}`);
         return Array.from($(res).find('.quickedit-vn')).map(span => {
-            const labelEl = $(span).find('.quickedit-label')[0];
-const fullText = labelEl?.textContent.trim() ?? '';
-const name = $(labelEl).data('text') ?? fullText;
-const coordMatch = fullText.match(/\((\d+\|\d+)\)/);
+    const labelEl = $(span).find('.quickedit-label')[0];
+    const fullText = labelEl?.textContent.trim() ?? '';
+    const name = $(labelEl).data('text') ?? fullText;
+    const coordMatch = fullText.match(/\((\d+\|\d+)\)/);
+    return {
+        name: name.trim(),
+        coords: coordMatch ? coordMatch[1] : '??|??'
+    };
+});
 
-            const coordMatch = name.match(/\((\d+\|\d+)\)/);
-            return {
-                name: name.trim(),
-                coords: coordMatch ? coordMatch[1] : '??|??'
-            };
-        });
     }
 
     // Preencher grupos
