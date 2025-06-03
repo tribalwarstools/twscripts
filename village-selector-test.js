@@ -82,3 +82,13 @@
 
     atualizarAldeias(grupoSelect.value);
 })();
+
+function fetchVillageGroups() {
+    const options = Array.from(document.querySelectorAll('#group_selection option'));
+
+    return options.map(opt => ({
+        id: parseInt(opt.value),
+        name: opt.textContent.trim()
+    }));
+}
+
