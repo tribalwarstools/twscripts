@@ -6,6 +6,8 @@
 
     const village = game_data.village;
 
+    const FIX_KEY = 'twSDK-fix-panel';
+
     const panel = document.createElement('div');
     panel.id = panelId;
     panel.style = `
@@ -23,6 +25,8 @@
         cursor: move;
     `;
 
+    const isFixed = localStorage.getItem(FIX_KEY) === 'true';
+
     panel.innerHTML = `
         <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px;">🏰 ${village.name}</div>
         <div style="margin-bottom: 10px;">
@@ -30,7 +34,7 @@
             <b>Pontos:</b> ${village.points.toLocaleString()}
         </div>
         <div style="margin-bottom: 10px;">
-            <label><input type="checkbox" id="fix-panel"> Fixar painel</label>
+            <label><input type="checkbox" id="fix-panel"${isFixed ? ' checked' : ''}> Fixar painel</label>
         </div>
         <button id="btn-copy" class="btn btn-confirm" style="margin-right: 5px;">Copiar Coordenada</button>
         <button id="btn-close" class="btn btn-cancel">Fechar</button>
@@ -38,7 +42,7 @@
 
     document.body.appendChild(panel);
 
-    // Botão: Copiar coordenada
+    // Copiar coordenada
     document.getElementById('btn-copy').addEventListener('click', () => {
         const coord = village.coord;
         if (navigator.clipboard) {
@@ -52,10 +56,19 @@
         }
     });
 
-    // Botão: Fechar painel
+    // Atualiza o localStorage ao marcar/desmarcar "Fixar painel"
+    document.getElementById('fix-panel').addEventListener('change', (e) => {
+        localStorage.setItem(FIX_KEY, e.target.checked ? 'true' : 'false');
+    });
+
+    // Botão fechar
     document.getElementById('btn-close').addEventListener('click', () => {
-        const fix = document.getElementById('fix-panel').checked;
-        if (!fix) panel.remove();
+        if (!document.getElementById('fix-panel').checked) {
+            panel.remove();
+            localStorage.removeItem(FIX_KEY);
+        } else {
+            UI.InfoMessage('Painel fixado. Desmarque para fechá-lo.');
+        }
     });
 
     // Arrastar painel
@@ -74,7 +87,7 @@
         if (isDragging) {
             panel.style.left = `${e.clientX - offsetX}px`;
             panel.style.top = `${e.clientY - offsetY}px`;
-            panel.style.right = 'auto'; // Desativa o right fixo
+            panel.style.right = 'auto'; // Anula right fixo
         }
     });
 
