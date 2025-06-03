@@ -29,7 +29,7 @@
 
     panel.innerHTML = `
         <div id="drag-header" style="font-weight: bold; font-size: 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🏰 ${village.name}</span>
+            <span>Nome da aldeia: ${village.name}</span>
             <button id="btn-close" style="background: transparent; border: none; font-size: 16px; cursor: pointer;">✖</button>
         </div>
         <div style="margin-bottom: 10px;">
