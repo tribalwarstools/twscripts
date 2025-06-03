@@ -126,7 +126,7 @@
             const renomear = document.createElement('button');
             renomear.className = 'btn';
             renomear.style.padding = '2px 6px';
-            renomear.innerText = 'Renomear favorito';
+            renomear.innerText = '✏️';
             renomear.title = 'Renomear favorito';
             renomear.addEventListener('click', () => {
                 window.renameFavorito(index);
