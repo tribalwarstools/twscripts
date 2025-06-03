@@ -122,8 +122,8 @@
         const header = document.createElement('div');
         header.style = 'background: #dec196; padding: 5px; cursor: move; font-weight: bold; display: flex; justify-content: space-between; align-items: center;';
         header.classList.add('drag-handle');
-        header.innerHTML = '<span>🟤 Painel de Aldeias</span>';
-
+        header.innerHTML = '<span>🟤 Painel de Aldeias 2.0</span>';
+ 
         const closeBtn = document.createElement('span');
         closeBtn.textContent = '✖';
         closeBtn.style = 'cursor: pointer; color: #800000; font-weight: bold;';
