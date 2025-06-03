@@ -1,6 +1,5 @@
 javascript:
 (async function () {
-    const scriptName = 'Grupos e Aldeias';
     const dialogId = 'tw_group_village_list';
 
     function tt(msg) {
@@ -28,7 +27,7 @@ javascript:
     }
 
     async function fetchVillageGroups() {
-        const response = await $.get('/game.php?screen=overview_villages&ajax=load_group_menu');
+        const response = await $.get('/game.php?screen=overview_villages&mode=groups&ajax=load_group_menu');
         return response.result;
     }
 
@@ -38,7 +37,6 @@ javascript:
         });
         const doc = new DOMParser().parseFromString(response.html, 'text/html');
         const rows = doc.querySelectorAll('#group_table tbody tr:not(:first-child)');
-
         return Array.from(rows).map(row => {
             const name = row.querySelector('td:nth-child(1)')?.textContent.trim();
             const coords = row.querySelector('td:nth-child(2)')?.textContent.trim();
@@ -52,6 +50,7 @@ javascript:
         select.innerHTML = '';
 
         Object.values(groups).forEach(group => {
+            if (!group.name) return;
             const option = document.createElement('option');
             option.value = group.group_id;
             option.textContent = group.name;
