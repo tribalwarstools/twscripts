@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
-// @namespace    
-// @version      
-// @description  
-// @author       
-// @match        
-// @grant        
+// @namespace    http://tampermonkey.net/
+// @version      1.2
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com botão copiar coordenada)
+// @author       Você
+// @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
+// @grant        none
 // ==/UserScript==
 
 (function () {
@@ -72,7 +72,7 @@
             z-index: 10000;
             max-height: 80vh;
             overflow-y: auto;
-            width: 300px;
+            width: 320px;
             font-size: 12px;
         `;
         document.body.appendChild(panel);
@@ -105,8 +105,8 @@
                 return;
             }
             listDiv.innerHTML = '<table class="vis" width="100%">' +
-                '<tr><th>Aldeia</th><th>Coord.</th></tr>' +
-                villages.map(v => `<tr><td>${v.name}</td><td>${v.coords}</td></tr>`).join('') +
+                '<tr><th>Aldeia</th><th>Coord.</th><th></th></tr>' +
+                villages.map(v => `<tr><td>${v.name}</td><td>${v.coords}</td><td><button onclick="navigator.clipboard.writeText('${v.coords}'); UI.SuccessMessage('Copiado: ${v.coords}');">📋</button></td></tr>`).join('') +
                 '</table>';
         }
 
