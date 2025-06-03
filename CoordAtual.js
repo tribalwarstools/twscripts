@@ -69,28 +69,6 @@
         panel.remove();
     });
 
-    function renderFavoritos() {
-        const container = document.getElementById('favoritos-list');
-        const favoritos = loadFavoritos();
-
-        if (favoritos.length === 0) {
-            container.innerHTML = '<i>Nenhuma aldeia favoritada ainda.</i>';
-            return;
-        }
-
-        container.innerHTML = '<b>⭐ Favoritos:</b><br>';
-        favoritos.forEach((v, index) => {
-            const div = document.createElement('div');
-            div.style.margin = '3px 0';
-            div.innerHTML = `
-                <span>${v.name} (${v.coord})</span>
-                <button class="btn btn-confirm" style="margin-left: 5px;" onclick="navigator.clipboard.writeText('${v.coord}'); UI.SuccessMessage('Copiado: ${v.coord}');">Copiar</button>
-                <button class="btn btn-cancel" style="margin-left: 2px;" onclick="(${removeFavorito})(${index})">Remover</button>
-            `;
-            container.appendChild(div);
-        });
-    }
-
     window.removeFavorito = function (index) {
         const favoritos = loadFavoritos();
         favoritos.splice(index, 1);
@@ -98,6 +76,55 @@
         UI.SuccessMessage('Aldeia removida dos favoritos.');
         renderFavoritos();
     };
+
+    function renderFavoritos() {
+        const container = document.getElementById('favoritos-list');
+        const favoritos = loadFavoritos();
+
+        container.innerHTML = '';
+
+        if (favoritos.length === 0) {
+            container.innerHTML = '<i>Nenhuma aldeia favoritada ainda.</i>';
+            return;
+        }
+
+        const title = document.createElement('b');
+        title.textContent = '⭐ Favoritos:';
+        container.appendChild(title);
+        container.appendChild(document.createElement('br'));
+
+        favoritos.forEach((v, index) => {
+            const div = document.createElement('div');
+            div.style.margin = '3px 0';
+
+            const span = document.createElement('span');
+            span.textContent = `${v.name} (${v.coord})`;
+            div.appendChild(span);
+
+            // Botão Copiar
+            const btnCopy = document.createElement('button');
+            btnCopy.className = 'btn btn-confirm';
+            btnCopy.style.marginLeft = '5px';
+            btnCopy.textContent = 'Copiar';
+            btnCopy.addEventListener('click', () => {
+                navigator.clipboard.writeText(v.coord);
+                UI.SuccessMessage(`Copiado: ${v.coord}`);
+            });
+            div.appendChild(btnCopy);
+
+            // Botão Remover
+            const btnRemove = document.createElement('button');
+            btnRemove.className = 'btn btn-cancel';
+            btnRemove.style.marginLeft = '2px';
+            btnRemove.textContent = 'Remover';
+            btnRemove.addEventListener('click', () => {
+                removeFavorito(index);
+            });
+            div.appendChild(btnRemove);
+
+            container.appendChild(div);
+        });
+    }
 
     renderFavoritos();
 
