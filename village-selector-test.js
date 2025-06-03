@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars
+// @version      1.1
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (com suporte funcional)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
 // @grant        none
@@ -16,11 +16,24 @@
         const text = await res.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(text, 'text/html');
-        const options = doc.querySelectorAll('select[name="group"] option');
-        return Array.from(options).map(opt => ({
-            id: opt.value,
-            name: opt.textContent.trim()
-        }));
+        const groupMenu = doc.querySelector('.vis_item');
+        const groupLinks = groupMenu?.querySelectorAll('a[href*="group="]');
+        const groups = [];
+
+        if (groupLinks) {
+            groupLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                const idMatch = href.match(/group=(\d+)/);
+                if (idMatch) {
+                    groups.push({
+                        id: idMatch[1],
+                        name: link.textContent.trim().replace(/^\s*\[|\]\s*$/g, '')
+                    });
+                }
+            });
+        }
+
+        return groups.length > 0 ? groups : [{ id: 0, name: 'Todas as aldeias' }];
     }
 
     async function fetchAllPlayerVillagesByGroup(groupId) {
@@ -36,7 +49,7 @@
             const link = row.querySelector('td:nth-child(2) a');
             if (link) {
                 const name = link.textContent.trim();
-                const coordsMatch = link.innerHTML.match(/\((\d+\|\d+)\)/); // corrigido
+                const coordsMatch = link.innerHTML.match(/\((\d+\|\d+)\)/);
                 const coords = coordsMatch ? coordsMatch[1] : '??|??';
                 villages.push({ name, coords });
             }
