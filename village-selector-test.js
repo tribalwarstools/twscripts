@@ -29,7 +29,7 @@ javascript:
 
     // Interface
     const html = `
-        <div class="vis" style="padding: 10px width: 100%;">
+        <div class="vis" style="padding: 10px;">
             <h2>Grupos de Aldeias</h2>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <label for="groupSelect"><b>Selecione um grupo:</b></label>
@@ -97,7 +97,7 @@ javascript:
 
         if (!rows.length) {
             $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
-            $("#villageCount").text("(0)");
+            $("#villageCount").text("0");
             return;
         }
 
