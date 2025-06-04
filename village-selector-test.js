@@ -2,13 +2,14 @@ javascript:
 (async function () {
     const groups = [];
     const coordToId = {};
+    const STORAGE_KEY = "tw_last_selected_group";
 
     const parseCoords = (coord) => {
         const [x, y] = coord.split("|");
         return { x, y };
     };
 
-    // Carrega village.txt para mapear coordenadas → ID
+    // Carrega mapa para mapear coordenadas → ID
     const mapData = await $.get("map/village.txt");
     const lines = mapData.trim().split("\n");
     lines.forEach(line => {
@@ -37,9 +38,7 @@ javascript:
                     color: #000;
                     border: 1px solid #603000;
                     font-weight: bold;
-                ">
-                    <option disabled selected>Selecione...</option>
-                </select>
+                "></select>
                 <span id="villageCount" style="font-weight: bold;"></span>
             </div>
             <hr>
@@ -48,18 +47,40 @@ javascript:
     `;
     Dialog.show("tw_group_viewer", html);
 
-    // Preenche o select
     const select = document.getElementById("groupSelect");
+    const savedGroupId = localStorage.getItem(STORAGE_KEY);
+
+    // Placeholder
+    const placeholder = document.createElement("option");
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.hidden = false;
+    placeholder.textContent = "Selecione um grupo";
+    select.appendChild(placeholder);
+
+    // Grupos
     groups.forEach(g => {
+        if (!g.group_id || g.group_id == 0) return;
         const opt = document.createElement("option");
         opt.value = g.group_id;
         opt.textContent = g.group_name;
+        if (savedGroupId == g.group_id) {
+            opt.selected = true;
+            placeholder.hidden = true;
+        }
         select.appendChild(opt);
     });
 
-    // Ao mudar o grupo
+    // Evento de seleção
     select.addEventListener("change", async function () {
         const groupId = this.value;
+        if (!groupId || groupId === "0") return;
+
+        localStorage.setItem(STORAGE_KEY, groupId);
+
+        const firstOption = this.querySelector("option[disabled]");
+        if (firstOption) firstOption.hidden = true;
+
         $("#groupVillages").html("<i>Carregando aldeias...</i>");
         $("#villageCount").text("");
 
@@ -110,4 +131,9 @@ javascript:
             UI.SuccessMessage(`Coordenada ${coord} copiada!`);
         });
     });
+
+    // Se houver grupo salvo, já carrega
+    if (savedGroupId) {
+        select.dispatchEvent(new Event("change"));
+    }
 })();
