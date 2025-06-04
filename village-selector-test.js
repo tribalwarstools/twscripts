@@ -8,7 +8,7 @@ javascript:
         return { x, y };
     };
 
-    // Carrega mapa para obter ID das aldeias
+    // Carrega village.txt para mapear coordenadas → ID
     const mapData = await $.get("map/village.txt");
     const lines = mapData.trim().split("\n");
     lines.forEach(line => {
@@ -29,23 +29,26 @@ javascript:
     const html = `
         <div class="vis" style="padding: 10px;">
             <h2>Grupos de Aldeias</h2>
-            <label for="groupSelect"><b>Selecione um grupo:</b></label><br>
-            <select id="groupSelect" style="
-                margin-top: 5px;
-                padding: 4px;
-                background: #f4e4bc;
-                color: #000;
-                border: 1px solid #603000;
-                font-weight: bold;
-            ">
-                <option disabled selected>Selecione...</option>
-            </select>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="groupSelect"><b>Selecione um grupo:</b></label>
+                <select id="groupSelect" style="
+                    padding: 4px;
+                    background: #f4e4bc;
+                    color: #000;
+                    border: 1px solid #603000;
+                    font-weight: bold;
+                ">
+                    <option disabled selected>Selecione...</option>
+                </select>
+                <span id="villageCount" style="font-weight: bold;"></span>
+            </div>
             <hr>
             <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
         </div>
     `;
     Dialog.show("tw_group_viewer", html);
 
+    // Preenche o select
     const select = document.getElementById("groupSelect");
     groups.forEach(g => {
         const opt = document.createElement("option");
@@ -54,9 +57,11 @@ javascript:
         select.appendChild(opt);
     });
 
+    // Ao mudar o grupo
     select.addEventListener("change", async function () {
         const groupId = this.value;
         $("#groupVillages").html("<i>Carregando aldeias...</i>");
+        $("#villageCount").text("");
 
         const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", {
             group_id: groupId
@@ -67,11 +72,14 @@ javascript:
 
         if (!rows.length) {
             $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
+            $("#villageCount").text("(0 aldeias)");
             return;
         }
 
         let output = `<table class="vis" width="100%">
             <thead><tr><th>Nome</th><th>Coordenadas</th><th>Ações</th></tr></thead><tbody>`;
+        let total = 0;
+
         rows.forEach(row => {
             const tds = row.querySelectorAll("td");
             if (tds.length >= 2) {
@@ -87,11 +95,13 @@ javascript:
                     <td><span class="coord-val">${coords}</span></td>
                     <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
                 </tr>`;
+                total++;
             }
         });
         output += `</tbody></table>`;
 
         $("#groupVillages").html(output);
+        $("#villageCount").text(`(${total} aldeia${total !== 1 ? 's' : ''})`);
 
         // Copiar coordenada
         $(".copy-coord").on("click", function () {
