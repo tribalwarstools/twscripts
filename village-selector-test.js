@@ -1,163 +1,143 @@
+javascript:
 (async function () {
-    if (!window.$) return alert("jQuery não carregado!");
-
-    const STORAGE_KEY_COUNT = "rename_group_count";
+    const groups = [];
     const coordToId = {};
+    const STORAGE_KEY = "tw_last_selected_group";
 
-    const groups = await fetchVillageGroups();
-    const $sidebar = $(".content-border:first");
-    const $content = $(".maincell");
-    $sidebar.html(`<h3>Grupos</h3>`);
-    $content.html(`
-        <h3>Aldeias do Grupo</h3>
-        <div style="margin-bottom: 8px;">
-            Nome base: <input id="baseName" type="text" />
-            <label><input type="checkbox" id="useNumbering" checked /> Usar numeração</label>
-            <label>Iniciar em: <input id="startNumber" type="number" value="${localStorage.getItem(STORAGE_KEY_COUNT) || 1}" min="1" style="width: 60px;" /></label>
-            <label>Zeros à esquerda: <input id="padLength" type="number" value="2" min="1" style="width: 40px;" /></label>
+    const parseCoords = (coord) => {
+        const [x, y] = coord.split("|");
+        return { x, y };
+    };
+
+    // Carrega mapa para mapear coordenadas → ID
+    const mapData = await $.get("map/village.txt");
+    const lines = mapData.trim().split("\n");
+    lines.forEach(line => {
+        const [id, name, x, y] = line.split(",");
+        const coord = `${x}|${y}`;
+        coordToId[coord] = id;
+    });
+
+    // Adiciona "Todas as aldeias"
+    groups.push({ group_id: 0, group_name: "Todas as aldeias" });
+
+    // Carrega grupos do jogador
+    const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
+    groupData.result.forEach(group => {
+        groups.push({ group_id: group.group_id, group_name: group.name });
+    });
+
+    // Interface
+    const html = `
+        <div class="vis" style="padding: 10px;">
+            <h2>Grupos de Aldeias</h2>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="groupSelect"><b>Selecione um grupo:</b></label>
+                <select id="groupSelect" style="
+                    padding: 4px;
+                    background: #f4e4bc;
+                    color: #000;
+                    border: 1px solid #603000;
+                    font-weight: bold;
+                "></select>
+                <span id="villageCount" style="font-weight: bold;"></span>
+            </div>
+            <hr>
+            <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
         </div>
-        <button id="previewRenameBtn">Pré-visualizar renomeação</button>
-        <button id="renameGroupBtn">Renomear todas</button>
-        <div id="renameStatus" style="margin-top: 10px; color: green;"></div>
-        <div id="groupVillages" style="margin-top: 15px;"></div>
-    `);
+    `;
+    Dialog.show("tw_group_viewer", html);
 
-    for (const group of groups) {
-        const $link = $(`<div><a href="#">${group.name}</a></div>`);
-        $link.on("click", async (e) => {
-            e.preventDefault();
-            const villages = await fetchAllPlayerVillagesByGroup(group.id);
-            const $list = $("<table class='vis'><thead><tr><th>#</th><th>Nome atual</th><th>Coordenada</th><th>Próximo nome</th></tr></thead><tbody></tbody></table>");
-            villages.forEach((v, i) => {
-                const row = $(`
-                    <tr>
-                        <td>${i + 1}</td>
-                        <td class="current-name">${v.name}</td>
-                        <td class="coord-val">${v.coord}</td>
-                        <td class="next-name"></td>
-                    </tr>
-                `);
-                $list.find("tbody").append(row);
-                coordToId[v.coord] = v.id;
-            });
-            $("#groupVillages").html($list);
-            updatePreview();
-        });
-        $sidebar.append($link);
-    }
+    const select = document.getElementById("groupSelect");
+    const savedGroupId = localStorage.getItem(STORAGE_KEY);
 
-    $("#useNumbering, #startNumber, #baseName, #padLength").on("input", updatePreview);
-    $("#previewRenameBtn").on("click", updatePreview);
-    $("#renameGroupBtn").on("click", renameGroupVillages);
+    // Placeholder
+    const placeholder = document.createElement("option");
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.hidden = false;
+    placeholder.textContent = "Selecione um grupo";
+    select.appendChild(placeholder);
 
-    function updatePreview() {
-        const useNumbering = $("#useNumbering").prop("checked");
-        let startNumber = Number($("#startNumber").val());
-        const padLength = Number($("#padLength").val());
-        const baseName = $("#baseName").val().trim();
-
-        if (!startNumber || startNumber < 1) startNumber = 1;
-
-        const rows = $("#groupVillages table tbody tr");
-        rows.each((i, row) => {
-            const numberPart = useNumbering ? String(startNumber + i).padStart(padLength, "0") : "";
-            const newName = `${numberPart} ${baseName}`.trim();
-            $(row).find(".next-name").text(newName);
-        });
-    }
-
-    async function renameGroupVillages() {
-        const useNumbering = $("#useNumbering").prop("checked");
-        let startNumber = Number($("#startNumber").val());
-        const padLength = Number($("#padLength").val());
-        const baseName = $("#baseName").val().trim();
-        const $renameStatus = $("#renameStatus");
-
-        if (!baseName && !useNumbering) {
-            UI.InfoMessage("Informe o nome base ou ative a numeração.");
-            return;
+    // Grupos (com tratamento para grupos sem nome)
+    groups.forEach(g => {
+        const opt = document.createElement("option");
+        opt.value = g.group_id;
+        opt.textContent = g.group_name || "(sem nome)";
+        if (!g.group_name) {
+            opt.disabled = true;
+            opt.style.color = "#999";
         }
-        if (!startNumber || startNumber < 1) startNumber = 1;
+        if (savedGroupId == g.group_id) {
+            opt.selected = true;
+            placeholder.hidden = true;
+        }
+        select.appendChild(opt);
+    });
 
-        const rows = $("#groupVillages table tbody tr");
-        if (rows.length === 0) {
-            UI.InfoMessage("Nenhuma aldeia para renomear.");
+    // Evento de seleção
+    select.addEventListener("change", async function () {
+        const groupId = this.value;
+        if (!groupId) return;
+
+        localStorage.setItem(STORAGE_KEY, groupId);
+
+        const firstOption = this.querySelector("option[disabled]");
+        if (firstOption) firstOption.hidden = true;
+
+        $("#groupVillages").html("<i>Carregando aldeias...</i>");
+        $("#villageCount").text("");
+
+        const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", {
+            group_id: groupId
+        });
+
+        const doc = new DOMParser().parseFromString(response.html, "text/html");
+        const rows = doc.querySelectorAll("#group_table tbody tr");
+
+        if (!rows.length) {
+            $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
+            $("#villageCount").text("(0 aldeias)");
             return;
         }
 
-        $renameStatus.text("Iniciando renomeação...");
-        $("#renameGroupBtn").prop("disabled", true);
+        let output = `<table class="vis" width="100%">
+            <thead><tr><th>Nome</th><th>Coordenadas</th><th>Ações</th></tr></thead><tbody>`;
+        let total = 0;
 
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            const coord = $(row).find(".coord-val").text().trim();
-            const villageId = coordToId[coord];
+        rows.forEach(row => {
+            const tds = row.querySelectorAll("td");
+            if (tds.length >= 2) {
+                const name = tds[0].textContent.trim();
+                const coords = tds[1].textContent.trim();
+                const id = coordToId[coords];
+                const link = id
+                    ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>`
+                    : name;
 
-            if (!villageId) {
-                $renameStatus.text(`ID não encontrado para aldeia na linha ${i + 1}`);
-                continue;
+                output += `<tr>
+                    <td>${link}</td>
+                    <td><span class="coord-val">${coords}</span></td>
+                    <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
+                </tr>`;
+                total++;
             }
+        });
+        output += `</tbody></table>`;
 
-            const renameIcon = $(`.rename-icon[data-village-id="${villageId}"]`);
-            if (renameIcon.length === 0) {
-                $renameStatus.text(`Botão renomear não encontrado para aldeia ID ${villageId}`);
-                continue;
-            }
+        $("#groupVillages").html(output);
+        $("#villageCount").text(`(${total} aldeia${total !== 1 ? 's' : ''})`);
 
-            renameIcon.click();
+        // Copiar coordenada
+        $(".copy-coord").on("click", function () {
+            const coord = $(this).data("coord");
+            navigator.clipboard.writeText(coord);
+            UI.SuccessMessage(`Coordenada ${coord} copiada!`);
+        });
+    });
 
-            await new Promise(r => setTimeout(r, 500));
-
-            const $input = $(".rename_village input[type=text]");
-            if ($input.length === 0) {
-                $renameStatus.text(`Input de nome não encontrado para aldeia ID ${villageId}`);
-                continue;
-            }
-
-            const numberPart = useNumbering ? String(startNumber + i).padStart(padLength, "0") : "";
-            const newName = `${numberPart} ${baseName}`.trim();
-
-            $input.val(newName).trigger("input");
-
-            const $saveBtn = $(".rename_village input[type=button], .rename_village button:contains('OK'), .rename_village button:contains('Salvar')");
-            if ($saveBtn.length === 0) {
-                $renameStatus.text(`Botão salvar não encontrado para aldeia ID ${villageId}`);
-                continue;
-            }
-
-            $saveBtn.first().click();
-
-            $renameStatus.text(`Renomeando aldeia ${i + 1} de ${rows.length}: ${newName}`);
-            localStorage.setItem(STORAGE_KEY_COUNT, startNumber + i);
-
-            await new Promise(r => setTimeout(r, 700));
-        }
-
-        $renameStatus.text("Renomeação finalizada!");
-        UI.SuccessMessage("Todas as aldeias do grupo foram renomeadas.");
-        $("#renameGroupBtn").prop("disabled", false);
-        $("#startNumber").val(startNumber + rows.length);
-    }
-
-    async function fetchVillageGroups() {
-        const res = await fetch("/game.php?village=0&screen=overview_villages&mode=groups");
-        const text = await res.text();
-        const html = $(text);
-        const options = html.find("#group_id option");
-        return options.map((_, opt) => ({ id: opt.value, name: opt.innerText })).get();
-    }
-
-    async function fetchAllPlayerVillagesByGroup(groupId) {
-        const res = await fetch(`/game.php?screen=overview_villages&mode=prod&group=${groupId}&page=-1`);
-        const text = await res.text();
-        const html = $(text);
-        const rows = html.find("table.vis.overview_table tr[id^=village_]");
-        return rows.map((_, row) => {
-            const $row = $(row);
-            const name = $row.find("span.quickedit-label").text().trim();
-            const coord = name.match(/\d+\|\d+/)?.[0] || "";
-            const id = Number($row.attr("id").replace("village_", ""));
-            return { id, name, coord };
-        }).get();
+    // Se houver grupo salvo, já carrega
+    if (savedGroupId) {
+        select.dispatchEvent(new Event("change"));
     }
 })();
