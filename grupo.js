@@ -10,7 +10,7 @@ javascript:
         }
     });
 
-    // Criar HTML da interface
+    // Criar interface
     const html = `
         <div class="vis" style="padding: 10px;">
             <h2>Grupos de Aldeias</h2>
@@ -24,7 +24,7 @@ javascript:
     `;
     Dialog.show("tw_group_viewer", html);
 
-    // Preencher select
+    // Preencher o select
     const select = document.getElementById("groupSelect");
     groups.forEach(g => {
         const opt = document.createElement("option");
@@ -43,7 +43,7 @@ javascript:
         });
 
         const doc = new DOMParser().parseFromString(response.html, "text/html");
-        const rows = doc.querySelectorAll("#group_table tbody tr:not(:first-child)");
+        const rows = doc.querySelectorAll("#group_table tbody tr"); // <<< agora pega TODAS as linhas
 
         if (!rows.length) {
             $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
@@ -55,7 +55,9 @@ javascript:
         rows.forEach(row => {
             const name = row.querySelector("td:nth-child(1)")?.textContent.trim();
             const coords = row.querySelector("td:nth-child(2)")?.textContent.trim();
-            output += `<tr><td>${name}</td><td><b>${coords}</b></td></tr>`;
+            if (name && coords) {
+                output += `<tr><td>${name}</td><td><b>${coords}</b></td></tr>`;
+            }
         });
         output += `</tbody></table>`;
 
