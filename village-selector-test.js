@@ -1,12 +1,23 @@
 javascript:
 (async function () {
     const groups = [];
+    const coordToId = {};
 
     const parseCoords = (coord) => {
         const [x, y] = coord.split("|");
         return { x, y };
     };
 
+    // Carregar mapa para obter ID das aldeias
+    const mapData = await $.get("map/village.txt");
+    const lines = mapData.trim().split("\n");
+    lines.forEach(line => {
+        const [id, name, x, y] = line.split(",");
+        const coord = `${x}|${y}`;
+        coordToId[coord] = id;
+    });
+
+    // Obter todos os grupos
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(group => {
         if (group.group_id != 0) {
@@ -14,6 +25,7 @@ javascript:
         }
     });
 
+    // Interface
     const html = `
         <div class="vis" style="padding: 10px;">
             <h2>Grupos de Aldeias</h2>
@@ -65,8 +77,10 @@ javascript:
             if (tds.length >= 2) {
                 const name = tds[0].textContent.trim();
                 const coords = tds[1].textContent.trim();
-                const { x, y } = parseCoords(coords);
-                const link = `<a href="/game.php?village=${game_data.village.id}&screen=place&x=${x}&y=${y}" target="_blank">${name}</a>`;
+                const id = coordToId[coords];
+                const link = id
+                    ? `<a href="/game.php?village=${game_data.village.id}&screen=info_village&id=${id}" target="_blank">${name}</a>`
+                    : name;
 
                 output += `<tr>
                     <td>${link}</td>
