@@ -3,6 +3,9 @@ javascript:
     const COUNTER_KEY = "tw_rename_counter";
     const PENDING_KEY = "tw_pending_rename_group";
 
+    // ============================
+    // EXECUÇÃO AUTOMÁTICA
+    // ============================
     if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
         const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
         let counter = parseInt(start);
@@ -25,21 +28,19 @@ javascript:
                 const newName = `${String(counter).padStart(2, "0")} ${nameBase}`;
                 input.value = newName;
 
-                // Disparar eventos para forçar atualização
+                // Dispara eventos para simular edição
                 input.dispatchEvent(new Event('input', { bubbles: true }));
                 input.dispatchEvent(new Event('change', { bubbles: true }));
                 input.dispatchEvent(new Event('blur', { bubbles: true }));
-
-                // Pressionar Enter virtualmente
                 input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
                 input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
 
-                await delay(100); // pequeno atraso antes do clique
+                await delay(100);
                 okBtn.click();
 
                 UI.SuccessMessage(`Renomeado ${index + 1}/${total}`);
                 counter++;
-                await delay(250); // espera DOM atualizar
+                await delay(250);
             }
         }
 
@@ -53,15 +54,25 @@ javascript:
         return;
     }
 
-    // Resto do painel (sem alterações)
-    // [Tudo igual à versão anterior: painel, campos, grupo, etc.]
-    // Se quiser, posso incluir o restante novamente aqui.
-})();
+    // ============================
+    // PAINEL DE CONFIGURAÇÃO
+    // ============================
+    const groups = [];
+    const coordToId = {};
+    const mapData = await $.get("map/village.txt");
+    mapData.trim().split("\n").forEach(line => {
+        const [id, name, x, y] = line.split(",");
+        coordToId[`${x}|${y}`] = id;
+    });
 
+    const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
+    groupData.result.forEach(group => {
+        groups.push({ group_id: group.group_id, group_name: group.name });
+    });
 
     const html = `
         <div class="vis" style="padding: 10px; width: 700px;">
-            <h2>Grupos</h2>
+            <h2>Grupos de Aldeias</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
                 <label for="groupSelect"><b>Grupo:</b></label>
                 <select id="groupSelect" style="padding: 4px; background: #f4e4bc; color: #000; border: 1px solid #603000; font-weight: bold;"></select>
@@ -69,8 +80,8 @@ javascript:
                 <input type="text" id="renameName" placeholder="Ex: |A|" style="padding: 3px; width: 80px;">
                 <label for="renameStart"><b>Início:</b></label>
                 <input type="number" id="renameStart" min="1" value="1" style="padding: 3px; width: 60px;">
-                <button id="confirmRename" class="btn" type="button">Confirmar renomeação</button>
-                <button id="resetCounter" class="btn" type="button">Resetar contador</button>
+                <button id="confirmRename" class="btn">Confirmar renomeação</button>
+                <button id="resetCounter" class="btn">Resetar contador</button>
                 <span id="villageCount" style="font-weight: bold;"></span>
             </div>
             <hr>
@@ -79,7 +90,6 @@ javascript:
     `;
     Dialog.show("tw_group_viewer", html);
 
-    // Preenche o select
     const select = document.getElementById("groupSelect");
     const savedGroupId = localStorage.getItem("tw_last_selected_group");
 
@@ -105,7 +115,6 @@ javascript:
         select.appendChild(opt);
     });
 
-    // Carrega as aldeias do grupo ao selecionar
     select.addEventListener("change", async function () {
         const groupId = this.value;
         if (!groupId) return;
@@ -164,13 +173,11 @@ javascript:
         });
     });
 
-    // Botão: resetar contador global
     document.getElementById("resetCounter").addEventListener("click", () => {
         localStorage.setItem(COUNTER_KEY, "1");
         UI.SuccessMessage("Contador resetado para 1.");
     });
 
-    // Botão: confirmar renomeação
     document.getElementById("confirmRename").addEventListener("click", () => {
         const groupId = select.value;
         const nameBase = document.getElementById("renameName").value.trim();
