@@ -97,7 +97,7 @@ javascript:
 
         if (!rows.length) {
             $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
-            $("#villageCount").text("(0 aldeias)");
+            $("#villageCount").text("(0)");
             return;
         }
 
