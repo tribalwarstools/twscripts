@@ -32,7 +32,7 @@ javascript:
         <div class="vis" style="padding: 10px;">
             <h2>Grupos de Aldeias</h2>
             <div style="display: flex; align-items: center; gap: 10px;">
-                <label for="groupSelect"><b>Selecione um grupo:</b></label>
+                <label for="groupSelect"><b>Grupo:</b></label>
                 <select id="groupSelect" style="
                     padding: 4px;
                     background: #f4e4bc;
