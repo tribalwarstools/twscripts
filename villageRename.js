@@ -3,35 +3,66 @@ javascript:
     const COUNTER_KEY = "tw_rename_counter";
     const PENDING_KEY = "tw_pending_rename_group";
 
-    // Se estiver na tela de renomeação
+    // Execução automática na tela de renomeação
     if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
         const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
         let counter = parseInt(start);
-        const icons = Array.from(document.querySelectorAll(".rename-icon"));
-        const total = icons.length;
+        let i = 0;
+        const total = document.querySelectorAll(".rename-icon").length;
 
         Dialog.close();
 
-        icons.forEach((icon, i) => {
-            setTimeout(() => {
-                icon.click();
+        async function processRename(icon) {
+            icon.click();
 
-                setTimeout(() => {
+            await new Promise(resolve => {
+                const check = setInterval(() => {
                     const input = document.querySelector('.vis input[type="text"]');
                     if (input) {
-                        input.value = `${String(counter).padStart(2, "0")} ${nameBase}`;
-                        counter++;
-                        const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
-                            .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
-                        if (okBtn) okBtn.click();
-                        UI.SuccessMessage(`Renomeado ${i + 1}/${total}`);
+                        clearInterval(check);
+                        resolve();
                     }
-                }, 150);
-            }, i * 300);
-        });
+                }, 100);
+            });
 
-        localStorage.setItem(COUNTER_KEY, counter);
-        localStorage.removeItem(PENDING_KEY);
+            const input = document.querySelector('.vis input[type="text"]');
+            if (input) {
+                input.value = `${String(counter).padStart(2, "0")} ${nameBase}`;
+                counter++;
+                i++;
+
+                const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
+                    .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
+                if (okBtn) okBtn.click();
+
+                UI.SuccessMessage(`Renomeado ${i}/${total}`);
+            }
+
+            await new Promise(resolve => {
+                const check = setInterval(() => {
+                    const open = document.querySelector('.vis input[type="text"]');
+                    if (!open) {
+                        clearInterval(check);
+                        resolve();
+                    }
+                }, 100);
+            });
+
+            icon.remove(); // Impede repetição
+        }
+
+        async function run() {
+            const icons = Array.from(document.querySelectorAll(".rename-icon"));
+            for (let icon of icons) {
+                await processRename(icon);
+            }
+
+            localStorage.setItem(COUNTER_KEY, counter);
+            localStorage.removeItem(PENDING_KEY);
+            UI.SuccessMessage("Renomeação concluída.");
+        }
+
+        run();
         return;
     }
 
@@ -168,7 +199,7 @@ javascript:
         }
 
         localStorage.setItem(PENDING_KEY, JSON.stringify({ groupId, nameBase, start }));
-        const url = game_data.link_base_pure + `overview_villages&mode=combined&group=${groupId}`;
+        const url = `/game.php?screen=overview_villages&mode=combined&group=${groupId}`;
         window.location.href = url;
     });
 
