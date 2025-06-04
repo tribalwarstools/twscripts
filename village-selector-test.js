@@ -1,212 +1,99 @@
-javascript:
-(async function () {
-    const COUNTER_KEY = "tw_rename_counter";
-    const PENDING_KEY = "tw_pending_rename_group";
+if (window.location.href.includes('screen=overview_villages')) {
+	const $html = `<h3 align="center">Renamer</h3>
+	<div>
+		<div class="info_box">
+			<div class="content" style="margin-left: 4px">
+				<b>1 -</b> Example 1, starting with 001.<br>
+				<b>2 -</b> Example 3, starting with 3 digits.
+			</div>
+		</div>
+		<input id="firstbox" type="checkbox">
+		<input id="start" type="text" placeholder="1" size="3">
+		<input id="end" type="text" placeholder="3" size="1">
+	</div>
+	<div style="margin-top: 4px">
+		<input id="secondbox" type="checkbox">
+		<input id="textname" type="text" placeholder="Your text here" maxlength="32">
+	</div>
+	<div style="padding-top: 8px;">
+		<input id="rename" type="button" class="btn" value="Rename Villages">
+		<input id="save" type="button" class="btn" value="Save Options">
+	</div>
+	<br>
+	<div>
+		<small>
+			<strong>Rename Villages v1.2 by<span style="color: red;"> K I N G S </span></strong>
+		</small>
+	</div>`;
 
-    // EXECUÇÃO AUTOMÁTICA
-    if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
-        const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
-        let counter = parseInt(start);
-        let i = 0;
-        const total = document.querySelectorAll(".rename-icon").length;
+	Dialog.show('rename', $html);
 
-        Dialog.close();
+	let set = localStorage.getItem('set');
+	let lastCount = localStorage.getItem('lastCount');
 
-        async function processRename(icon) {
-            icon.click();
+	if (set) {
+		set = JSON.parse(set);
+		$('#firstbox').prop('checked', set.firstbox);
+		$('#start').val(set.start);
+		$('#end').val(set.end);
+		$('#secondbox').prop('checked', set.secondbox);
+		$('#textname').val(set.textname);
+	}
 
-            await new Promise(resolve => {
-                const check = setInterval(() => {
-                    const input = document.querySelector('.vis input[type="text"]');
-                    if (input) {
-                        clearInterval(check);
-                        resolve();
-                    }
-                }, 100);
-            });
+	// Se existir lastCount e for maior que o start salvo, atualiza o start
+	if (lastCount) {
+		let startVal = Number($('#start').val());
+		let savedCount = Number(lastCount);
+		if (!isNaN(savedCount) && savedCount >= startVal) {
+			$('#start').val(savedCount + 1);
+		}
+	}
 
-            const input = document.querySelector('.vis input[type="text"]');
-            if (input) {
-                input.value = `${String(counter).padStart(2, "0")} ${nameBase}`;
-                counter++;
-                i++;
+	$('#save').on('click', () => {
+		set = {
+			firstbox: $('#firstbox').prop('checked'),
+			start: $('#start').val(),
+			end: $('#end').val(),
+			secondbox: $('#secondbox').prop('checked'),
+			textname: $('#textname').val(),
+		};
 
-                const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
-                    .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
-                if (okBtn) okBtn.click();
+		localStorage.setItem('set', JSON.stringify(set));
+		UI.SuccessMessage('The settings have been saved successfully.');
+	});
 
-                UI.SuccessMessage(`Renomeado ${i}/${total}`);
-            }
+	$('#rename').on('click', function (s) {
+		s.preventDefault();
 
-            await new Promise(resolve => {
-                const check = setInterval(() => {
-                    const open = document.querySelector('.vis input[type="text"]');
-                    if (!open) {
-                        clearInterval(check);
-                        resolve();
-                    }
-                }, 100);
-            });
+		let n, e;
 
-            // Remove o botão já processado
-            icon.remove();
-        }
+		if ($('#firstbox').prop('checked')) {
+			n = Number($('#start').val());
+			e = Number($('#end').val());
+		}
 
-        async function run() {
-            const icons = Array.from(document.querySelectorAll(".rename-icon"));
-            for (let icon of icons) {
-                await processRename(icon);
-            }
+		const a = $('#secondbox').prop('checked') ? $('#textname').val() : '';
+		const total = game_data.player.villages;
 
-            localStorage.setItem(COUNTER_KEY, counter);
-            localStorage.removeItem(PENDING_KEY);
-            UI.SuccessMessage("Renomeação concluída.");
-        }
+		Dialog.close();
 
-        run();
-        return;
-    }
+		$('.rename-icon').each(function (i) {
+			let $this = this;
+			setTimeout(function () {
+				$($this).click();
 
-    // PAINEL DE CONFIGURAÇÃO
-    const groups = [];
-    const coordToId = {};
-    const mapData = await $.get("map/village.txt");
-    mapData.trim().split("\n").forEach(line => {
-        const [id, name, x, y] = line.split(",");
-        coordToId[`${x}|${y}`] = id;
-    });
+				const numberPart = (n && e !== undefined) ? String(n + i).padStart(e, '0') : '';
+				$('.vis input[type="text"]').val(`${numberPart} ${a}`);
 
-    const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
-    groupData.result.forEach(group => {
-        groups.push({ group_id: group.group_id, group_name: group.name });
-    });
+				$('input[type="button"]').click();
+				UI.SuccessMessage(' Success: ' + (i + 1) + '/' + total);
 
-    const html = `
-        <div class="vis" style="padding: 10px; width: 700px;">
-            <h2>Grupos</h2>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-                <label for="groupSelect"><b>Grupo:</b></label>
-                <select id="groupSelect" style="padding: 4px; background: #f4e4bc; color: #000; border: 1px solid #603000; font-weight: bold;"></select>
-                <label for="renameName"><b>Nome base:</b></label>
-                <input type="text" id="renameName" placeholder="Ex: |A|" style="padding: 3px; width: 80px;">
-                <label for="renameStart"><b>Início:</b></label>
-                <input type="number" id="renameStart" min="1" value="1" style="padding: 3px; width: 60px;">
-                <button id="confirmRename" class="btn">Confirmar renomeação</button>
-                <button id="resetCounter" class="btn">Resetar contador</button>
-                <span id="villageCount" style="font-weight: bold;"></span>
-            </div>
-            <hr>
-            <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
-        </div>
-    `;
-    Dialog.show("tw_group_viewer", html);
-
-    const select = document.getElementById("groupSelect");
-    const savedGroupId = localStorage.getItem("tw_last_selected_group");
-
-    const placeholder = document.createElement("option");
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    placeholder.hidden = false;
-    placeholder.textContent = "Selecione um grupo";
-    select.appendChild(placeholder);
-
-    groups.forEach(g => {
-        const opt = document.createElement("option");
-        opt.value = g.group_id;
-        opt.textContent = g.group_name || "";
-        if (!g.group_name) {
-            opt.disabled = true;
-            opt.style.color = "#999";
-        }
-        if (savedGroupId == g.group_id) {
-            opt.selected = true;
-            placeholder.hidden = true;
-        }
-        select.appendChild(opt);
-    });
-
-    select.addEventListener("change", async function () {
-        const groupId = this.value;
-        if (!groupId) return;
-        localStorage.setItem("tw_last_selected_group", groupId);
-
-        const firstOption = this.querySelector("option[disabled]");
-        if (firstOption) firstOption.hidden = true;
-
-        $("#groupVillages").html("<i>Carregando aldeias...</i>");
-        $("#villageCount").text("");
-
-        const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", {
-            group_id: groupId
-        });
-
-        const doc = new DOMParser().parseFromString(response.html, "text/html");
-        const rows = doc.querySelectorAll("#group_table tbody tr");
-
-        if (!rows.length) {
-            $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
-            $("#villageCount").text("0");
-            return;
-        }
-
-        let output = `<table class="vis" width="100%">
-            <thead><tr><th>Nome</th><th>Coordenadas</th><th>Ações</th></tr></thead><tbody>`;
-        let total = 0;
-
-        rows.forEach(row => {
-            const tds = row.querySelectorAll("td");
-            if (tds.length >= 2) {
-                const name = tds[0].textContent.trim();
-                const coords = tds[1].textContent.trim();
-                const id = coordToId[coords];
-                const link = id
-                    ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>`
-                    : name;
-
-                output += `<tr>
-                    <td>${link}</td>
-                    <td><span class="coord-val">${coords}</span></td>
-                    <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
-                </tr>`;
-                total++;
-            }
-        });
-        output += `</tbody></table>`;
-
-        $("#groupVillages").html(output);
-        $("#villageCount").text(`${total}`);
-
-        $(".copy-coord").on("click", function () {
-            const coord = $(this).data("coord");
-            navigator.clipboard.writeText(coord);
-            UI.SuccessMessage(`Coordenada ${coord} copiada!`);
-        });
-    });
-
-    document.getElementById("resetCounter").addEventListener("click", () => {
-        localStorage.setItem(COUNTER_KEY, "1");
-        UI.SuccessMessage("Contador resetado para 1.");
-    });
-
-    document.getElementById("confirmRename").addEventListener("click", () => {
-        const groupId = select.value;
-        const nameBase = document.getElementById("renameName").value.trim();
-        const start = parseInt(document.getElementById("renameStart").value);
-
-        if (!groupId || !nameBase || isNaN(start)) {
-            UI.ErrorMessage("Preencha todos os campos.");
-            return;
-        }
-
-        localStorage.setItem(PENDING_KEY, JSON.stringify({ groupId, nameBase, start }));
-
-        // Redireciona imediatamente de forma confiável
-        const url = `/game.php?screen=overview_villages&mode=combined&group=${groupId}`;
-        window.location.assign(url);
-    });
-
-    if (savedGroupId) {
-        select.dispatchEvent(new Event("change"));
-    }
-})();
+				// Salva o último número renomeado após cada aldeia
+				localStorage.setItem('lastCount', n + i);
+			}, i * 200);
+		});
+	});
+} else {
+	UI.InfoMessage('Redirecting...');
+	window.location.href = game_data.link_base_pure + 'overview_villages&mode=combined&group=0';
+}
