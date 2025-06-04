@@ -29,7 +29,7 @@ javascript:
 
     // Interface
     const html = `
-        <div class="vis" style="padding: 10px width: 600px;">
+        <div class="vis" style="padding: 10px width: 100%;">
             <h2>Grupos de Aldeias</h2>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <label for="groupSelect"><b>Selecione um grupo:</b></label>
