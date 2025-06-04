@@ -23,7 +23,10 @@ javascript:
                     if (input) {
                         input.value = `${String(counter).padStart(2, "0")} |${tag}|`;
                         counter++;
-                        document.querySelector('input[type="button"]').click();
+                        const okButton = Array.from(document.querySelectorAll('input[type="button"]'))
+    .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
+if (okButton) okButton.click();
+
                         UI.SuccessMessage(`Renomeado ${i + 1}/${total}`);
                     }
                 }, 100);
