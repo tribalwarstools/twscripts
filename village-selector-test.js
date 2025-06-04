@@ -126,7 +126,7 @@ javascript:
         output += `</tbody></table>`;
 
         $("#groupVillages").html(output);
-        $("#villageCount").text(`(${total} aldeia${total !== 1 ? 's' : ''})`);
+        $("#villageCount").text(`${total}`);
 
         // Copiar coordenada
         $(".copy-coord").on("click", function () {
