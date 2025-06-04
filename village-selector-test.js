@@ -2,7 +2,11 @@ javascript:
 (async function () {
     const groups = [];
 
-    // Obter todos os grupos
+    const parseCoords = (coord) => {
+        const [x, y] = coord.split("|");
+        return { x, y };
+    };
+
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(group => {
         if (group.group_id != 0) {
@@ -10,7 +14,6 @@ javascript:
         }
     });
 
-    // Interface
     const html = `
         <div class="vis" style="padding: 10px;">
             <h2>Grupos de Aldeias</h2>
@@ -39,7 +42,6 @@ javascript:
         select.appendChild(opt);
     });
 
-    // Lógica ao mudar grupo
     select.addEventListener("change", async function () {
         const groupId = this.value;
         $("#groupVillages").html("<i>Carregando aldeias...</i>");
@@ -63,11 +65,8 @@ javascript:
             if (tds.length >= 2) {
                 const name = tds[0].textContent.trim();
                 const coords = tds[1].textContent.trim();
-                const villageId = row.querySelector("input[type='checkbox']")?.value;
-
-                const link = villageId
-                    ? `<a href="/game.php?village=${game_data.village.id}&screen=info_village&id=${villageId}" target="_blank">${name}</a>`
-                    : name;
+                const { x, y } = parseCoords(coords);
+                const link = `<a href="/game.php?village=${game_data.village.id}&screen=place&x=${x}&y=${y}" target="_blank">${name}</a>`;
 
                 output += `<tr>
                     <td>${link}</td>
@@ -80,7 +79,7 @@ javascript:
 
         $("#groupVillages").html(output);
 
-        // Adiciona funcionalidade de copiar coordenada
+        // Copiar coordenada ao clicar
         $(".copy-coord").on("click", function () {
             const coord = $(this).data("coord");
             navigator.clipboard.writeText(coord);
