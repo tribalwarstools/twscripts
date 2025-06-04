@@ -1,6 +1,8 @@
 javascript:
 (async function () {
     const groups = [];
+    const groupVillageCounts = {};
+    const groupVillages = {};
     const coordToId = {};
     const STORAGE_KEY = "tw_last_selected_group";
 
@@ -9,7 +11,7 @@ javascript:
         return { x, y };
     };
 
-    // Carrega mapa para mapear coordenadas → ID
+    // Load village.txt to map coords → id
     const mapData = await $.get("map/village.txt");
     const lines = mapData.trim().split("\n");
     lines.forEach(line => {
@@ -18,15 +20,45 @@ javascript:
         coordToId[coord] = id;
     });
 
-    // Carrega todos os grupos
+    // Load group list
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
-    groupData.result.forEach(group => {
+    for (const group of groupData.result) {
         if (group.group_id != 0) {
             groups.push({ group_id: group.group_id, group_name: group.name });
         }
-    });
+    }
 
-    // Interface
+    // Load village lists per group
+    await Promise.all(groups.map(async group => {
+        const res = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", {
+            group_id: group.group_id
+        });
+        const doc = new DOMParser().parseFromString(res.html, "text/html");
+        const rows = doc.querySelectorAll("#group_table tbody tr");
+        const villages = [];
+
+        rows.forEach(row => {
+            const tds = row.querySelectorAll("td");
+            if (tds.length >= 2) {
+                const name = tds[0].textContent.trim();
+                const coords = tds[1].textContent.trim();
+                villages.push({ name, coords });
+            }
+        });
+
+        groupVillageCounts[group.group_id] = villages.length;
+        groupVillages[group.group_id] = villages;
+    }));
+
+    // Create "Todas as aldeias" (merged)
+    const ALL_GROUP_ID = "ALL";
+    const allVillages = Object.values(groupVillages).flat();
+    const uniqueVillages = new Map();
+    allVillages.forEach(v => uniqueVillages.set(v.coords, v));
+    groupVillageCounts[ALL_GROUP_ID] = uniqueVillages.size;
+    groupVillages[ALL_GROUP_ID] = [...uniqueVillages.values()];
+
+    // UI
     const html = `
         <div class="vis" style="padding: 10px;">
             <h2>Grupos de Aldeias</h2>
@@ -53,17 +85,24 @@ javascript:
     // Placeholder
     const placeholder = document.createElement("option");
     placeholder.disabled = true;
-    placeholder.selected = true;
-    placeholder.hidden = false;
+    placeholder.selected = !savedGroupId;
+    placeholder.hidden = !!savedGroupId;
     placeholder.textContent = "Selecione um grupo";
     select.appendChild(placeholder);
 
+    // Adiciona opção "Todas as Aldeias"
+    const allOption = document.createElement("option");
+    allOption.value = ALL_GROUP_ID;
+    allOption.textContent = `Todas as Aldeias (${groupVillageCounts[ALL_GROUP_ID]})`;
+    if (savedGroupId === ALL_GROUP_ID) allOption.selected = true;
+    select.appendChild(allOption);
+
     // Grupos
     groups.forEach(g => {
-        if (!g.group_id || g.group_id == 0) return;
         const opt = document.createElement("option");
         opt.value = g.group_id;
-        opt.textContent = g.group_name;
+        const count = groupVillageCounts[g.group_id] || 0;
+        opt.textContent = `${g.group_name} (${count})`;
         if (savedGroupId == g.group_id) {
             opt.selected = true;
             placeholder.hidden = true;
@@ -71,27 +110,16 @@ javascript:
         select.appendChild(opt);
     });
 
-    // Evento de seleção
-    select.addEventListener("change", async function () {
-        const groupId = this.value;
-        if (!groupId || groupId === "0") return;
-
+    // Render aldeias
+    async function renderGroup(groupId) {
         localStorage.setItem(STORAGE_KEY, groupId);
-
-        const firstOption = this.querySelector("option[disabled]");
+        const firstOption = select.querySelector("option[disabled]");
         if (firstOption) firstOption.hidden = true;
 
-        $("#groupVillages").html("<i>Carregando aldeias...</i>");
-        $("#villageCount").text("");
+        const villages = groupVillages[groupId] || [];
+        const total = villages.length;
 
-        const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", {
-            group_id: groupId
-        });
-
-        const doc = new DOMParser().parseFromString(response.html, "text/html");
-        const rows = doc.querySelectorAll("#group_table tbody tr");
-
-        if (!rows.length) {
+        if (total === 0) {
             $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
             $("#villageCount").text("(0 aldeias)");
             return;
@@ -99,41 +127,39 @@ javascript:
 
         let output = `<table class="vis" width="100%">
             <thead><tr><th>Nome</th><th>Coordenadas</th><th>Ações</th></tr></thead><tbody>`;
-        let total = 0;
+        villages.forEach(v => {
+            const id = coordToId[v.coords];
+            const link = id
+                ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${v.name}</a>`
+                : v.name;
 
-        rows.forEach(row => {
-            const tds = row.querySelectorAll("td");
-            if (tds.length >= 2) {
-                const name = tds[0].textContent.trim();
-                const coords = tds[1].textContent.trim();
-                const id = coordToId[coords];
-                const link = id
-                    ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>`
-                    : name;
-
-                output += `<tr>
-                    <td>${link}</td>
-                    <td><span class="coord-val">${coords}</span></td>
-                    <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
-                </tr>`;
-                total++;
-            }
+            output += `<tr>
+                <td>${link}</td>
+                <td><span class="coord-val">${v.coords}</span></td>
+                <td><button class="btn copy-coord" data-coord="${v.coords}">📋</button></td>
+            </tr>`;
         });
         output += `</tbody></table>`;
 
         $("#groupVillages").html(output);
         $("#villageCount").text(`(${total} aldeia${total !== 1 ? 's' : ''})`);
 
-        // Copiar coordenada
         $(".copy-coord").on("click", function () {
             const coord = $(this).data("coord");
             navigator.clipboard.writeText(coord);
             UI.SuccessMessage(`Coordenada ${coord} copiada!`);
         });
+    }
+
+    // Evento de seleção
+    select.addEventListener("change", function () {
+        const groupId = this.value;
+        if (!groupId) return;
+        renderGroup(groupId);
     });
 
-    // Se houver grupo salvo, já carrega
+    // Auto-selecionar último grupo
     if (savedGroupId) {
-        select.dispatchEvent(new Event("change"));
+        renderGroup(savedGroupId);
     }
 })();
