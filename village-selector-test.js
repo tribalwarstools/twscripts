@@ -1,18 +1,16 @@
 javascript:
 (async function () {
-    const STORAGE_KEY = "tw_last_selected_group";
     const COUNTER_KEY = "tw_rename_counter";
-    const PENDING_RENAME_KEY = "tw_pending_rename_group";
+    const PENDING_KEY = "tw_pending_rename_group";
 
-    // Se estiver na tela de renomeação e houver ação pendente
-    if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_RENAME_KEY)) {
-        const { tag, groupId } = JSON.parse(localStorage.getItem(PENDING_RENAME_KEY));
-        let counter = parseInt(localStorage.getItem(COUNTER_KEY) || "1");
-
-        Dialog.close();
-
+    // Se estiver na tela de renomeação
+    if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
+        const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
+        let counter = parseInt(start);
         const icons = Array.from(document.querySelectorAll(".rename-icon"));
         const total = icons.length;
+
+        Dialog.close();
 
         icons.forEach((icon, i) => {
             setTimeout(() => {
@@ -21,24 +19,23 @@ javascript:
                 setTimeout(() => {
                     const input = document.querySelector('.vis input[type="text"]');
                     if (input) {
-                        input.value = `${String(counter).padStart(2, "0")} |${tag}|`;
+                        input.value = `${String(counter).padStart(2, "0")} ${nameBase}`;
                         counter++;
-                        const okButton = Array.from(document.querySelectorAll('input[type="button"]'))
-    .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
-if (okButton) okButton.click();
-
+                        const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
+                            .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
+                        if (okBtn) okBtn.click();
                         UI.SuccessMessage(`Renomeado ${i + 1}/${total}`);
                     }
-                }, 100);
-            }, i * 250);
+                }, 150);
+            }, i * 300);
         });
 
         localStorage.setItem(COUNTER_KEY, counter);
-        localStorage.removeItem(PENDING_RENAME_KEY);
+        localStorage.removeItem(PENDING_KEY);
         return;
     }
 
-    // Modo normal: painel
+    // Painel principal
     const groups = [];
     const coordToId = {};
     const mapData = await $.get("map/village.txt");
@@ -55,11 +52,15 @@ if (okButton) okButton.click();
     const html = `
         <div class="vis" style="padding: 10px; width: 700px;">
             <h2>Grupos de Aldeias</h2>
-            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
                 <label for="groupSelect"><b>Grupo:</b></label>
                 <select id="groupSelect" style="padding: 4px; background: #f4e4bc; color: #000; border: 1px solid #603000; font-weight: bold;"></select>
-                <button id="renameVillagesBtn" class="btn" style="padding: 4px; font-weight: bold;">Renomear aldeias</button>
-                <button id="resetCounter" class="btn" style="padding: 4px;">Resetar contagem</button>
+                <label for="renameName"><b>Nome base:</b></label>
+                <input type="text" id="renameName" placeholder="Ex: |A|" style="padding: 3px; width: 80px;">
+                <label for="renameStart"><b>Início:</b></label>
+                <input type="number" id="renameStart" min="1" value="1" style="padding: 3px; width: 60px;">
+                <button id="confirmRename" class="btn">Confirmar renomeação</button>
+                <button id="resetCounter" class="btn">Resetar contador</button>
                 <span id="villageCount" style="font-weight: bold;"></span>
             </div>
             <hr>
@@ -69,7 +70,7 @@ if (okButton) okButton.click();
     Dialog.show("tw_group_viewer", html);
 
     const select = document.getElementById("groupSelect");
-    const savedGroupId = localStorage.getItem(STORAGE_KEY);
+    const savedGroupId = localStorage.getItem("tw_last_selected_group");
 
     const placeholder = document.createElement("option");
     placeholder.disabled = true;
@@ -96,7 +97,7 @@ if (okButton) okButton.click();
     select.addEventListener("change", async function () {
         const groupId = this.value;
         if (!groupId) return;
-        localStorage.setItem(STORAGE_KEY, groupId);
+        localStorage.setItem("tw_last_selected_group", groupId);
 
         const firstOption = this.querySelector("option[disabled]");
         if (firstOption) firstOption.hidden = true;
@@ -151,28 +152,24 @@ if (okButton) okButton.click();
         });
     });
 
-    document.getElementById("renameVillagesBtn").addEventListener("click", function () {
-        const groupId = select.value;
-        if (!groupId) return;
-
-        const group = groups.find(g => g.group_id == groupId);
-        if (!group) {
-            UI.ErrorMessage("Grupo não encontrado.");
-            return;
-        }
-
-        const defaultTag = (group.group_name || "GRP").trim().toUpperCase().slice(0, 3).replace(/\s/g, '') || "GRP";
-        const tagInput = prompt("Informe a TAG para usar na renomeação:", defaultTag);
-        if (!tagInput) return;
-
-        localStorage.setItem(PENDING_RENAME_KEY, JSON.stringify({ tag: tagInput, groupId }));
-        const redirectUrl = game_data.link_base_pure + `overview_villages&mode=combined&group=${groupId}`;
-        window.location.href = redirectUrl;
-    });
-
     document.getElementById("resetCounter").addEventListener("click", () => {
         localStorage.setItem(COUNTER_KEY, "1");
         UI.SuccessMessage("Contador resetado para 1.");
+    });
+
+    document.getElementById("confirmRename").addEventListener("click", () => {
+        const groupId = select.value;
+        const nameBase = document.getElementById("renameName").value.trim();
+        const start = parseInt(document.getElementById("renameStart").value);
+
+        if (!groupId || !nameBase || isNaN(start)) {
+            UI.ErrorMessage("Preencha todos os campos.");
+            return;
+        }
+
+        localStorage.setItem(PENDING_KEY, JSON.stringify({ groupId, nameBase, start }));
+        const url = game_data.link_base_pure + `overview_villages&mode=combined&group=${groupId}`;
+        window.location.href = url;
     });
 
     if (savedGroupId) {
