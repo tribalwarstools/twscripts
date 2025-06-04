@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Painel de Aldeias por Grupo
 // @namespace    http://tampermonkey.net/
-// @version      2.5
-// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (correção: inclui grupo atual no select e inicia em "Todas as aldeias")
+// @version      2.1
+// @description  Painel flutuante com lista de aldeias filtradas por grupo no Tribal Wars (agora com carregamento correto via AJAX dos grupos, inclusive o grupo ativo)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*screen=overview_villages*
 // @grant        none
@@ -14,42 +14,21 @@
     if (document.getElementById('village-group-panel')) return;
 
     async function fetchVillageGroups() {
-        const res = await fetch('/game.php?screen=overview_villages&mode=combined');
-        const text = await res.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(text, 'text/html');
-        const groupMenu = doc.querySelector('.vis_item');
+        const groups = [{ id: '0', name: 'Todas as aldeias' }];
 
-        const groups = [];
-        const ids = new Set();
-
-        // Adicionar grupo ativo, mesmo sem link
-        const activeSpan = groupMenu?.querySelector('span.menu-highlight');
-        if (activeSpan) {
-            const name = activeSpan.textContent.trim().replace(/^\s*\[|\]\s*$/g, '') || 'Todas as aldeias';
-            const id = game_data.group || '0';
-            groups.push({ id, name });
-            ids.add(id);
+        try {
+            const res = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
+            res.result.forEach(group => {
+                groups.push({
+                    id: group.group_id.toString(),
+                    name: group.name
+                });
+            });
+        } catch (e) {
+            console.warn("Erro ao carregar grupos AJAX:", e);
         }
 
-        // Adicionar outros grupos clicáveis
-        const groupLinks = groupMenu?.querySelectorAll('a[href*="group="]');
-        groupLinks?.forEach(link => {
-            const href = link.getAttribute('href');
-            const idMatch = href.match(/group=(\d+)/);
-            if (idMatch) {
-                const id = idMatch[1];
-                if (!ids.has(id)) {
-                    groups.push({
-                        id,
-                        name: link.textContent.trim().replace(/^\s*\[|\]\s*$/g, '')
-                    });
-                    ids.add(id);
-                }
-            }
-        });
-
-        return groups.length > 0 ? groups : [{ id: '0', name: 'Todas as aldeias' }];
+        return groups;
     }
 
     async function fetchAllPlayerVillagesByGroup(groupId) {
@@ -122,7 +101,7 @@
         const header = document.createElement('div');
         header.style = 'background: #dec196; padding: 5px; cursor: move; font-weight: bold; display: flex; justify-content: space-between; align-items: center;';
         header.classList.add('drag-handle');
-        header.innerHTML = '<span>🟤 Painel de Aldeias 2.5</span>';
+        header.innerHTML = '<span>🟤 Painel de Aldeias</span>';
 
         const closeBtn = document.createElement('span');
         closeBtn.textContent = '✖';
@@ -147,12 +126,10 @@
 
         const groups = await fetchVillageGroups();
         let groupSelect = '<select id="village-group-select">';
-const preferredGroupId = '0';
-groups.forEach(group => {
-    const isSelected = group.id === preferredGroupId ? ' selected' : '';
-    groupSelect += `<option value="${group.id}"${isSelected}>${group.name}</option>`;
-});
-groupSelect += '</select>';
+        groups.forEach(group => {
+            groupSelect += `<option value="${group.id}"${group.id === '0' ? ' selected' : ''}>${group.name}</option>`;
+        });
+        groupSelect += '</select>';
 
         content.innerHTML = `
             <div>
