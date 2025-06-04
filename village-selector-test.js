@@ -19,7 +19,7 @@ javascript:
     });
 
     // Adiciona "Todas as aldeias"
-    groups.push({ group_id: 0, group_name: "Todas as aldeias" });
+    //groups.push({ group_id: 0, group_name: "Todas as aldeias" });
 
     // Carrega grupos do jogador
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
@@ -63,7 +63,7 @@ javascript:
     groups.forEach(g => {
         const opt = document.createElement("option");
         opt.value = g.group_id;
-        opt.textContent = g.group_name || "(sem nome)";
+        opt.textContent = g.group_name || "()";
         if (!g.group_name) {
             opt.disabled = true;
             opt.style.color = "#999";
