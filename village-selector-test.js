@@ -7,31 +7,38 @@ javascript:
     if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
         const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
         let counter = parseInt(start);
-        const icons = Array.from(document.querySelectorAll(".rename-icon"));
-        const total = icons.length;
+        let i = 0;
+        const total = document.querySelectorAll(".rename-icon").length;
 
         Dialog.close();
 
-        icons.forEach((icon, i) => {
+        function processNextRename() {
+            const icon = document.querySelector(".rename-icon");
+            if (!icon || i >= total) {
+                localStorage.setItem(COUNTER_KEY, counter);
+                localStorage.removeItem(PENDING_KEY);
+                UI.SuccessMessage("Renomeação concluída.");
+                return;
+            }
+
+            icon.click();
+
             setTimeout(() => {
-                icon.click();
+                const input = document.querySelector('.vis input[type="text"]');
+                if (input) {
+                    input.value = `${String(counter).padStart(2, "0")} ${nameBase}`;
+                    counter++;
+                    i++;
+                    const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
+                        .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
+                    if (okBtn) okBtn.click();
+                    UI.SuccessMessage(`Renomeado ${i}/${total}`);
+                }
+                setTimeout(processNextRename, 300);
+            }, 150);
+        }
 
-                setTimeout(() => {
-                    const input = document.querySelector('.vis input[type="text"]');
-                    if (input) {
-                        input.value = `${String(counter).padStart(2, "0")} ${nameBase}`;
-                        counter++;
-                        const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
-                            .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
-                        if (okBtn) okBtn.click();
-                        UI.SuccessMessage(`Renomeado ${i + 1}/${total}`);
-                    }
-                }, 150);
-            }, i * 300);
-        });
-
-        localStorage.setItem(COUNTER_KEY, counter);
-        localStorage.removeItem(PENDING_KEY);
+        processNextRename();
         return;
     }
 
