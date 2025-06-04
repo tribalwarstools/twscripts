@@ -18,7 +18,10 @@ javascript:
         coordToId[coord] = id;
     });
 
-    // Carrega todos os grupos
+    // Adiciona "Todas as aldeias"
+    groups.push({ group_id: 0, group_name: "Todas as aldeias" });
+
+    // Carrega grupos do jogador
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(group => {
         if (group.group_id != 0) {
@@ -60,7 +63,6 @@ javascript:
 
     // Grupos
     groups.forEach(g => {
-        if (!g.group_id || g.group_id == 0) return;
         const opt = document.createElement("option");
         opt.value = g.group_id;
         opt.textContent = g.group_name;
@@ -74,7 +76,7 @@ javascript:
     // Evento de seleção
     select.addEventListener("change", async function () {
         const groupId = this.value;
-        if (!groupId || groupId === "0") return;
+        if (!groupId) return;
 
         localStorage.setItem(STORAGE_KEY, groupId);
 
