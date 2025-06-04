@@ -3,7 +3,7 @@ javascript:
     const COUNTER_KEY = "tw_rename_counter";
     const PENDING_KEY = "tw_pending_rename_group";
 
-    // Se estiver na tela de renomeação
+    // === EXECUÇÃO AUTOMÁTICA DE RENOMEAÇÃO ===
     if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
         const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
         let counter = parseInt(start);
@@ -12,37 +12,60 @@ javascript:
 
         Dialog.close();
 
-        function processNextRename() {
-            const icon = document.querySelector(".rename-icon");
-            if (!icon || i >= total) {
-                localStorage.setItem(COUNTER_KEY, counter);
-                localStorage.removeItem(PENDING_KEY);
-                UI.SuccessMessage("Renomeação concluída.");
-                return;
-            }
-
+        async function processRename(icon) {
             icon.click();
 
-            setTimeout(() => {
-                const input = document.querySelector('.vis input[type="text"]');
-                if (input) {
-                    input.value = `${String(counter).padStart(2, "0")} ${nameBase}`;
-                    counter++;
-                    i++;
-                    const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
-                        .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
-                    if (okBtn) okBtn.click();
-                    UI.SuccessMessage(`Renomeado ${i}/${total}`);
-                }
-                setTimeout(processNextRename, 300);
-            }, 150);
+            await new Promise(resolve => {
+                const check = setInterval(() => {
+                    const input = document.querySelector('.vis input[type="text"]');
+                    if (input) {
+                        clearInterval(check);
+                        resolve();
+                    }
+                }, 100);
+            });
+
+            const input = document.querySelector('.vis input[type="text"]');
+            if (input) {
+                input.value = `${String(counter).padStart(2, "0")} ${nameBase}`;
+                counter++;
+                i++;
+
+                const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
+                    .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
+
+                if (okBtn) okBtn.click();
+
+                UI.SuccessMessage(`Renomeado ${i}/${total}`);
+            }
+
+            await new Promise(resolve => {
+                const check = setInterval(() => {
+                    const open = document.querySelector('.vis input[type="text"]');
+                    if (!open) {
+                        clearInterval(check);
+                        resolve();
+                    }
+                }, 100);
+            });
         }
 
-        processNextRename();
+        async function run() {
+            const icons = Array.from(document.querySelectorAll(".rename-icon"));
+            for (let icon of icons) {
+                await processRename(icon);
+            }
+
+            localStorage.setItem(COUNTER_KEY, counter);
+            localStorage.removeItem(PENDING_KEY);
+            UI.SuccessMessage("Renomeação concluída.");
+        }
+
+        run();
         return;
     }
 
-    // Painel principal
+    // === PAINEL DE GRUPOS ===
     const groups = [];
     const coordToId = {};
     const mapData = await $.get("map/village.txt");
