@@ -63,7 +63,7 @@ javascript:
     groups.forEach(g => {
         const opt = document.createElement("option");
         opt.value = g.group_id;
-        opt.textContent = g.group_name || "()";
+        //opt.textContent = g.group_name || "()";
         if (!g.group_name) {
             opt.disabled = true;
             opt.style.color = "#999";
