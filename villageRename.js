@@ -3,81 +3,51 @@ javascript:
     const COUNTER_KEY = "tw_rename_counter";
     const PENDING_KEY = "tw_pending_rename_group";
 
-    // Espera o DOM carregar se estiver na tela de renomeação
+    // =======================
+    // EXECUÇÃO AUTOMÁTICA
+    // =======================
     if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
-        document.addEventListener("DOMContentLoaded", () => runRenameScript());
-        if (document.readyState === "complete" || document.readyState === "interactive") {
-            runRenameScript();
-        }
-        return;
-    }
-
-    async function runRenameScript() {
         const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
         let counter = parseInt(start);
         let i = 0;
-        const total = document.querySelectorAll(".rename-icon").length;
+        const icons = Array.from(document.querySelectorAll(".rename-icon"));
+        const total = icons.length;
 
         Dialog.close();
 
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
         async function processRename(icon) {
             icon.click();
-
-            await new Promise(resolve => {
-                const check = setInterval(() => {
-                    const input = document.querySelector('.vis input[type="text"]');
-                    if (input) {
-                        clearInterval(check);
-                        resolve();
-                    }
-                }, 100);
-            });
+            await delay(100); // pequeno tempo para abrir o campo
 
             const input = document.querySelector('.vis input[type="text"]');
-            if (input) {
+            const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
+                .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
+
+            if (input && okBtn) {
                 input.value = `${String(counter).padStart(2, "0")} ${nameBase}`;
                 counter++;
                 i++;
-
-                // Envia ENTER para simular confirmação (alguns servidores exigem isso)
-                input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-                input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
-
-                const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
-                    .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
-                if (okBtn) okBtn.click();
-
+                okBtn.click();
                 UI.SuccessMessage(`Renomeado ${i}/${total}`);
+                await delay(200); // tempo para DOM atualizar
             }
-
-            await new Promise(resolve => {
-                const check = setInterval(() => {
-                    const open = document.querySelector('.vis input[type="text"]');
-                    if (!open) {
-                        clearInterval(check);
-                        resolve();
-                    }
-                }, 100);
-            });
-
-            icon.remove();
         }
 
-        async function run() {
-            const icons = Array.from(document.querySelectorAll(".rename-icon"));
-            for (let icon of icons) {
-                await processRename(icon);
-            }
-
-            localStorage.setItem(COUNTER_KEY, counter);
-            localStorage.removeItem(PENDING_KEY);
-            UI.SuccessMessage("Renomeação concluída.");
+        for (let icon of icons) {
+            await processRename(icon);
         }
 
-        run();
+        localStorage.setItem(COUNTER_KEY, counter);
+        localStorage.removeItem(PENDING_KEY);
+        UI.SuccessMessage("✅ Renomeação concluída.");
+        return;
     }
 
-    // PAINEL PRINCIPAL
+    // =======================
+    // PAINEL DE CONFIGURAÇÃO
+    // =======================
     const groups = [];
     const coordToId = {};
     const mapData = await $.get("map/village.txt");
@@ -93,7 +63,7 @@ javascript:
 
     const html = `
         <div class="vis" style="padding: 10px; width: 700px;">
-            <h2>Grupos de Aldeias</h2>
+            <h2>Grupos</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
                 <label for="groupSelect"><b>Grupo:</b></label>
                 <select id="groupSelect" style="padding: 4px; background: #f4e4bc; color: #000; border: 1px solid #603000; font-weight: bold;"></select>
@@ -101,8 +71,8 @@ javascript:
                 <input type="text" id="renameName" placeholder="Ex: |A|" style="padding: 3px; width: 80px;">
                 <label for="renameStart"><b>Início:</b></label>
                 <input type="number" id="renameStart" min="1" value="1" style="padding: 3px; width: 60px;">
-                <button id="confirmRename" class="btn">Confirmar renomeação</button>
-                <button id="resetCounter" class="btn">Resetar contador</button>
+                <button id="confirmRename" class="btn" type="button">Confirmar renomeação</button>
+                <button id="resetCounter" class="btn" type="button">Resetar contador</button>
                 <span id="villageCount" style="font-weight: bold;"></span>
             </div>
             <hr>
@@ -111,6 +81,7 @@ javascript:
     `;
     Dialog.show("tw_group_viewer", html);
 
+    // Preenche o select
     const select = document.getElementById("groupSelect");
     const savedGroupId = localStorage.getItem("tw_last_selected_group");
 
@@ -136,6 +107,7 @@ javascript:
         select.appendChild(opt);
     });
 
+    // Carrega as aldeias do grupo ao selecionar
     select.addEventListener("change", async function () {
         const groupId = this.value;
         if (!groupId) return;
@@ -194,11 +166,13 @@ javascript:
         });
     });
 
+    // Botão: resetar contador global
     document.getElementById("resetCounter").addEventListener("click", () => {
         localStorage.setItem(COUNTER_KEY, "1");
         UI.SuccessMessage("Contador resetado para 1.");
     });
 
+    // Botão: confirmar renomeação
     document.getElementById("confirmRename").addEventListener("click", () => {
         const groupId = select.value;
         const nameBase = document.getElementById("renameName").value.trim();
