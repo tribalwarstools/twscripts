@@ -3,7 +3,7 @@ javascript:
     const COUNTER_KEY = "tw_rename_counter";
     const PENDING_KEY = "tw_pending_rename_group";
 
-    // === EXECUÇÃO AUTOMÁTICA DE RENOMEAÇÃO ===
+    // EXECUÇÃO AUTOMÁTICA
     if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
         const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
         let counter = parseInt(start);
@@ -33,7 +33,6 @@ javascript:
 
                 const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
                     .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
-
                 if (okBtn) okBtn.click();
 
                 UI.SuccessMessage(`Renomeado ${i}/${total}`);
@@ -48,6 +47,9 @@ javascript:
                     }
                 }, 100);
             });
+
+            // Remove o botão já processado
+            icon.remove();
         }
 
         async function run() {
@@ -65,7 +67,7 @@ javascript:
         return;
     }
 
-    // === PAINEL DE GRUPOS ===
+    // PAINEL DE CONFIGURAÇÃO
     const groups = [];
     const coordToId = {};
     const mapData = await $.get("map/village.txt");
@@ -81,7 +83,7 @@ javascript:
 
     const html = `
         <div class="vis" style="padding: 10px; width: 700px;">
-            <h2>Grupos de Aldeias 1</h2>
+            <h2>Grupos</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
                 <label for="groupSelect"><b>Grupo:</b></label>
                 <select id="groupSelect" style="padding: 4px; background: #f4e4bc; color: #000; border: 1px solid #603000; font-weight: bold;"></select>
@@ -198,8 +200,10 @@ javascript:
         }
 
         localStorage.setItem(PENDING_KEY, JSON.stringify({ groupId, nameBase, start }));
-        const url = game_data.link_base_pure + `overview_villages&mode=combined&group=${groupId}`;
-        window.location.href = url;
+
+        // Redireciona imediatamente de forma confiável
+        const url = `/game.php?screen=overview_villages&mode=combined&group=${groupId}`;
+        window.location.assign(url);
     });
 
     if (savedGroupId) {
