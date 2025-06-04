@@ -2,7 +2,7 @@ javascript:
 (async function () {
     const groups = [];
 
-    // Obter TODOS os grupos (manuais + dinâmicos)
+    // Obter TODOS os grupos
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(group => {
         if (group.group_id != 0) {
@@ -31,7 +31,6 @@ javascript:
     `;
     Dialog.show("tw_group_viewer", html);
 
-    // Preencher select com todos os grupos
     const select = document.getElementById("groupSelect");
     groups.forEach(g => {
         const opt = document.createElement("option");
@@ -40,7 +39,6 @@ javascript:
         select.appendChild(opt);
     });
 
-    // Carregar aldeias do grupo selecionado
     select.addEventListener("change", async function () {
         const groupId = this.value;
         $("#groupVillages").html("<i>Carregando aldeias...</i>");
@@ -60,9 +58,12 @@ javascript:
         let output = `<table class="vis" width="100%">
             <thead><tr><th>Nome</th><th>Coordenadas</th></tr></thead><tbody>`;
         rows.forEach(row => {
-            const name = row.querySelector("td:nth-child(1)")?.textContent.trim();
-            const coords = row.querySelector("td:nth-child(2)")?.textContent.trim();
-            output += `<tr><td>${name}</td><td><b>${coords}</b></td></tr>`;
+            const tds = row.querySelectorAll("td");
+            if (tds.length >= 2) {
+                const name = tds[0].textContent.trim();
+                const coords = tds[1].textContent.trim();
+                output += `<tr><td>${name}</td><td><b>${coords}</b></td></tr>`;
+            }
         });
         output += `</tbody></table>`;
 
