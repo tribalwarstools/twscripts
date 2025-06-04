@@ -8,7 +8,7 @@ javascript:
         return { x, y };
     };
 
-    // Carregar mapa para obter ID das aldeias
+    // Carrega mapa para obter ID das aldeias
     const mapData = await $.get("map/village.txt");
     const lines = mapData.trim().split("\n");
     lines.forEach(line => {
@@ -17,7 +17,7 @@ javascript:
         coordToId[coord] = id;
     });
 
-    // Obter todos os grupos
+    // Carrega todos os grupos
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(group => {
         if (group.group_id != 0) {
@@ -79,7 +79,7 @@ javascript:
                 const coords = tds[1].textContent.trim();
                 const id = coordToId[coords];
                 const link = id
-                    ? `<a href="/game.php?village=${game_data.village.id}&screen=info_village&id=${id}" target="_blank">${name}</a>`
+                    ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>`
                     : name;
 
                 output += `<tr>
@@ -93,7 +93,7 @@ javascript:
 
         $("#groupVillages").html(output);
 
-        // Copiar coordenada ao clicar
+        // Copiar coordenada
         $(".copy-coord").on("click", function () {
             const coord = $(this).data("coord");
             navigator.clipboard.writeText(coord);
