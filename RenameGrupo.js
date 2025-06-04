@@ -3,7 +3,7 @@ javascript:
     const COUNTER_KEY = "tw_rename_counter";
     const PENDING_KEY = "tw_pending_rename_group";
 
-    // EXECUÇÃO AUTOMÁTICA
+    // === EXECUÇÃO AUTOMÁTICA DE RENOMEAÇÃO ===
     if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
         const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
         let counter = parseInt(start);
@@ -33,6 +33,7 @@ javascript:
 
                 const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
                     .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
+
                 if (okBtn) okBtn.click();
 
                 UI.SuccessMessage(`Renomeado ${i}/${total}`);
@@ -47,9 +48,6 @@ javascript:
                     }
                 }, 100);
             });
-
-            // Remove o botão já processado
-            icon.remove();
         }
 
         async function run() {
@@ -67,7 +65,7 @@ javascript:
         return;
     }
 
-    // PAINEL DE CONFIGURAÇÃO
+    // === PAINEL DE GRUPOS ===
     const groups = [];
     const coordToId = {};
     const mapData = await $.get("map/village.txt");
@@ -200,10 +198,8 @@ javascript:
         }
 
         localStorage.setItem(PENDING_KEY, JSON.stringify({ groupId, nameBase, start }));
-
-        // Redireciona imediatamente de forma confiável
-        const url = `/game.php?screen=overview_villages&mode=combined&group=${groupId}`;
-        window.location.assign(url);
+        const url = game_data.link_base_pure + `overview_villages&mode=combined&group=${groupId}`;
+        window.location.href = url;
     });
 
     if (savedGroupId) {
