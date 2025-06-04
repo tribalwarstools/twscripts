@@ -3,8 +3,16 @@ javascript:
     const COUNTER_KEY = "tw_rename_counter";
     const PENDING_KEY = "tw_pending_rename_group";
 
-    // Execução automática na tela de renomeação
+    // Espera o DOM carregar se estiver na tela de renomeação
     if (window.location.href.includes("screen=overview_villages") && localStorage.getItem(PENDING_KEY)) {
+        document.addEventListener("DOMContentLoaded", () => runRenameScript());
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+            runRenameScript();
+        }
+        return;
+    }
+
+    async function runRenameScript() {
         const { groupId, nameBase, start } = JSON.parse(localStorage.getItem(PENDING_KEY));
         let counter = parseInt(start);
         let i = 0;
@@ -31,6 +39,10 @@ javascript:
                 counter++;
                 i++;
 
+                // Envia ENTER para simular confirmação (alguns servidores exigem isso)
+                input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+                input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
+
                 const okBtn = Array.from(document.querySelectorAll('input[type="button"]'))
                     .find(btn => btn.value.toLowerCase().includes("ok") || btn.value.toLowerCase().includes("salvar"));
                 if (okBtn) okBtn.click();
@@ -48,7 +60,7 @@ javascript:
                 }, 100);
             });
 
-            icon.remove(); // Impede repetição
+            icon.remove();
         }
 
         async function run() {
@@ -63,10 +75,9 @@ javascript:
         }
 
         run();
-        return;
     }
 
-    // Painel principal
+    // PAINEL PRINCIPAL
     const groups = [];
     const coordToId = {};
     const mapData = await $.get("map/village.txt");
