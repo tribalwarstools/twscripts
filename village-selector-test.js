@@ -19,7 +19,7 @@ javascript:
     });
 
     // Adiciona "Todas as aldeias"
-    groups.push({ group_id: 0, group_name: "Todas as aldeias" });
+    //groups.push({ group_id: 0, group_name: "Todas as aldeias" });
 
     // Carrega grupos do jogador
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
@@ -97,7 +97,7 @@ javascript:
 
         if (!rows.length) {
             $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
-            $("#villageCount").text("(0 aldeias)");
+            $("#villageCount").text("");
             return;
         }
 
