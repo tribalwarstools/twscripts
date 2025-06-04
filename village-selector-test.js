@@ -24,9 +24,7 @@ javascript:
     // Carrega grupos do jogador
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(group => {
-        if (group.group_id != 0) {
-            groups.push({ group_id: group.group_id, group_name: group.name });
-        }
+        groups.push({ group_id: group.group_id, group_name: group.name });
     });
 
     // Interface
@@ -61,11 +59,15 @@ javascript:
     placeholder.textContent = "Selecione um grupo";
     select.appendChild(placeholder);
 
-    // Grupos
+    // Grupos (com tratamento para grupos sem nome)
     groups.forEach(g => {
         const opt = document.createElement("option");
         opt.value = g.group_id;
-        opt.textContent = g.group_name;
+        opt.textContent = g.group_name || "(sem nome)";
+        if (!g.group_name) {
+            opt.disabled = true;
+            opt.style.color = "#999";
+        }
         if (savedGroupId == g.group_id) {
             opt.selected = true;
             placeholder.hidden = true;
