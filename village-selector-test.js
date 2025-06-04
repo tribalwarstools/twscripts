@@ -3,25 +3,21 @@ javascript:
     const groups = [];
     const coordToId = {};
     const STORAGE_KEY = "tw_last_selected_group";
+    const COUNTER_KEY = "tw_rename_counter";
 
     const parseCoords = (coord) => {
         const [x, y] = coord.split("|");
         return { x, y };
     };
 
-    // Carrega mapa para mapear coordenadas → ID
+    // Mapeia coordenadas para IDs
     const mapData = await $.get("map/village.txt");
-    const lines = mapData.trim().split("\n");
-    lines.forEach(line => {
+    mapData.trim().split("\n").forEach(line => {
         const [id, name, x, y] = line.split(",");
-        const coord = `${x}|${y}`;
-        coordToId[coord] = id;
+        coordToId[`${x}|${y}`] = id;
     });
 
-    // Adiciona "Todas as aldeias"
-    //groups.push({ group_id: 0, group_name: "Todas as aldeias" });
-
-    // Carrega grupos do jogador
+    // Carrega grupos
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(group => {
         groups.push({ group_id: group.group_id, group_name: group.name });
@@ -29,10 +25,10 @@ javascript:
 
     // Interface
     const html = `
-        <div class="vis" style="padding: 10px;">
+        <div class="vis" style="padding: 10px; width: 700px;">
             <h2>Grupos de Aldeias</h2>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <label for="groupSelect"><b>Grupo:</b></label>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <label for="groupSelect"><b>Selecione um grupo:</b></label>
                 <select id="groupSelect" style="
                     padding: 4px;
                     background: #f4e4bc;
@@ -40,6 +36,8 @@ javascript:
                     border: 1px solid #603000;
                     font-weight: bold;
                 "></select>
+                <button id="renameVillagesBtn" class="btn" style="padding: 4px; font-weight: bold;">Renomear aldeias</button>
+                <button id="resetCounter" class="btn" style="padding: 4px;">Resetar contagem</button>
                 <span id="villageCount" style="font-weight: bold;"></span>
             </div>
             <hr>
@@ -59,7 +57,6 @@ javascript:
     placeholder.textContent = "Selecione um grupo";
     select.appendChild(placeholder);
 
-    // Grupos (com tratamento para grupos sem nome)
     groups.forEach(g => {
         const opt = document.createElement("option");
         opt.value = g.group_id;
@@ -75,7 +72,6 @@ javascript:
         select.appendChild(opt);
     });
 
-    // Evento de seleção
     select.addEventListener("change", async function () {
         const groupId = this.value;
         if (!groupId) return;
@@ -128,7 +124,6 @@ javascript:
         $("#groupVillages").html(output);
         $("#villageCount").text(`${total}`);
 
-        // Copiar coordenada
         $(".copy-coord").on("click", function () {
             const coord = $(this).data("coord");
             navigator.clipboard.writeText(coord);
@@ -136,7 +131,82 @@ javascript:
         });
     });
 
-    // Se houver grupo salvo, já carrega
+    // Botão Resetar contagem
+    document.getElementById("resetCounter").addEventListener("click", () => {
+        localStorage.setItem(COUNTER_KEY, "1");
+        UI.SuccessMessage("Contador resetado para 1.");
+    });
+
+    // Botão Renomear aldeias
+    document.getElementById("renameVillagesBtn").addEventListener("click", async function () {
+        const groupId = select.value;
+        if (!groupId) return;
+
+        const group = groups.find(g => g.group_id == groupId);
+        if (!group) return;
+
+        const defaultTag = (group.group_name || "GRP").trim().toUpperCase().slice(0, 3).replace(/\s/g, '') || "GRP";
+
+        const tagInput = prompt("Informe a TAG para usar na renomeação:", defaultTag);
+        if (!tagInput) return;
+
+        const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", {
+            group_id: groupId
+        });
+
+        const doc = new DOMParser().parseFromString(response.html, "text/html");
+        const rows = doc.querySelectorAll("#group_table tbody tr");
+
+        if (!rows.length) {
+            UI.ErrorMessage("Nenhuma aldeia no grupo para renomear.");
+            return;
+        }
+
+        let counter = parseInt(localStorage.getItem(COUNTER_KEY) || "1");
+        const renameList = [];
+
+        rows.forEach(row => {
+            const tds = row.querySelectorAll("td");
+            if (tds.length >= 2) {
+                const villageId = tds[0].querySelector("a")?.href.match(/village=(\d+)/)?.[1];
+                if (!villageId) return;
+                const newName = `${String(counter).padStart(2, "0")} |${tagInput}|`;
+                renameList.push({ id: villageId, name: newName });
+                counter++;
+            }
+        });
+
+        // Prévia
+        const preview = renameList.map(r => `<tr><td>${r.name}</td></tr>`).join("");
+        const confirmHtml = `
+            <div class="vis" style="padding: 10px;">
+                <h3>Confirmar renomeação?</h3>
+                <p>Total: ${renameList.length} aldeias</p>
+                <table class="vis">${preview}</table>
+                <br>
+                <button id="confirmRename" class="btn">Confirmar</button>
+                <button id="cancelRename" class="btn">Cancelar</button>
+            </div>
+        `;
+        Dialog.show("confirm_rename", confirmHtml);
+
+        document.getElementById("cancelRename").addEventListener("click", () => Dialog.close());
+
+        document.getElementById("confirmRename").addEventListener("click", async () => {
+            Dialog.close();
+            for (const r of renameList) {
+                await $.post(`/game.php?village=${game_data.village.id}&screen=overview&ajax=rename_village`, {
+                    id: r.id,
+                    name: r.name
+                });
+                await new Promise(res => setTimeout(res, 300)); // Delay de 300ms
+            }
+            localStorage.setItem(COUNTER_KEY, counter);
+            UI.SuccessMessage("Aldeias renomeadas com sucesso!");
+            select.dispatchEvent(new Event("change"));
+        });
+    });
+
     if (savedGroupId) {
         select.dispatchEvent(new Event("change"));
     }
