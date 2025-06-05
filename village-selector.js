@@ -21,7 +21,7 @@
   // Monta HTML do painel com o botão para abrir renomeador e TotalTropas
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Grupos de Aldeias</h2>
+      <h2>Visualizar Grupos de Aldeias</h2>
       <button id="abrirRenamer" class="btn" style="margin-bottom:10px;">Abrir Renomeador</button>
       <button id="abrirTotalTropas" class="btn" style="margin-bottom:10px;">Abrir Total de Tropas</button>
       <div style="display: flex; align-items: center; gap: 10px;">
