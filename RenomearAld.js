@@ -7,33 +7,35 @@
 
     const contadorAtual = parseInt(localStorage.getItem('renamer_counter') || '1', 10);
 
-    const $html = `<h3 align="center">Renamer</h3>
-      <div class="info_box">
-        <div class="content" style="margin-left: 4px">
-          <b>Numeração:</b> É contínua entre usos.<br>
-          <b>Dica:</b> Use "Resetar" para começar novamente, ou defina o início abaixo.
-        </div>
-      </div>
-      <div style="margin-top: 6px">
-        <label><input id="firstbox" type="checkbox"> Usar numeração automática</label><br>
-        Dígitos (ex: 3 → 001): <input id="end" type="number" min="1" max="10" style="width: 60px;">
-      </div>
-      <div style="margin-top: 6px">
-        <label><input id="secondbox" type="checkbox"> Texto base</label><br>
-        <input id="textname" type="text" placeholder="Nome da aldeia" maxlength="32" style="width: 200px;">
-      </div>
-      <div style="margin-top: 6px">
-        <b>Contador atual:</b> <span id="contadorAtual" style="color: green;">${contadorAtual}</span><br>
-        Iniciar a partir de: <input id="setCounter" type="number" style="width: 80px;" placeholder="Novo valor">
-      </div>
-      <div style="padding-top: 10px;">
-        <input id="rename" type="button" class="btn" value="Renomear Aldeias">
-        <input id="resetCounter" type="button" class="btn" value="Resetar Contador">
-        <input id="save" type="button" class="btn" value="Salvar Opções">
-      </div>
-      <br>
-      <div>
-        <small><strong>Rename Villages v2.1 por <span style="color: red;">K I N G S</span></strong></small>
+    const $html = `
+      <h3 align="center">Renamer</h3>
+      <table class="vis" style="width: 100%; font-size: 12px;">
+        <tr>
+          <td><label><input id="firstbox" type="checkbox"> Numeração</label></td>
+          <td>Dígitos: <input id="end" type="number" min="1" max="10" style="width: 50px;"></td>
+        </tr>
+        <tr>
+          <td><label><input id="secondbox" type="checkbox"> Texto</label></td>
+          <td><input id="textname" type="text" placeholder="Texto base" maxlength="32" style="width: 100%;"></td>
+        </tr>
+        <tr>
+          <td>Contador atual:</td>
+          <td><span id="contadorAtual" style="color: green;">${contadorAtual}</span></td>
+        </tr>
+        <tr>
+          <td>Iniciar de:</td>
+          <td><input id="setCounter" type="number" placeholder="Novo valor" style="width: 80px;"></td>
+        </tr>
+        <tr>
+          <td colspan="2" align="center" style="padding-top: 6px;">
+            <input id="rename" type="button" class="btn" value="Renomear">
+            <input id="resetCounter" type="button" class="btn" value="Resetar">
+            <input id="save" type="button" class="btn" value="Salvar">
+          </td>
+        </tr>
+      </table>
+      <div style="text-align: center; margin-top: 6px;">
+        <small><strong>v2.1 por <span style="color:red;">K I N G S</span></strong></small>
       </div>`;
 
     Dialog.show('rename', $html);
@@ -45,7 +47,7 @@
     $('#secondbox').prop('checked', config.secondbox || false);
     $('#textname').val(config.textname || '');
 
-    // Botão salvar
+    // Salvar configurações
     $('#save').on('click', () => {
       config = {
         firstbox: $('#firstbox').prop('checked'),
@@ -54,17 +56,17 @@
         textname: $('#textname').val()
       };
       localStorage.setItem('renamer_config', JSON.stringify(config));
-      UI.SuccessMessage('As configurações foram salvas com sucesso.');
+      UI.SuccessMessage('Configurações salvas.');
     });
 
-    // Botão resetar
+    // Resetar contador
     $('#resetCounter').on('click', () => {
       localStorage.setItem('renamer_counter', '1');
       $('#contadorAtual').text('1');
       UI.SuccessMessage('Contador resetado para 1.');
     });
 
-    // Botão renomear
+    // Renomear aldeias
     $('#rename').on('click', function (e) {
       e.preventDefault();
 
@@ -77,7 +79,7 @@
       let contador = !isNaN(novoInicio) ? novoInicio : parseInt(localStorage.getItem('renamer_counter') || '1', 10);
 
       if (!isNaN(novoInicio)) {
-        localStorage.setItem('renamer_counter', novoInicio.toString());
+        localStorage.setItem('renamer_counter', contador.toString());
       }
 
       Dialog.close();
@@ -101,6 +103,5 @@
     });
   }
 
-  // Tornar global
   window.abrirPainelRenomear = abrirPainelRenomear;
 })();
