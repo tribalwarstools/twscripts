@@ -44,6 +44,11 @@ javascript:
         </div>
     `;
     Dialog.show("tw_group_viewer", html);
+$("#popup_box_tw_group_viewer").css({
+    width: "700px", // ou ajuste conforme preferir (ex: "800px")
+    maxWidth: "90vw"
+});
+
 
     const select = document.getElementById("groupSelect");
     const savedGroupId = localStorage.getItem(STORAGE_KEY);
