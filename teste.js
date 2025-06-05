@@ -2,7 +2,6 @@
   const groups = [];
   const coordToId = {};
   const coordToPoints = {};
-  const STORAGE_KEY = "tw_last_selected_group";
 
   // Mapeia coordenadas para ID
   const mapData = await $.get("map/village.txt");
@@ -21,7 +20,7 @@
     const coordMatch = row.innerText.match(/\d+\|\d+/);
     if (coordMatch && cells.length > 2) {
       const coord = coordMatch[0];
-      const pontosTd = cells[2]; // terceira coluna tem a pontuação
+      const pontosTd = cells[2];
       const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
       const points = parseInt(rawText, 10);
       if (!isNaN(points)) {
@@ -54,13 +53,12 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
-  const savedGroupId = localStorage.getItem(STORAGE_KEY);
   const placeholder = new Option("Selecione um grupo", "", true, true);
   placeholder.disabled = true;
   select.appendChild(placeholder);
 
   groups.forEach(g => {
-    const opt = new Option(g.group_name, g.group_id, false, g.group_id == savedGroupId);
+    const opt = new Option(g.group_name, g.group_id, false, g.group_id == 0);
     if (!g.group_name) opt.disabled = true;
     select.appendChild(opt);
   });
@@ -100,7 +98,7 @@
   select.addEventListener("change", async function () {
     const groupId = this.value;
     if (!groupId) return;
-    localStorage.setItem(STORAGE_KEY, groupId);
+
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
 
@@ -167,7 +165,7 @@
     });
   });
 
-  if (savedGroupId) {
-    select.dispatchEvent(new Event("change"));
-  }
+  // Inicia com grupo "Todos" (ID 0)
+  select.value = "0";
+  select.dispatchEvent(new Event("change"));
 })();
