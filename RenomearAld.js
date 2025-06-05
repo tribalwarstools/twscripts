@@ -9,7 +9,7 @@
 
     const $html = `
       <div style="font-size:11px; line-height:1.2;">
-        <div style="text-align:center; font-weight:bold;">Renomear Aldeias</div>
+        <h2 align='center'>Renomear aldeias</h2>
         <table class="vis" style="width:100%; margin-top:4px;">
           <tr>
             <td><input id="firstbox" type="checkbox">Dígitos</td>
