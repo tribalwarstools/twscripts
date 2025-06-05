@@ -80,7 +80,7 @@
   });
 
 //
-   $("#abrirlGrupo").on("click", () => {
+   $("#abrirGrupo").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/moverGrupo.js")
       .done(() => typeof abrirJanelaGrupo === "function" ? abrirJanelaGrupo() : 
         UI.ErrorMessage("Função abrirJanelaGrupo não encontrada."))
