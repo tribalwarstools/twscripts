@@ -1,10 +1,3 @@
-/*
- Script: Contador de Tropas
- Autor original: To6iasz
- Editores: Rinne, Gangsta Anime Girl, natanprog
- Adaptado para português e simplificado
-*/
-
 if (!window.contadorTropas) var contadorTropas = {};
 const lang = [
     "Contador de Tropas",
@@ -90,7 +83,7 @@ const janelaHtml = `
 </table>
 `;
 
-Dialog.show("okienko_komunikatu", janelaHtml);
+Dialog.show('totaltropas', $html);
 
 // Função para exportar dados, alterna entre exibir textarea e tabela
 function exportarDados() {
