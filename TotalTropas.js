@@ -1,178 +1,157 @@
-javascript:
-    if (!licznik_wojska) var licznik_wojska = {};
-var langScript = [];
-if (game_data.locale == "en_DK") {
-    langScript = [
-        "Troop Counter",
-        "Group: ",
-        "All",
-        "Type: ",
-        "Available",
-        "All Your Own",
-        "In Villages",
-        "Support",
-        "Outwards",
-        "In Transit",
-        "Export",
-        " Please Wait...",
-        "There are no villages in the group. <br />Choose another group.",
-        " Empty",
-        "Attention\nOnly the first 1000 villages",
-        "https://help.tribalwars.net/wiki/",
-        "Total of ",
-        " villages"
-    ]
-    licznik_wojska.nazwyJednostek = "Spear_fighter,Swordsman,Axeman,Archer,Scout,Light_cavalry,Mounted_archer,Heavy_cavalry,Ram,Catapult,Paladin,Nobleman".split(",");
-};
-if (game_data.locale == "pt_BR") {
-    langScript = [
-        "Contador de Tropas",
-        "Grupo: ",
-        "Todos",
-        "Tipo: ",
-        "Disponível",
-        "Todas as Suas Próprias",
-        "Nas Aldeias",
-        "Apoios",
-        "Fora",
-        "Em Trânsito",
-        "Exportar",
-        " Por Favor, Espere...",
-        "Não há aldeias no grupo. <br />Escolha outro grupo.",
-        " Vazio",
-        "Atenção\nSomente as primeiras 1000 aldeias",
-        "https://help.tribalwars.com.br/wiki/",
-        "Total de ",
-        " aldeias"
-    ]
-    licznik_wojska.nazwyJednostek = "Lanceiro,Espadachim,Bárbaro,Arqueiro,Explorador,Cavalaria_Leve,Arqueiro_a_cavalo,Cavalaria_Pesada,Aríete,Catapulta,Paladino,Nobres".split(",");
-};
-var tabela;
-var sumaWojsk = [];
-var domyslnyWiersz = "0";
-licznik_wojska.link = "/game.php?&village=" + game_data.village.id + "&type=complete&mode=units&group=0&page=-1&screen=overview_villages";
+if (!contadorTropas) var contadorTropas = {};
+
+const textos = [
+    "Contador de Tropas",
+    "Grupo: ",
+    "Todos",
+    "Tipo: ",
+    "Disponível",
+    "Todas as Suas Próprias",
+    "Nas Aldeias",
+    "Apoios",
+    "Fora",
+    "Em Trânsito",
+    "Exportar",
+    "Por Favor, Espere...",
+    "Não há aldeias no grupo. <br />Escolha outro grupo.",
+    "Vazio",
+    "Atenção\nSomente as primeiras 1000 aldeias",
+    "https://help.tribalwars.com.br/wiki/",
+    "Total de ",
+    " aldeias"
+];
+
+contadorTropas.unidades = "Lanceiro,Espadachim,Bárbaro,Arqueiro,Explorador,Cavalaria_Leve,Arqueiro_a_cavalo,Cavalaria_Pesada,Aríete,Catapulta,Paladino,Nobre".split(",");
+
+contadorTropas.imagensUnidades = "spear,sword,axe,archer,spy,light,marcher,heavy,ram,catapult,knight,snob".split(",");
+
+contadorTropas.linkBase = "/game.php?&village=" + game_data.village.id + "&type=complete&mode=units&group=0&page=-1&screen=overview_villages";
+
 if (game_data.player.sitter != 0)
-    licznik_wojska.link = "/game.php?t=" + game_data.player.id + "&village=" + game_data.village.id + "&type=complete&mode=units&group=0&page=-1&screen=overview_villages";
-licznik_wojska.pobraneGrupy = false;
-licznik_wojska.obrazki = "spear,sword,axe,archer,spy,light,marcher,heavy,ram,catapult,knight,snob".split(",");
+    contadorTropas.linkBase = "/game.php?t=" + game_data.player.id + "&village=" + game_data.village.id + "&type=complete&mode=units&group=0&page=-1&screen=overview_villages";
 
-var okienko = "<h2 align='center'>" + langScript[0] + "</h2><table width='100%'><tr><th>" + langScript[1] + "<select id='listaGrup' onchange=\"licznik_wojska.link = this.value; pobierzDane();\"><option value='" + licznik_wojska.link + "'>" + langScript[2] + "</select>";
-okienko += "<tr><td><table width='100%'><tr><th colspan='4'>" + langScript[3] + "<select onchange=\"zmiana(this.value);\"><option value='0'>" + langScript[4] + "<option value='0p2p3'>" + langScript[5] + "<option value='1'>" + langScript[6] + "<option value='1m0'>" + langScript[7] + "<option value='2'>" + langScript[8] + "<option value='3'>" + langScript[9] + "</select><tbody id='dostepne_wojska'></table><tr><th><b id='ilosc_wiosek'></b><a href='#' style='float: right;' onclick=\"eksportuj();\">" + langScript[10] + "</a></table>";
-Dialog.show("okienko_komunikatu", okienko);
-pobierzDane();
-void 0;
+contadorTropas.gruposCarregados = false;
 
-function eksportuj() {
-    if (!$("#dostepne_wojska").html().match("textarea"))
-        $("#dostepne_wojska").html(licznik_wojska.eksport);
-    else
-        zmiana(domyslnyWiersz);
+let tabelaUnidades;
+let somaTropasPorTipo = [];
+let filtroAtual = "0";
+
+const montarPainel = () => {
+    let painel = `<h2 align='center'>${textos[0]}</h2>`;
+    painel += `<table width='100%'><tr><th>${textos[1]}<select id='listaGrupos' onchange="contadorTropas.linkBase = this.value; carregarDados();"><option value='${contadorTropas.linkBase}'>${textos[2]}</option></select></th></tr>`;
+    painel += `<tr><td><table width='100%'><tr><th colspan='4'>${textos[3]}<select onchange="alterarFiltro(this.value);"><option value='0'>${textos[4]}</option><option value='0p2p3'>${textos[5]}</option><option value='1'>${textos[6]}</option><option value='1m0'>${textos[7]}</option><option value='2'>${textos[8]}</option><option value='3'>${textos[9]}</option></select></th></tr><tbody id='tropasDisponiveis'></tbody></table>`;
+    painel += `<tr><th><b id='quantidadeAldeias'></b><a href='#' style='float: right;' onclick="exportar();">${textos[10]}</a></th></tr></table>`;
+    Dialog.show("janelaContadorTropas", painel);
+    carregarDados();
 }
 
-function pobierzDane() {
-    $("#ilosc_wiosek").html(langScript[11]);
-    $(mobile ? "#loading" : "#loading_content").show();
-    var r;
-    r = new XMLHttpRequest();
-    r.open("GET", licznik_wojska.link, true);
+function exportar() {
+    if (!$("#tropasDisponiveis").html().includes("textarea"))
+        $("#tropasDisponiveis").html(contadorTropas.exportacao);
+    else
+        alterarFiltro(filtroAtual);
+}
 
-    function processResponse() {
-        if (r.readyState == 4 && r.status == 200) {
-            requestedBody = document.createElement("body");
-            requestedBody.innerHTML = r.responseText;
-            tabela = $(requestedBody).find("#units_table").get()[0];
-            if (!tabela) {
-                $("#dostepne_wojska").html(langScript[12]);
-                $("#ilosc_wiosek").html(langScript[13]);
-                return false;
+function carregarDados() {
+    $("#quantidadeAldeias").html(textos[11]);
+    $(mobile ? "#loading" : "#loading_content").show();
+
+    let requisicao = new XMLHttpRequest();
+    requisicao.open("GET", contadorTropas.linkBase, true);
+
+    requisicao.onreadystatechange = () => {
+        if (requisicao.readyState == 4 && requisicao.status == 200) {
+            let corpoResposta = document.createElement("body");
+            corpoResposta.innerHTML = requisicao.responseText;
+            tabelaUnidades = $(corpoResposta).find("#units_table").get(0);
+            if (!tabelaUnidades) {
+                $("#tropasDisponiveis").html(textos[12]);
+                $("#quantidadeAldeias").html(textos[13]);
+                return;
             }
-            var grupy = $(requestedBody).find(".vis_item").get()[0].getElementsByTagName(mobile ? "option" : "a");
-            if (tabela.rows.length > 4000) alert(langScript[14]);
-            if (!licznik_wojska.pobraneGrupy) {
-                for (i = 0; i < grupy.length; i++) {
-                    nazwa = grupy[i].textContent;
-                    if (mobile && grupy[i].textContent == "wszystkie") continue;
-                    $("#listaGrup").append($("<option>", {
-                        value: grupy[i].getAttribute(mobile ? "value" : "href") + "&page=-1",
-                        text: mobile ? nazwa : nazwa.slice(1, nazwa.length - 1)
+            let grupos = $(corpoResposta).find(".vis_item").get(0).getElementsByTagName(mobile ? "option" : "a");
+            if (tabelaUnidades.rows.length > 4000) alert(textos[14]);
+
+            if (!contadorTropas.gruposCarregados) {
+                for (let i = 0; i < grupos.length; i++) {
+                    let nomeGrupo = grupos[i].textContent;
+                    if (mobile && nomeGrupo === "wszystkie") continue;
+                    $("#listaGrupos").append($("<option>", {
+                        value: grupos[i].getAttribute(mobile ? "value" : "href") + "&page=-1",
+                        text: mobile ? nomeGrupo : nomeGrupo.slice(1, nomeGrupo.length - 1)
                     }));
                 }
-                licznik_wojska.pobraneGrupy = true;
-                if (!tabela.rows[0].innerHTML.match("archer")) {
-                    licznik_wojska.obrazki.splice(licznik_wojska.obrazki.indexOf("archer"), 1);
-                    licznik_wojska.obrazki.splice(licznik_wojska.obrazki.indexOf("marcher"), 1);
+                contadorTropas.gruposCarregados = true;
+
+                if (!tabelaUnidades.rows[0].innerHTML.includes("archer")) {
+                    contadorTropas.imagensUnidades = contadorTropas.imagensUnidades.filter(img => img !== "archer" && img !== "marcher");
                 }
-                if (!tabela.rows[0].innerHTML.match("knight"))
-                    licznik_wojska.obrazki.splice(licznik_wojska.obrazki.indexOf("knight"), 1);
+                if (!tabelaUnidades.rows[0].innerHTML.includes("knight")) {
+                    contadorTropas.imagensUnidades = contadorTropas.imagensUnidades.filter(img => img !== "knight");
+                }
             }
-            sumuj();
-            zmiana(domyslnyWiersz);
-        };
-    }
-    r.onreadystatechange = processResponse;
-    r.send(null);
+            somarTropas();
+            alterarFiltro(filtroAtual);
+        }
+    };
+    requisicao.send(null);
 }
 
-function zmiana(tekst) {
-    domyslnyWiersz = tekst;
-    ktory = String(tekst).match(/\d+/g);
-    coZrobic = String(tekst).match(/[a-z]/g);
-    var nowaSuma = [];
-    for (j = 0; j < licznik_wojska.obrazki.length; j++)
-        nowaSuma[j] = 0;
-    for (i = 0; i < ktory.length; i++)
-        if (i == 0 || coZrobic[i - 1] == "p")
-            nowaSuma = dodaj(nowaSuma, sumaWojsk[ktory[i]]);
-        else
-            nowaSuma = odejmij(nowaSuma, sumaWojsk[ktory[i]]);
-    wypisz(nowaSuma);
+function alterarFiltro(valor) {
+    filtroAtual = valor;
+    let indices = String(valor).match(/\d+/g);
+    let operacoes = String(valor).match(/[a-z]/g);
+    let somaAtual = new Array(contadorTropas.imagensUnidades.length).fill(0);
+
+    for (let i = 0; i < indices.length; i++) {
+        if (i === 0 || (operacoes && operacoes[i - 1] === "p")) {
+            somaAtual = somarVetores(somaAtual, somaTropasPorTipo[indices[i]]);
+        } else {
+            somaAtual = subtrairVetores(somaAtual, somaTropasPorTipo[indices[i]]);
+        }
+    }
+    mostrarTropas(somaAtual);
 }
 
-function sumuj() {
-    for (i = 0; i < 5; i++) {
-        sumaWojsk[i] = [];
-        for (j = 0; j < licznik_wojska.obrazki.length; j++)
-            sumaWojsk[i][j] = 0;
+function somarTropas() {
+    for (let i = 0; i < 5; i++) {
+        somaTropasPorTipo[i] = new Array(contadorTropas.imagensUnidades.length).fill(0);
     }
-    for (var i = 1; i < tabela.rows.length; i++) {
-        m = (tabela.rows[1].cells.length == tabela.rows[i].cells.length) ? 2 : 1;
-        for (var j = m; j < licznik_wojska.obrazki.length + m; j++) {
-            sumaWojsk[(i - 1) % 5][j - m] += parseInt(tabela.rows[i].cells[j].textContent);
+
+    for (let i = 1; i < tabelaUnidades.rows.length; i++) {
+        // Ajuste do índice da célula: depende se tem coluna extra (ex: botão)
+        let inicioColunas = (tabelaUnidades.rows[1].cells.length === tabelaUnidades.rows[i].cells.length) ? 2 : 1;
+        for (let j = inicioColunas; j < contadorTropas.imagensUnidades.length + inicioColunas; j++) {
+            somaTropasPorTipo[(i - 1) % 5][j - inicioColunas] += parseInt(tabelaUnidades.rows[i].cells[j].textContent);
         }
     }
 }
 
-function odejmij(sumaWojsk1, sumaWojsk2) {
-    var wynik = [];
-    for (k = 0; k < licznik_wojska.obrazki.length; k++)
-        wynik[k] = sumaWojsk1[k] - sumaWojsk2[k];
-    return wynik;
+function subtrairVetores(v1, v2) {
+    return v1.map((val, idx) => val - v2[idx]);
 }
 
-function dodaj(sumaWojsk1, sumaWojsk2) {
-    var wynik = [];
-    for (k = 0; k < licznik_wojska.obrazki.length; k++)
-        wynik[k] = sumaWojsk1[k] + sumaWojsk2[k];
-    return wynik;
+function somarVetores(v1, v2) {
+    return v1.map((val, idx) => val + v2[idx]);
 }
 
-function rysujSpacje(ile) {
-    var tekst = String(ile);
-    var wynik = "";
-    for (j = 0; j < (10 - tekst.length); j++)
-        wynik += "\u2007";
-    return wynik;
+function formatarEspaco(valor) {
+    const texto = String(valor);
+    const espacos = 10 - texto.length;
+    return "\u2007".repeat(espacos);
 }
 
-function wypisz(sumaWojskDoWypisania) {
-    elem = "<tr>";
-    licznik_wojska.eksport = "<textarea rows='7' cols='25' onclick=\"this.select();\">";
-    for (i = 0; i < licznik_wojska.obrazki.length; i++) {
-        licznik_wojska.eksport += "[unit]" + licznik_wojska.obrazki[i] + "[/unit]" + sumaWojskDoWypisania[i] + (i % 2 == 0 ? rysujSpacje(sumaWojskDoWypisania[i]) : "\n");
-        elem += (i % 2 == 0 ? "<tr>" : "") + "<th width='20'><a href='" + langScript[15] + licznik_wojska.nazwyJednostek[i] + "' target='_blank'><img src='" + image_base + "unit/unit_" + licznik_wojska.obrazki[i] + ".png'></a><td bgcolor='#fff5da'>" + sumaWojskDoWypisania[i];
+function mostrarTropas(somaTropas) {
+    let html = "<tr>";
+    contadorTropas.exportacao = "<textarea rows='7' cols='25' onclick='this.select();'>";
+
+    for (let i = 0; i < contadorTropas.imagensUnidades.length; i++) {
+        contadorTropas.exportacao += `[unit]${contadorTropas.imagensUnidades[i]}[/unit]${somaTropas[i]}${(i % 2 === 0) ? formatarEspaco(somaTropas[i]) : "\n"}`;
+        html += (i % 2 === 0 ? "<tr>" : "") + `<th width='20'><a href='${textos[15]}${contadorTropas.unidades[i]}' target='_blank'><img src='${image_base}unit/unit_${contadorTropas.imagensUnidades[i]}.png'></a><td bgcolor='#fff5da'>${somaTropas[i]}</td>`;
     }
-    licznik_wojska.eksport += "</textarea>";
-    $("#dostepne_wojska").html(elem);
+
+    contadorTropas.exportacao += "</textarea>";
+    $("#tropasDisponiveis").html(html);
     $(mobile ? "#loading" : "#loading_content").hide();
-    $("#ilosc_wiosek").html(langScript[16] + ((tabela.rows.length - 1) / 5) + langScript[17]);
+    $("#quantidadeAldeias").html(`${textos[16]}${((tabelaUnidades.rows.length - 1) / 5)}${textos[17]}`);
 }
