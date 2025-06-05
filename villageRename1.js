@@ -1,213 +1,115 @@
 if (window.location.href.includes('screen=overview_villages')) {
-    $(document).ready(async function () {
-        console.log('Iniciando script de renomear com grupos');
+  const $html = `
+    <h3 align="center">Renamer</h3>
+    <div>
+      <div class="info_box">
+        <div class="content" style="margin-left: 4px">
+          <b>1 -</b> Example 1, starting with 001.<br>
+          <b>2 -</b> Example 3, starting with 3 digits.
+        </div>
+      </div>
+      <input id="firstbox" type="checkbox">
+      <input id="start" type="text" placeholder="1" size="3">
+      <input id="end" type="text" placeholder="3" size="1">
+    </div>
+    <div style="margin-top: 4px">
+      <input id="secondbox" type="checkbox">
+      <input id="textname" type="text" placeholder="Your text here" maxlength="32">
+    </div>
+    <div style="padding-top: 8px;">
+      <input id="rename" type="button" class="btn" value="Rename Villages">
+      <input id="save" type="button" class="btn" value="Save Options">
+    </div>
+    <br>
+    <div>
+      <small>
+        <strong>Rename Villages v1.2 by <span style="color: red;">K I N G S</span></strong>
+      </small>
+    </div>`;
 
-        if (typeof Dialog === 'undefined' || typeof Dialog.show !== 'function') {
-            console.error('Dialog.show não está disponível no momento.');
-            alert('Erro: Dialog.show não está disponível.');
-            return;
+  Dialog.show('rename', $html);
+
+  // Carregue suas aldeias do grupo aqui — exemplo array com IDs de aldeias
+  // Você deve alimentar essa lista com as aldeias do grupo selecionado
+  const villages = [...]; // ex: ['12345', '12346', '12347'] — IDs das aldeias do grupo
+
+  let set = localStorage.getItem('set');
+  let lastCount = localStorage.getItem('lastCount');
+
+  if (set) {
+    set = JSON.parse(set);
+    $('#firstbox').prop('checked', set.firstbox);
+    $('#start').val(set.start);
+    $('#end').val(set.end);
+    $('#secondbox').prop('checked', set.secondbox);
+    $('#textname').val(set.textname);
+  }
+
+  if (lastCount) {
+    const startVal = Number($('#start').val());
+    const savedCount = Number(lastCount);
+    if (!isNaN(savedCount) && savedCount >= startVal) {
+      $('#start').val(savedCount + 1);
+    }
+  }
+
+  $('#save').on('click', () => {
+    set = {
+      firstbox: $('#firstbox').prop('checked'),
+      start: $('#start').val(),
+      end: $('#end').val(),
+      secondbox: $('#secondbox').prop('checked'),
+      textname: $('#textname').val(),
+    };
+    localStorage.setItem('set', JSON.stringify(set));
+    UI.SuccessMessage('The settings have been saved successfully.');
+  });
+
+  $('#rename').on('click', function (e) {
+    e.preventDefault();
+
+    if (!villages || villages.length === 0) {
+      UI.ErrorMessage('Nenhuma aldeia selecionada para renomear.');
+      return;
+    }
+
+    const firstboxChecked = $('#firstbox').prop('checked');
+    const startNumber = Number($('#start').val());
+    const padLength = Number($('#end').val());
+    const secondboxChecked = $('#secondbox').prop('checked');
+    const textName = $('#textname').val();
+
+    Dialog.close();
+
+    const $icons = $('.rename-icon');
+
+    if ($icons.length < villages.length) {
+      UI.ErrorMessage('Número de ícones de renomear menor que o número de aldeias.');
+      return;
+    }
+
+    villages.forEach((villageId, i) => {
+      setTimeout(() => {
+        const $icon = $icons.eq(i);
+        if ($icon.length === 0) {
+          UI.ErrorMessage(`Ícone de renomear não encontrado no índice ${i}`);
+          return;
         }
+        $icon.click();
 
-        const coordToId = {};
+        const numberPart = firstboxChecked
+          ? String(startNumber + i).padStart(padLength, '0')
+          : '';
 
-        async function loadMapCoords() {
-            try {
-                const mapData = await $.get("map/village.txt");
-                const lines = mapData.trim().split("\n");
-                lines.forEach(line => {
-                    const [id, name, x, y] = line.split(",");
-                    const coord = `${x}|${y}`;
-                    coordToId[coord] = id;
-                });
-                console.log('Mapa de coordenadas carregado');
-            } catch (e) {
-                console.error('Erro ao carregar map/village.txt:', e);
-                alert('Erro ao carregar mapa de aldeias.');
-            }
-        }
+        $('.vis input[type="text"]').val(`${numberPart} ${secondboxChecked ? textName : ''}`);
+        $('input[type="button"]').click();
 
-        async function loadGroups() {
-            try {
-                const groups = [];
-                const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
-                groupData.result.forEach(group => {
-                    groups.push({ group_id: group.group_id, group_name: group.name });
-                });
-                console.log('Grupos carregados:', groups);
-                return groups;
-            } catch (e) {
-                console.error('Erro ao carregar grupos:', e);
-                alert('Erro ao carregar grupos.');
-                return [];
-            }
-        }
-
-        const $html = `
-            <h3 align="center">Renamer</h3>
-            <div>
-                <label for="groupSelect"><b>Selecione um grupo:</b></label>
-                <select id="groupSelect" style="
-                    padding: 4px;
-                    background: #f4e4bc;
-                    color: #000;
-                    border: 1px solid #603000;
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                ">
-                    <option disabled selected>Carregando grupos...</option>
-                </select>
-            </div>
-            <div>
-                <div class="info_box">
-                    <div class="content" style="margin-left: 4px">
-                        <b>1 -</b> Example 1, starting with 001.<br>
-                        <b>2 -</b> Example 3, starting with 3 digits.
-                    </div>
-                </div>
-                <input id="firstbox" type="checkbox">
-                <input id="start" type="text" placeholder="1" size="3">
-                <input id="end" type="text" placeholder="3" size="1">
-            </div>
-            <div style="margin-top: 4px">
-                <input id="secondbox" type="checkbox">
-                <input id="textname" type="text" placeholder="Your text here" maxlength="32">
-            </div>
-            <div style="padding-top: 8px;">
-                <input id="rename" type="button" class="btn" value="Rename Villages">
-                <input id="save" type="button" class="btn" value="Save Options">
-            </div>
-            <br>
-            <div>
-                <small>
-                    <strong>Rename Villages v1.2 by<span style="color: red;"> K I N G S </span></strong>
-                </small>
-            </div>
-        `;
-
-        Dialog.show('rename', $html);
-
-        await loadMapCoords();
-
-        const groups = await loadGroups();
-        const $select = $('#groupSelect');
-        $select.empty();
-
-        const placeholder = $('<option disabled selected>Selecione um grupo</option>');
-        $select.append(placeholder);
-
-        groups.forEach(g => {
-            const opt = $('<option>').val(g.group_id).text(g.group_name || 'Sem nome');
-            $select.append(opt);
-        });
-
-        let set = localStorage.getItem('set');
-        let lastCount = localStorage.getItem('lastCount');
-
-        if (set) {
-            set = JSON.parse(set);
-            $('#firstbox').prop('checked', set.firstbox);
-            $('#start').val(set.start);
-            $('#end').val(set.end);
-            $('#secondbox').prop('checked', set.secondbox);
-            $('#textname').val(set.textname);
-            if(set.groupId) {
-                $select.val(set.groupId);
-                placeholder.prop('hidden', true);
-            }
-        }
-
-        if (lastCount) {
-            let startVal = Number($('#start').val());
-            let savedCount = Number(lastCount);
-            if (!isNaN(savedCount) && savedCount >= startVal) {
-                $('#start').val(savedCount + 1);
-            }
-        }
-
-        $('#save').on('click', () => {
-            const config = {
-                firstbox: $('#firstbox').prop('checked'),
-                start: $('#start').val(),
-                end: $('#end').val(),
-                secondbox: $('#secondbox').prop('checked'),
-                textname: $('#textname').val(),
-                groupId: $('#groupSelect').val(),
-            };
-            localStorage.setItem('set', JSON.stringify(config));
-            UI.SuccessMessage('The settings have been saved successfully.');
-        });
-
-        $('#rename').on('click', async function (e) {
-            e.preventDefault();
-
-            const nChecked = $('#firstbox').prop('checked');
-            const nStart = Number($('#start').val());
-            const nEnd = Number($('#end').val());
-            const textName = $('#secondbox').prop('checked') ? $('#textname').val() : '';
-            const groupId = $('#groupSelect').val();
-
-            if (!groupId) {
-                UI.ErrorMessage('Selecione um grupo antes de renomear.');
-                return;
-            }
-
-            if (nChecked && (isNaN(nStart) || isNaN(nEnd))) {
-                UI.ErrorMessage('Por favor, insira valores válidos para início e quantidade de dígitos.');
-                return;
-            }
-
-            Dialog.close();
-
-            UI.InfoMessage('Carregando aldeias do grupo, aguarde...');
-
-            try {
-                const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", {
-                    group_id: groupId
-                });
-
-                const doc = new DOMParser().parseFromString(response.html, "text/html");
-                const rows = doc.querySelectorAll("#group_table tbody tr");
-
-                if (!rows.length) {
-                    UI.ErrorMessage('Nenhuma aldeia no grupo selecionado.');
-                    return;
-                }
-
-                const villages = [];
-                rows.forEach(row => {
-                    const tds = row.querySelectorAll("td");
-                    if (tds.length >= 2) {
-                        const coords = tds[1].textContent.trim();
-                        const id = coordToId[coords];
-                        if (id) villages.push(id);
-                    }
-                });
-
-                villages.forEach((villageId, i) => {
-                    setTimeout(() => {
-                        const $icon = $(`.rename-icon[data-village-id="${villageId}"]`);
-                        if ($icon.length === 0) {
-                            UI.ErrorMessage(`Ícone de renomear não encontrado para aldeia ${villageId}`);
-                            return;
-                        }
-                        $icon.click();
-
-                        const numberPart = (nChecked) ? String(nStart + i).padStart(nEnd, '0') : '';
-                        $('.vis input[type="text"]').val(`${numberPart} ${textName}`);
-                        $('input[type="button"]').click();
-
-                        UI.SuccessMessage(`Success: ${i + 1} / ${villages.length}`);
-                        localStorage.setItem('lastCount', nStart + i);
-                    }, i * 250);
-                });
-
-            } catch (e) {
-                console.error('Erro ao carregar aldeias do grupo:', e);
-                UI.ErrorMessage('Erro ao carregar aldeias do grupo.');
-            }
-        });
+        UI.SuccessMessage(`Success: ${i + 1} / ${villages.length}`);
+        localStorage.setItem('lastCount', startNumber + i);
+      }, i * 250);
     });
+  });
 } else {
-    UI.InfoMessage('Redirecting...');
-    window.location.href = game_data.link_base_pure + 'overview_villages&mode=combined&group=0';
+  UI.InfoMessage('Redirecting...');
+  window.location.href = game_data.link_base_pure + 'overview_villages&mode=combined&group=0';
 }
