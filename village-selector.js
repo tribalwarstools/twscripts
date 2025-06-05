@@ -2,6 +2,7 @@
   const groups = [];
   const coordToId = {};
   const STORAGE_KEY = "tw_last_selected_group";
+  let totalTropasLoaded = false; // Controle de carregamento do TotalTropas
 
   // Função para carregar mapa coordenadas -> id
   const mapData = await $.get("map/village.txt");
@@ -21,7 +22,7 @@
   // Monta HTML do painel com o botão para abrir renomeador e TotalTropas
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Visualizar Grupos de Aldeias</h2>
+      <h2>Grupos de Aldeias</h2>
       <button id="abrirRenamer" class="btn" style="margin-bottom:10px;">Abrir Renomeador</button>
       <button id="abrirTotalTropas" class="btn" style="margin-bottom:10px;">Abrir Total de Tropas</button>
       <div style="display: flex; align-items: center; gap: 10px;">
@@ -88,19 +89,28 @@
       });
   });
 
-  // Evento para botão abrir TotalTropas
+  // Evento para botão abrir TotalTropas (corrigido para carregar só uma vez)
   $("#abrirTotalTropas").on("click", function () {
-    $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
-      .done(() => {
-        if (typeof abrirJanelaContador === "function") {
-          abrirJanelaContador();
-        } else {
-          UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
-        }
-      })
-      .fail(() => {
-        UI.ErrorMessage("Erro ao carregar o script TotalTropas.");
-      });
+    if (!totalTropasLoaded) {
+      $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
+        .done(() => {
+          totalTropasLoaded = true;
+          if (typeof abrirJanelaContador === "function") {
+            abrirJanelaContador();
+          } else {
+            UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
+          }
+        })
+        .fail(() => {
+          UI.ErrorMessage("Erro ao carregar o script TotalTropas.");
+        });
+    } else {
+      if (typeof abrirJanelaContador === "function") {
+        abrirJanelaContador();
+      } else {
+        UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
+      }
+    }
   });
 
   // Evento de seleção de grupo
