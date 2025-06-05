@@ -11,7 +11,7 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos (na terceira coluna da tabela "prod")
+  // Mapeia coordenadas para pontos (na terceira coluna da tabela, tela prod)
   const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
   const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
   const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
@@ -34,37 +34,6 @@
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-  // Função que cria a barra de progresso com degradê quente
-  function createProgressBar(value, max) {
-    const percent = Math.min((value / max) * 100, 100);
-    return `
-      <div style="background:#ddd; width: 90px; height: 16px; border-radius: 6px; overflow: hidden; position: relative; box-shadow: inset 0 0 5px rgba(0,0,0,0.1);">
-        <div style="
-          width: ${percent}%;
-          height: 100%;
-          background: linear-gradient(to right, #e74c3c, #f39c12, #f1c40f);
-          border-radius: 6px 0 0 6px;
-          transition: width 0.3s ease;
-        "></div>
-        <div style="
-          position: absolute;
-          width: 100%;
-          text-align: center;
-          top: 0;
-          left: 0;
-          font-size: 12px;
-          font-weight: bold;
-          color: #000;
-          text-shadow: 0 0 3px #fff;
-          line-height: 16px;
-          user-select: none;
-        ">
-          ${value.toLocaleString()}
-        </div>
-      </div>
-    `;
-  }
-
   // Monta painel
   const html = `
     <div class="vis" style="padding: 10px;">
@@ -85,16 +54,21 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
-  const savedGroupId = localStorage.getItem(STORAGE_KEY);
+  // Remove a leitura do localStorage para não influenciar o valor inicial
+  // const savedGroupId = localStorage.getItem(STORAGE_KEY);
   const placeholder = new Option("Selecione um grupo", "", true, true);
   placeholder.disabled = true;
   select.appendChild(placeholder);
 
   groups.forEach(g => {
-    const opt = new Option(g.group_name, g.group_id, false, g.group_id == savedGroupId);
+    const opt = new Option(g.group_name, g.group_id, false, false);
     if (!g.group_name) opt.disabled = true;
     select.appendChild(opt);
   });
+
+  // Força seleção inicial no grupo 0 (Todos)
+  select.value = "0";
+  select.dispatchEvent(new Event("change"));
 
   $("#abrirRenamer").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
@@ -146,9 +120,8 @@
     }
 
     let output = `<table class="vis" width="100%">
-      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:110px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
+      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
     let total = 0;
-    const MAX_POINTS = 12000;
 
     rows.forEach(row => {
       const tds = row.querySelectorAll("td");
@@ -158,11 +131,14 @@
         const id = coordToId[coords];
         const points = coordToPoints[coords] || 0;
         const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
-        const progressBar = createProgressBar(points, MAX_POINTS);
         output += `<tr>
           <td>${link}</td>
           <td><span class="coord-val">${coords}</span></td>
-          <td>${progressBar}</td>
+          <td>
+            <div style="width: 100px; height: 15px; background: #ddd; border-radius: 6px; overflow: hidden;">
+              <div style="width: ${Math.min(points, 12000) / 12000 * 100}%; height: 100%; background: linear-gradient(to right, #ff4e00, #ffb600);"></div>
+            </div>
+          </td>
           <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
         </tr>`;
         total++;
@@ -185,8 +161,4 @@
       UI.SuccessMessage("Todas as coordenadas copiadas!");
     });
   });
-
-  if (savedGroupId) {
-    select.dispatchEvent(new Event("change"));
-  }
 })();
