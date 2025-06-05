@@ -61,13 +61,14 @@
 
   
   //
-  $("#abrirRenamer").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
-      .done(() => typeof abrirPainelRenomear === "function" ? abrirPainelRenomear() : 
-        UI.ErrorMessage("Função abrirPainelRenomear não encontrada."))
-      .fail(() => UI.ErrorMessage("Erro ao carregar o script de renomeação."));
-  });
-
+ $("#abrirRenamer").on("click", () => {
+  $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
+    .done(() => setTimeout(() => {
+      if (typeof abrirPainelRenomear === "function") abrirPainelRenomear();
+      else UI.ErrorMessage("Função abrirPainelRenomear não encontrada.");
+    }, 100))
+    .fail(() => UI.ErrorMessage("Erro ao carregar o script de renomeação."));
+});
   
   //
   $("#abrirTotalTropas").on("click", () => {
