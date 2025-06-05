@@ -18,11 +18,12 @@
     groups.push({ group_id: group.group_id, group_name: group.name });
   });
 
-  // Monta HTML do painel com o botão para abrir renomeador
+  // Monta HTML do painel com o botão para abrir renomeador e TotalTropas
   const html = `
     <div class="vis" style="padding: 10px;">
       <h2>Grupos de Aldeias</h2>
       <button id="abrirRenamer" class="btn" style="margin-bottom:10px;">Abrir Renomeador</button>
+      <button id="abrirTotalTropas" class="btn" style="margin-bottom:10px;">Abrir Total de Tropas</button>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Selecione um grupo:</b></label>
         <select id="groupSelect" style="
@@ -84,6 +85,17 @@
       })
       .fail(() => {
         UI.ErrorMessage("Erro ao carregar o script de renomeação.");
+      });
+  });
+
+  // Evento para botão abrir TotalTropas
+  $("#abrirTotalTropas").on("click", function () {
+    $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
+      .done(() => {
+        UI.SuccessMessage("Script TotalTropas carregado com sucesso!");
+      })
+      .fail(() => {
+        UI.ErrorMessage("Erro ao carregar o script TotalTropas.");
       });
   });
 
