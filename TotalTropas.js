@@ -1,7 +1,7 @@
 (function () {
   function abrirJanelaContadorRef() {
     if (!window.location.href.includes('screen=overview_villages')) {
-      UI.InfoMessage('Acesse "overview_villages" para usar o Renamer.');
+      UI.InfoMessage('Acesse "overview_villages" para usar o Total de Tropas.');
       return;
     }
 
