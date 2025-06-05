@@ -9,34 +9,26 @@ javascript:
         return { x, y };
     };
 
-    // Carrega mapa para mapear coordenadas → ID
+    // Carrega mapa
     const mapData = await $.get("map/village.txt");
-    const lines = mapData.trim().split("\n");
-    lines.forEach(line => {
+    mapData.trim().split("\n").forEach(line => {
         const [id, name, x, y] = line.split(",");
-        const coord = `${x}|${y}`;
-        coordToId[coord] = id;
+        coordToId[`${x}|${y}`] = id;
     });
 
-    // Carrega grupos do jogador
+    // Carrega grupos
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(group => {
         groups.push({ group_id: group.group_id, group_name: group.name });
     });
 
-    // Interface
+    // HTML
     const html = `
         <div class="vis" style="padding: 10px;">
             <h2>Grupos de Aldeias</h2>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <label for="groupSelect"><b>Selecione um grupo:</b></label>
-                <select id="groupSelect" style="
-                    padding: 4px;
-                    background: #f4e4bc;
-                    color: #000;
-                    border: 1px solid #603000;
-                    font-weight: bold;
-                "></select>
+                <select id="groupSelect" style="padding:4px;background:#f4e4bc;color:#000;border:1px solid #603000;font-weight:bold;"></select>
                 <span id="villageCount" style="font-weight: bold;"></span>
             </div>
             <hr>
@@ -44,15 +36,11 @@ javascript:
         </div>
     `;
     Dialog.show("tw_group_viewer", html);
-    $("#popup_box_tw_group_viewer").css({
-        width: "700px",
-        maxWidth: "90vw"
-    });
+    $("#popup_box_tw_group_viewer").css({ width: "700px", maxWidth: "90vw" });
 
     const select = document.getElementById("groupSelect");
     const savedGroupId = localStorage.getItem(STORAGE_KEY);
 
-    // Placeholder
     const placeholder = document.createElement("option");
     placeholder.disabled = true;
     placeholder.selected = true;
@@ -60,7 +48,6 @@ javascript:
     placeholder.textContent = "Selecione um grupo";
     select.appendChild(placeholder);
 
-    // Grupos (com tratamento para grupos sem nome)
     groups.forEach(g => {
         const opt = document.createElement("option");
         opt.value = g.group_id;
@@ -76,7 +63,6 @@ javascript:
         select.appendChild(opt);
     });
 
-    // Evento de seleção
     select.addEventListener("change", async function () {
         const groupId = this.value;
         if (!groupId) return;
@@ -89,10 +75,7 @@ javascript:
         $("#groupVillages").html("<i>Carregando aldeias...</i>");
         $("#villageCount").text("");
 
-        const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", {
-            group_id: groupId
-        });
-
+        const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
         const doc = new DOMParser().parseFromString(response.html, "text/html");
         const rows = doc.querySelectorAll("#group_table tbody tr");
 
@@ -102,19 +85,18 @@ javascript:
             return;
         }
 
-        let output = `<button id="abrirRenamer" class="btn" style="margin: 5px 0; background: #dfdfa0;">
-            ✏️ Abrir Renomeador
-        </button>`;
-
-        output += `<table class="vis" width="100%">
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th style="width: 100px; white-space: nowrap;">Coordenadas</th>
-                    <th style="width: 60px;">Ações</th>
-                </tr>
-            </thead>
-            <tbody>`;
+        let output = `
+            <button id="abrirRenamer" class="btn" style="margin: 5px 0; background: #dfdfa0;">
+                ✏️ Abrir Renomeador
+            </button>
+            <table class="vis" width="100%">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th style="width: 100px; white-space: nowrap;">Coordenadas</th>
+                        <th style="width: 60px;">Ações</th>
+                    </tr>
+                </thead><tbody>`;
 
         let total = 0;
         rows.forEach(row => {
@@ -123,10 +105,7 @@ javascript:
                 const name = tds[0].textContent.trim();
                 const coords = tds[1].textContent.trim();
                 const id = coordToId[coords];
-                const link = id
-                    ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>`
-                    : name;
-
+                const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
                 output += `<tr>
                     <td>${link}</td>
                     <td style="white-space: nowrap;"><span class="coord-val">${coords}</span></td>
@@ -143,14 +122,12 @@ javascript:
         `);
         $("#villageCount").text(`${total}`);
 
-        // Copiar coordenada individual
         $(".copy-coord").on("click", function () {
             const coord = $(this).data("coord");
             navigator.clipboard.writeText(coord);
             UI.SuccessMessage(`Coordenada ${coord} copiada!`);
         });
 
-        // Copiar todas as coordenadas
         $("#copyAllCoords").on("click", function () {
             const coords = [...document.querySelectorAll(".coord-val")]
                 .map(el => el.textContent.trim())
@@ -159,28 +136,23 @@ javascript:
             UI.SuccessMessage("Todas as coordenadas copiadas!");
         });
 
-        // Botão para abrir painel de renomeação
-        $("#abrirRenamer").on("click", () => {
-            if (typeof abrirPainelRenomear === "function") {
-                abrirPainelRenomear();
-            } else {
-                UI.ErrorMessage("Função 'abrirPainelRenomear' não encontrada.");
-            }
+        // Botão para carregar e abrir renomeador
+        $("#abrirRenamer").on("click", function () {
+            $.getScript("https://twdevtools.github.io/approved/scripts/renamer.js")
+                .done(() => {
+                    if (typeof abrirPainelRenomear === "function") {
+                        abrirPainelRenomear();
+                    } else {
+                        UI.ErrorMessage("Função 'abrirPainelRenomear' não encontrada.");
+                    }
+                })
+                .fail(() => {
+                    UI.ErrorMessage("Erro ao carregar o script de renomeação.");
+                });
         });
     });
 
-    // Se houver grupo salvo, já carrega
     if (savedGroupId) {
         select.dispatchEvent(new Event("change"));
     }
-
-    // Carrega script renamer.js
-    $.getScript("https://twdevtools.github.io/approved/scripts/renamer.js")
-        .done(() => {
-            console.log("✅ renamer.js carregado com sucesso!");
-        })
-        .fail(() => {
-            console.error("❌ Falha ao carregar renamer.js.");
-            UI.ErrorMessage("Erro ao carregar script de renomeação.");
-        });
 })();
