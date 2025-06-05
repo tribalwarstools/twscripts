@@ -1,6 +1,12 @@
-if (!contadorTropas) var contadorTropas = {};
+/*
+ Script: Contador de Tropas
+ Autor original: To6iasz
+ Editores: Rinne, Gangsta Anime Girl, natanprog
+ Adaptado para português e simplificado
+*/
 
-const textos = [
+if (!window.contadorTropas) var contadorTropas = {};
+const lang = [
     "Contador de Tropas",
     "Grupo: ",
     "Todos",
@@ -12,146 +18,210 @@ const textos = [
     "Fora",
     "Em Trânsito",
     "Exportar",
-    "Por Favor, Espere...",
+    " Por Favor, Espere...",
     "Não há aldeias no grupo. <br />Escolha outro grupo.",
-    "Vazio",
+    " Vazio",
     "Atenção\nSomente as primeiras 1000 aldeias",
     "https://help.tribalwars.com.br/wiki/",
     "Total de ",
     " aldeias"
 ];
 
-contadorTropas.unidades = "Lanceiro,Espadachim,Bárbaro,Arqueiro,Explorador,Cavalaria_Leve,Arqueiro_a_cavalo,Cavalaria_Pesada,Aríete,Catapulta,Paladino,Nobre".split(",");
+// Unidades no idioma português:
+contadorTropas.nomesUnidades = [
+    "Lanceiro",
+    "Espadachim",
+    "Bárbaro",
+    "Arqueiro",
+    "Explorador",
+    "Cavalaria Leve",
+    "Arqueiro a Cavalo",
+    "Cavalaria Pesada",
+    "Aríete",
+    "Catapulta",
+    "Paladino",
+    "Nobre"
+];
 
-contadorTropas.imagensUnidades = "spear,sword,axe,archer,spy,light,marcher,heavy,ram,catapult,knight,snob".split(",");
+contadorTropas.imagensUnidades = [
+    "spear","sword","axe","archer","spy","light","marcher","heavy","ram","catapult","knight","snob"
+];
 
-contadorTropas.linkBase = "/game.php?&village=" + game_data.village.id + "&type=complete&mode=units&group=0&page=-1&screen=overview_villages";
-
-if (game_data.player.sitter != 0)
-    contadorTropas.linkBase = "/game.php?t=" + game_data.player.id + "&village=" + game_data.village.id + "&type=complete&mode=units&group=0&page=-1&screen=overview_villages";
+contadorTropas.linkBase = `/game.php?&village=${game_data.village.id}&type=complete&mode=units&group=0&page=-1&screen=overview_villages`;
+// Se for sitter, ajusta link
+if (game_data.player.sitter != 0) {
+    contadorTropas.linkBase = `/game.php?t=${game_data.player.id}&village=${game_data.village.id}&type=complete&mode=units&group=0&page=-1&screen=overview_villages`;
+}
 
 contadorTropas.gruposCarregados = false;
-
-let tabelaUnidades;
-let somaTropasPorTipo = [];
+contadorTropas.tabelaDados = null;
+contadorTropas.somaTropas = [];
 let filtroAtual = "0";
 
-const montarPainel = () => {
-    let painel = `<h2 align='center'>${textos[0]}</h2>`;
-    painel += `<table width='100%'><tr><th>${textos[1]}<select id='listaGrupos' onchange="contadorTropas.linkBase = this.value; carregarDados();"><option value='${contadorTropas.linkBase}'>${textos[2]}</option></select></th></tr>`;
-    painel += `<tr><td><table width='100%'><tr><th colspan='4'>${textos[3]}<select onchange="alterarFiltro(this.value);"><option value='0'>${textos[4]}</option><option value='0p2p3'>${textos[5]}</option><option value='1'>${textos[6]}</option><option value='1m0'>${textos[7]}</option><option value='2'>${textos[8]}</option><option value='3'>${textos[9]}</option></select></th></tr><tbody id='tropasDisponiveis'></tbody></table>`;
-    painel += `<tr><th><b id='quantidadeAldeias'></b><a href='#' style='float: right;' onclick="exportar();">${textos[10]}</a></th></tr></table>`;
-    Dialog.show("janelaContadorTropas", painel);
-    carregarDados();
-}
+// Monta janela de diálogo
+const janelaHtml = `
+<h2 align='center'>${lang[0]}</h2>
+<table width='100%'>
+    <tr>
+        <th>${lang[1]}<select id='listaGrupos' onchange="contadorTropas.linkBase = this.value; buscarDados();">
+            <option value='${contadorTropas.linkBase}'>${lang[2]}</option>
+        </select></th>
+    </tr>
+    <tr>
+        <td>
+            <table width='100%'>
+                <tr>
+                    <th colspan='4'>${lang[3]}<select onchange="alterarFiltro(this.value);">
+                        <option value='0'>${lang[4]}</option>
+                        <option value='0p2p3'>${lang[5]}</option>
+                        <option value='1'>${lang[6]}</option>
+                        <option value='1m0'>${lang[7]}</option>
+                        <option value='2'>${lang[8]}</option>
+                        <option value='3'>${lang[9]}</option>
+                    </select></th>
+                </tr>
+                <tbody id='tropasDisponiveis'></tbody>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <th><b id='contadorAldeias'></b><a href='#' style='float: right;' onclick="exportarDados();">${lang[10]}</a></th>
+    </tr>
+</table>
+`;
 
-function exportar() {
-    if (!$("#tropasDisponiveis").html().includes("textarea"))
-        $("#tropasDisponiveis").html(contadorTropas.exportacao);
-    else
+Dialog.show("okienko_komunikatu", janelaHtml);
+
+// Função para exportar dados, alterna entre exibir textarea e tabela
+function exportarDados() {
+    const container = document.getElementById("tropasDisponiveis");
+    if (!container.innerHTML.includes("textarea")) {
+        container.innerHTML = contadorTropas.exportarTexto;
+    } else {
         alterarFiltro(filtroAtual);
+    }
 }
 
-function carregarDados() {
-    $("#quantidadeAldeias").html(textos[11]);
-    $(mobile ? "#loading" : "#loading_content").show();
+// Função para buscar os dados via XMLHttpRequest
+function buscarDados() {
+    document.getElementById("contadorAldeias").innerHTML = lang[11];
+    (mobile ? document.getElementById("loading") : document.getElementById("loading_content")).style.display = "block";
 
-    let requisicao = new XMLHttpRequest();
-    requisicao.open("GET", contadorTropas.linkBase, true);
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", contadorTropas.linkBase, true);
 
-    requisicao.onreadystatechange = () => {
-        if (requisicao.readyState == 4 && requisicao.status == 200) {
-            let corpoResposta = document.createElement("body");
-            corpoResposta.innerHTML = requisicao.responseText;
-            tabelaUnidades = $(corpoResposta).find("#units_table").get(0);
-            if (!tabelaUnidades) {
-                $("#tropasDisponiveis").html(textos[12]);
-                $("#quantidadeAldeias").html(textos[13]);
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            const resposta = document.createElement("body");
+            resposta.innerHTML = xhr.responseText;
+
+            contadorTropas.tabelaDados = resposta.querySelector("#units_table");
+            if (!contadorTropas.tabelaDados) {
+                document.getElementById("tropasDisponiveis").innerHTML = lang[12];
+                document.getElementById("contadorAldeias").innerHTML = lang[13];
                 return;
             }
-            let grupos = $(corpoResposta).find(".vis_item").get(0).getElementsByTagName(mobile ? "option" : "a");
-            if (tabelaUnidades.rows.length > 4000) alert(textos[14]);
+
+            const grupoElementos = resposta.querySelector(".vis_item").children;
+            if (contadorTropas.tabelaDados.rows.length > 4000) alert(lang[14]);
 
             if (!contadorTropas.gruposCarregados) {
-                for (let i = 0; i < grupos.length; i++) {
-                    let nomeGrupo = grupos[i].textContent;
-                    if (mobile && nomeGrupo === "wszystkie") continue;
-                    $("#listaGrupos").append($("<option>", {
-                        value: grupos[i].getAttribute(mobile ? "value" : "href") + "&page=-1",
-                        text: mobile ? nomeGrupo : nomeGrupo.slice(1, nomeGrupo.length - 1)
-                    }));
+                const selectGrupos = document.getElementById("listaGrupos");
+                for (let i = 0; i < grupoElementos.length; i++) {
+                    const elem = grupoElementos[i];
+                    const nomeGrupo = elem.textContent.trim();
+                    if (mobile && nomeGrupo.toLowerCase() === "wszystkie") continue; // pular "todos" em mobile
+
+                    const valor = mobile ? elem.value : elem.getAttribute("href");
+                    const texto = mobile ? nomeGrupo : nomeGrupo.slice(1, -1);
+                    const option = document.createElement("option");
+                    option.value = valor + "&page=-1";
+                    option.textContent = texto;
+                    selectGrupos.appendChild(option);
                 }
                 contadorTropas.gruposCarregados = true;
 
-                if (!tabelaUnidades.rows[0].innerHTML.includes("archer")) {
-                    contadorTropas.imagensUnidades = contadorTropas.imagensUnidades.filter(img => img !== "archer" && img !== "marcher");
+                // Remove unidades que não existem na tabela para evitar erros
+                if (!contadorTropas.tabelaDados.rows[0].innerHTML.includes("archer")) {
+                    ["archer","marcher"].forEach(img => {
+                        const idx = contadorTropas.imagensUnidades.indexOf(img);
+                        if (idx > -1) contadorTropas.imagensUnidades.splice(idx, 1);
+                    });
                 }
-                if (!tabelaUnidades.rows[0].innerHTML.includes("knight")) {
-                    contadorTropas.imagensUnidades = contadorTropas.imagensUnidades.filter(img => img !== "knight");
+                if (!contadorTropas.tabelaDados.rows[0].innerHTML.includes("knight")) {
+                    const idx = contadorTropas.imagensUnidades.indexOf("knight");
+                    if (idx > -1) contadorTropas.imagensUnidades.splice(idx, 1);
                 }
             }
             somarTropas();
             alterarFiltro(filtroAtual);
         }
     };
-    requisicao.send(null);
+    xhr.send(null);
 }
 
+// Função para alterar filtro e atualizar visualização
 function alterarFiltro(valor) {
     filtroAtual = valor;
-    let indices = String(valor).match(/\d+/g);
-    let operacoes = String(valor).match(/[a-z]/g);
-    let somaAtual = new Array(contadorTropas.imagensUnidades.length).fill(0);
+    const indices = String(valor).match(/\d+/g) || [];
+    const letras = String(valor).match(/[a-z]/g) || [];
+    let somaFiltrada = new Array(contadorTropas.imagensUnidades.length).fill(0);
 
     for (let i = 0; i < indices.length; i++) {
-        if (i === 0 || (operacoes && operacoes[i - 1] === "p")) {
-            somaAtual = somarVetores(somaAtual, somaTropasPorTipo[indices[i]]);
+        if (i === 0 || letras[i - 1] === "p") {
+            somaFiltrada = somarArrays(somaFiltrada, contadorTropas.somaTropas[indices[i]]);
         } else {
-            somaAtual = subtrairVetores(somaAtual, somaTropasPorTipo[indices[i]]);
+            somaFiltrada = subtrairArrays(somaFiltrada, contadorTropas.somaTropas[indices[i]]);
         }
     }
-    mostrarTropas(somaAtual);
+    mostrarResultado(somaFiltrada);
 }
 
+// Soma as tropas por grupo (divide em 5 grupos cíclicos)
 function somarTropas() {
     for (let i = 0; i < 5; i++) {
-        somaTropasPorTipo[i] = new Array(contadorTropas.imagensUnidades.length).fill(0);
+        contadorTropas.somaTropas[i] = new Array(contadorTropas.imagensUnidades.length).fill(0);
     }
-
-    for (let i = 1; i < tabelaUnidades.rows.length; i++) {
-        // Ajuste do índice da célula: depende se tem coluna extra (ex: botão)
-        let inicioColunas = (tabelaUnidades.rows[1].cells.length === tabelaUnidades.rows[i].cells.length) ? 2 : 1;
-        for (let j = inicioColunas; j < contadorTropas.imagensUnidades.length + inicioColunas; j++) {
-            somaTropasPorTipo[(i - 1) % 5][j - inicioColunas] += parseInt(tabelaUnidades.rows[i].cells[j].textContent);
+    for (let i = 1; i < contadorTropas.tabelaDados.rows.length; i++) {
+        const desloc = (contadorTropas.tabelaDados.rows[1].cells.length === contadorTropas.tabelaDados.rows[i].cells.length) ? 2 : 1;
+        for (let j = desloc; j < contadorTropas.imagensUnidades.length + desloc; j++) {
+            contadorTropas.somaTropas[(i - 1) % 5][j - desloc] += parseInt(contadorTropas.tabelaDados.rows[i].cells[j].textContent);
         }
     }
 }
 
-function subtrairVetores(v1, v2) {
-    return v1.map((val, idx) => val - v2[idx]);
+// Função para subtrair arrays numéricos
+function subtrairArrays(a, b) {
+    return a.map((val, idx) => val - b[idx]);
 }
 
-function somarVetores(v1, v2) {
-    return v1.map((val, idx) => val + v2[idx]);
+// Função para somar arrays numéricos
+function somarArrays(a, b) {
+    return a.map((val, idx) => val + b[idx]);
 }
 
-function formatarEspaco(valor) {
-    const texto = String(valor);
-    const espacos = 10 - texto.length;
-    return "\u2007".repeat(espacos);
+// Espaço fixo para alinhamento na exibição
+function gerarEspaco(numero) {
+    const texto = String(numero);
+    return "\u2007".repeat(10 - texto.length);
 }
 
-function mostrarTropas(somaTropas) {
-    let html = "<tr>";
-    contadorTropas.exportacao = "<textarea rows='7' cols='25' onclick='this.select();'>";
-
+// Exibe o resultado na tabela e cria o texto para exportar
+function mostrarResultado(soma) {
+    let html = "";
+    contadorTropas.exportarTexto = "<textarea rows='7' cols='25' onclick='this.select();'>";
     for (let i = 0; i < contadorTropas.imagensUnidades.length; i++) {
-        contadorTropas.exportacao += `[unit]${contadorTropas.imagensUnidades[i]}[/unit]${somaTropas[i]}${(i % 2 === 0) ? formatarEspaco(somaTropas[i]) : "\n"}`;
-        html += (i % 2 === 0 ? "<tr>" : "") + `<th width='20'><a href='${textos[15]}${contadorTropas.unidades[i]}' target='_blank'><img src='${image_base}unit/unit_${contadorTropas.imagensUnidades[i]}.png'></a><td bgcolor='#fff5da'>${somaTropas[i]}</td>`;
+        contadorTropas.exportarTexto += `[unit]${contadorTropas.imagensUnidades[i]}[/unit]${soma[i]}${i % 2 === 0 ? gerarEspaco(soma[i]) : "\n"}`;
+        if (i % 2 === 0) html += "<tr>";
+        html += `<th width='20'><a href='${lang[15]}${contadorTropas.nomesUnidades[i]}' target='_blank'><img src='${image_base}unit/unit_${contadorTropas.imagensUnidades[i]}.png'></a><td bgcolor='#fff5da'>${soma[i]}`;
     }
+    contadorTropas.exportarTexto += "</textarea>";
+    document.getElementById("tropasDisponiveis").innerHTML = html;
+    (mobile ? document.getElementById("loading") : document.getElementById("loading_content")).style.display = "none";
 
-    contadorTropas.exportacao += "</textarea>";
-    $("#tropasDisponiveis").html(html);
-    $(mobile ? "#loading" : "#loading_content").hide();
-    $("#quantidadeAldeias").html(`${textos[16]}${((tabelaUnidades.rows.length - 1) / 5)}${textos[17]}`);
+    const qtdAldeias = (contadorTropas.tabelaDados.rows.length - 1) / 5;
+    document.getElementById("contadorAldeias").innerHTML = lang[16] + qtdAldeias + lang[17];
 }
+
+// Inicia a busca de dados ao carregar o script
+buscarDados();
