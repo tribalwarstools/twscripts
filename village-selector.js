@@ -21,11 +21,11 @@
   // Monta HTML do painel com o botão para abrir renomeador e TotalTropas
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Grupos:</h2>
+      <h2>Painel de Scripts</h2>
       <button id="abrirRenamer" class="btn" style="margin-bottom:10px;">Renomeador</button>
       <button id="abrirTotalTropas" class="btn" style="margin-bottom:10px;">Total de Tropas</button>
       <div style="display: flex; align-items: center; gap: 10px;">
-        <label for="groupSelect"><b>Selecione um grupo:</b></label>
+        <label for="groupSelect"><b>Grupo:</b></label>
         <select id="groupSelect" style="
           padding: 4px;
           background: #f4e4bc;
