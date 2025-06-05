@@ -102,7 +102,11 @@ javascript:
             return;
         }
 
-        let output = `<table class="vis" width="100%">
+        let output = `<button id="abrirRenamer" class="btn" style="margin: 5px 0; background: #dfdfa0;">
+            ✏️ Abrir Renomeador
+        </button>`;
+
+        output += `<table class="vis" width="100%">
             <thead>
                 <tr>
                     <th>Nome</th>
@@ -111,8 +115,8 @@ javascript:
                 </tr>
             </thead>
             <tbody>`;
-        let total = 0;
 
+        let total = 0;
         rows.forEach(row => {
             const tds = row.querySelectorAll("td");
             if (tds.length >= 2) {
@@ -154,6 +158,15 @@ javascript:
             navigator.clipboard.writeText(coords);
             UI.SuccessMessage("Todas as coordenadas copiadas!");
         });
+
+        // Botão para abrir painel de renomeação
+        $("#abrirRenamer").on("click", () => {
+            if (typeof abrirPainelRenomear === "function") {
+                abrirPainelRenomear();
+            } else {
+                UI.ErrorMessage("Função 'abrirPainelRenomear' não encontrada.");
+            }
+        });
     });
 
     // Se houver grupo salvo, já carrega
@@ -161,13 +174,13 @@ javascript:
         select.dispatchEvent(new Event("change"));
     }
 
-    // Carrega script externo (renamer.js)
+    // Carrega script renamer.js
     $.getScript("https://twdevtools.github.io/approved/scripts/renamer.js")
         .done(() => {
             console.log("✅ renamer.js carregado com sucesso!");
         })
         .fail(() => {
             console.error("❌ Falha ao carregar renamer.js.");
-            UI.ErrorMessage("Não foi possível carregar o script renamer.js");
+            UI.ErrorMessage("Erro ao carregar script de renomeação.");
         });
 })();
