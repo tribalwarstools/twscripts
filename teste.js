@@ -5,15 +5,13 @@
     const coordToId = {};
 
     // Carrega grupos
-    console.log("Carregando grupos...");
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-    // Mapeia coordenadas para ID (map/village.txt)
-    console.log("Carregando mapa de aldeias...");
+    // Mapeia coordenadas para ID
     const mapData = await $.get("map/village.txt");
     mapData.trim().split("\n").forEach(line => {
-      const [id, , x, y] = line.split(",");
+      const [id,, x, y] = line.split(",");
       coordToId[`${x}|${y}`] = id;
     });
 
@@ -81,58 +79,34 @@
         return;
       }
 
-      // Pega coordenadas das aldeias
       const coordsList = [];
       rows.forEach(row => {
         const tds = row.querySelectorAll("td");
         if (tds.length >= 2) coordsList.push(tds[1].textContent.trim());
       });
 
-      console.log("Coordenadas das aldeias:", coordsList);
-
-      // Busca pontuação na tela de produção (prod)
-      const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
-      const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
-
-      // Busca tabela produção
-      const prodRows = prodDoc.querySelectorAll("table#production_table tbody tr");
-      console.log("Linhas na tabela de produção:", prodRows.length);
+      // Busca pontuação na tela overview aldeias (modo combined)
+      const combinedHtml = await $.get("/game.php?screen=overview_villages&mode=combined");
+      const combinedDoc = new DOMParser().parseFromString(combinedHtml, "text/html");
+      const combinedRows = combinedDoc.querySelectorAll("table.vis tbody tr");
 
       const pointsMap = {};
-      prodRows.forEach(row => {
+      combinedRows.forEach(row => {
         const tds = row.querySelectorAll("td");
-        if (tds.length >= 3) {
-          const coord = tds[2].textContent.trim();
-          const pointsText = tds[0].textContent.trim();
-          // Remover tudo que não for número
-          const cleanedPoints = pointsText.replace(/[^\d]/g, "");
-          const points = parseInt(cleanedPoints, 10);
-          if (!isNaN(points)) {
-            pointsMap[coord] = points;
-          } else {
-            console.warn(`Falha ao converter pontos para a aldeia ${coord}: texto='${pointsText}'`);
-          }
+        if (tds.length >= 6) {
+          const coord = tds[1].textContent.trim();
+          const pointsText = tds[5].textContent.trim().replace(/\./g, "");
+          const points = parseInt(pointsText, 10);
+          if (!isNaN(points)) pointsMap[coord] = points;
         }
       });
 
-      console.log("Mapa de pontos carregado:", pointsMap);
+      // Limites fixos para barra
+      const minPoints = 0;
+      const maxPoints = 12000;
 
-      // Define min e max para barra
-      let minPoints = Infinity;
-      let maxPoints = -Infinity;
-      coordsList.forEach(c => {
-        const p = pointsMap[c] || 0;
-        if (p < minPoints) minPoints = p;
-        if (p > maxPoints) maxPoints = p;
-      });
-      if (minPoints === Infinity) minPoints = 0;
-      if (maxPoints === -Infinity) maxPoints = 1;
-
-      console.log("Min pontos:", minPoints, "Max pontos:", maxPoints);
-
-      // Monta tabela com barra
       let output = `<table class="vis" width="100%">
-        <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:120px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
+        <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:140px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
       let total = 0;
 
       rows.forEach(row => {
@@ -145,12 +119,7 @@
 
           const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
 
-          let pct = 0;
-          if (maxPoints > minPoints) {
-            pct = ((points - minPoints) / (maxPoints - minPoints)) * 100;
-          } else {
-            pct = 100;
-          }
+          const pct = Math.min(100, (points / maxPoints) * 100);
 
           output += `<tr>
             <td>${link}</td>
