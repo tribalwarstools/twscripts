@@ -92,20 +92,19 @@
 
   // Evento para botão abrir Total de Tropas
   $("#abrirTotalTropas").on("click", function () {
-$.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
-  .done(() => {
-    setTimeout(() => {
-      if (typeof abrirJanelaContador === "function") {
-        abrirJanelaContador();
-      } else {
-        UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
-      }
-    }, 100); // atraso de 100ms para garantir execução do script
-  })
-  .fail(() => {
-    UI.ErrorMessage("Erro ao carregar o script Total de Tropas.");
-  });
-
+    $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
+      .done(() => {
+        setTimeout(() => {
+          if (typeof abrirJanelaContador === "function") {
+            abrirJanelaContador();
+          } else {
+            UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
+          }
+        }, 100); // atraso de 100ms para garantir execução do script
+      })
+      .fail(() => {
+        UI.ErrorMessage("Erro ao carregar o script Total de Tropas.");
+      });
   });
 
   
