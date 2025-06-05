@@ -34,7 +34,7 @@
       <h2>Painel de Scripts</h2>
       <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
       <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
-      <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Add grupos</button>
+      <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Adicionar grupos</button>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
