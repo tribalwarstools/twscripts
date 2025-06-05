@@ -29,7 +29,7 @@
           </tr>
           <tr>
             <td colspan="2" style="text-align:center; padding-top:4px;">
-              <input id="rename" type="button" class="btn" value="Go">
+              <input id="rename" type="button" class="btn" value="Renomear">
               <input id="resetCounter" type="button" class="btn" value="Reset">
               <input id="save" type="button" class="btn" value="Salvar">
             </td>
