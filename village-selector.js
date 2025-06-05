@@ -18,9 +18,6 @@ javascript:
         coordToId[coord] = id;
     });
 
-    // Adiciona "Todas as aldeias"
-    //groups.push({ group_id: 0, group_name: "Todas as aldeias" });
-
     // Carrega grupos do jogador
     const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
     groupData.result.forEach(group => {
@@ -125,15 +122,26 @@ javascript:
         });
         output += `</tbody></table>`;
 
-        $("#groupVillages").html(output);
+        $("#groupVillages").html(`
+            <button id="copyAllCoords" class="btn" style="margin-bottom: 5px;">📋 Copiar todas as coordenadas</button>
+            ${output}
+        `);
         $("#villageCount").text(`${total}`);
 
-
-        // Copiar coordenada
+        // Copiar coordenada individual
         $(".copy-coord").on("click", function () {
             const coord = $(this).data("coord");
             navigator.clipboard.writeText(coord);
             UI.SuccessMessage(`Coordenada ${coord} copiada!`);
+        });
+
+        // Copiar todas as coordenadas
+        $("#copyAllCoords").on("click", function () {
+            const coords = [...document.querySelectorAll(".coord-val")]
+                .map(el => el.textContent.trim())
+                .join(" ");
+            navigator.clipboard.writeText(coords);
+            UI.SuccessMessage("Todas as coordenadas copiadas!");
         });
     });
 
