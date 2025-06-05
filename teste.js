@@ -11,7 +11,7 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos a partir de /mode=prod
+  // Mapeia coordenadas para pontos (na terceira coluna da tabela)
   const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
   const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
   const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
@@ -19,10 +19,10 @@
   rows.forEach(row => {
     const cells = row.querySelectorAll("td");
     const coordMatch = row.innerText.match(/\d+\|\d+/);
-    if (coordMatch && cells.length > 0) {
+    if (coordMatch && cells.length > 2) {
       const coord = coordMatch[0];
-      const lastTd = cells[cells.length - 1];
-      const rawText = lastTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
+      const pontosTd = cells[2]; // terceira coluna tem a pontuação
+      const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
       const points = parseInt(rawText, 10);
       if (!isNaN(points)) {
         coordToPoints[coord] = points;
@@ -65,7 +65,6 @@
     select.appendChild(opt);
   });
 
-  // Botões de scripts externos
   $("#abrirRenamer").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
       .done(() => setTimeout(() => {
@@ -88,14 +87,16 @@
     $.getScript("https://tribalwarstools.github.io/twscripts/addGrupo.js")
       .done(() => {
         setTimeout(() => {
-          if (typeof abrirJanelaGrupo === "function") abrirJanelaGrupo();
-          else UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
+          if (typeof abrirJanelaGrupo === "function") {
+            abrirJanelaGrupo();
+          } else {
+            UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
+          }
         }, 100);
       })
       .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
   });
 
-  // Evento de troca de grupo
   select.addEventListener("change", async function () {
     const groupId = this.value;
     if (!groupId) return;
@@ -152,7 +153,6 @@
     });
   });
 
-  // Carrega grupo salvo automaticamente
   if (savedGroupId) {
     select.dispatchEvent(new Event("change"));
   }
