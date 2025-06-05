@@ -1,3 +1,11 @@
+(function () {
+  function abrirJanelaGrupo() {
+    if (!window.location.href.includes('screen=overview_villages')) {
+      UI.InfoMessage('Acesse janela de grupos');
+      return;
+    }
+
+
 let aldeiasSelecionadas = [];
 let gruposManuais = [];
 
@@ -129,3 +137,5 @@ function processarDados(lista) {
 function removerDuplicados(array, chave) {
     return [...new Map(array.map(item => [item[chave], item])).values()];
 }
+  window.abrirJanelaGrupo = abrirJanelaGrupo;
+})();
