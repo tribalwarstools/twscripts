@@ -80,12 +80,20 @@
   });
 
 //
-   $("#abrirGrupo").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/moverGrupo.js")
-      .done(() => typeof abrirJanelaGrupo === "function" ? abrirJanelaGrupo() : 
-        UI.ErrorMessage("Função abrirJanelaGrupo não encontrada."))
-      .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
-  });
+  $("#abrirGrupo").on("click", () => {
+  $.getScript("https://tribalwarstools.github.io/twscripts/moverGrupo.js")
+    .done(() => {
+      setTimeout(() => {
+        if (typeof abrirJanelaGrupo === "function") {
+          abrirJanelaGrupo();
+        } else {
+          UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
+        }
+      }, 100); // aguarda 100ms antes de verificar
+    })
+    .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
+});
+
 
 
 
