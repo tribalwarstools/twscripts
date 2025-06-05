@@ -1,115 +1,139 @@
-if (window.location.href.includes('screen=overview_villages')) {
-  const $html = `
-    <h3 align="center">Renamer</h3>
-    <div>
-      <div class="info_box">
-        <div class="content" style="margin-left: 4px">
-          <b>1 -</b> Example 1, starting with 001.<br>
-          <b>2 -</b> Example 3, starting with 3 digits.
-        </div>
-      </div>
-      <input id="firstbox" type="checkbox">
-      <input id="start" type="text" placeholder="1" size="3">
-      <input id="end" type="text" placeholder="3" size="1">
-    </div>
-    <div style="margin-top: 4px">
-      <input id="secondbox" type="checkbox">
-      <input id="textname" type="text" placeholder="Your text here" maxlength="32">
-    </div>
-    <div style="padding-top: 8px;">
-      <input id="rename" type="button" class="btn" value="Rename Villages">
-      <input id="save" type="button" class="btn" value="Save Options">
-    </div>
-    <br>
-    <div>
-      <small>
-        <strong>Rename Villages v1.2 by <span style="color: red;">K I N G S</span></strong>
-      </small>
-    </div>`;
+(async function () {
+  const STORAGE_KEY = 'renameSettings';
 
-  Dialog.show('rename', $html);
-
-  // Carregue suas aldeias do grupo aqui — exemplo array com IDs de aldeias
-  // Você deve alimentar essa lista com as aldeias do grupo selecionado
-  const villages = [...]; // ex: ['12345', '12346', '12347'] — IDs das aldeias do grupo
-
-  let set = localStorage.getItem('set');
-  let lastCount = localStorage.getItem('lastCount');
-
-  if (set) {
-    set = JSON.parse(set);
-    $('#firstbox').prop('checked', set.firstbox);
-    $('#start').val(set.start);
-    $('#end').val(set.end);
-    $('#secondbox').prop('checked', set.secondbox);
-    $('#textname').val(set.textname);
-  }
-
-  if (lastCount) {
-    const startVal = Number($('#start').val());
-    const savedCount = Number(lastCount);
-    if (!isNaN(savedCount) && savedCount >= startVal) {
-      $('#start').val(savedCount + 1);
+  // Função para carregar grupos do jogador
+  async function loadGroups() {
+    const groups = [];
+    try {
+      const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
+      groupData.result.forEach(g => {
+        groups.push({ group_id: g.group_id, group_name: g.name || `Grupo #${g.group_id}` });
+      });
+    } catch {
+      UI.ErrorMessage('Falha ao carregar grupos do jogador.');
     }
+    return groups;
   }
 
-  $('#save').on('click', () => {
-    set = {
-      firstbox: $('#firstbox').prop('checked'),
-      start: $('#start').val(),
-      end: $('#end').val(),
-      secondbox: $('#secondbox').prop('checked'),
-      textname: $('#textname').val(),
-    };
-    localStorage.setItem('set', JSON.stringify(set));
-    UI.SuccessMessage('The settings have been saved successfully.');
-  });
+  // Função que exibe interface para escolher grupo e configurações
+  async function showGroupSelector(groups) {
+    const html = `
+      <h3>Renomear Aldeias - Seleção de Grupo</h3>
+      <div>
+        <label><b>Selecione um grupo:</b></label>
+        <select id="groupSelect" style="min-width:200px;">
+          <option disabled selected>Selecione um grupo</option>
+          ${groups.map(g => `<option value="${g.group_id}">${g.group_name}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-top:10px;">
+        <label><input type="checkbox" id="numCheckbox"> Numerar a partir de:</label>
+        <input type="number" id="numStart" value="1" min="1" style="width:60px;">
+        <input type="number" id="numDigits" value="3" min="1" max="10" style="width:60px;" title="Número de dígitos para padding">
+      </div>
+      <div style="margin-top:10px;">
+        <label><input type="checkbox" id="textCheckbox"> Texto base para renomear:</label>
+        <input type="text" id="textBase" maxlength="32" placeholder="Nome base">
+      </div>
+      <div style="margin-top:15px;">
+        <button id="btnConfirm" class="btn">Confirmar e ir para o grupo</button>
+      </div>
+    `;
 
-  $('#rename').on('click', function (e) {
-    e.preventDefault();
+    Dialog.show('renameGroupSelector', html);
 
-    if (!villages || villages.length === 0) {
-      UI.ErrorMessage('Nenhuma aldeia selecionada para renomear.');
+    $('#btnConfirm').on('click', () => {
+      const groupId = $('#groupSelect').val();
+      if (!groupId) {
+        UI.ErrorMessage('Selecione um grupo válido.');
+        return;
+      }
+
+      const settings = {
+        groupId,
+        numerar: $('#numCheckbox').prop('checked'),
+        startNumber: Number($('#numStart').val()) || 1,
+        digits: Number($('#numDigits').val()) || 3,
+        usarTexto: $('#textCheckbox').prop('checked'),
+        textoBase: $('#textBase').val() || '',
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      Dialog.close();
+
+      window.location.href = game_data.link_base_pure + `overview_villages&mode=combined&group=${groupId}`;
+    });
+  }
+
+  // Função para executar renomeação na página do grupo
+  async function runRenamer(settings) {
+    if (!window.location.href.includes(`group=${settings.groupId}`)) {
+      UI.InfoMessage('Você não está na página do grupo selecionado. Por favor, selecione o grupo novamente.');
+      localStorage.removeItem(STORAGE_KEY);
       return;
     }
-
-    const firstboxChecked = $('#firstbox').prop('checked');
-    const startNumber = Number($('#start').val());
-    const padLength = Number($('#end').val());
-    const secondboxChecked = $('#secondbox').prop('checked');
-    const textName = $('#textname').val();
-
-    Dialog.close();
 
     const $icons = $('.rename-icon');
-
-    if ($icons.length < villages.length) {
-      UI.ErrorMessage('Número de ícones de renomear menor que o número de aldeias.');
+    if ($icons.length === 0) {
+      UI.ErrorMessage('Não encontrou ícones de renomear na página.');
       return;
     }
 
-    villages.forEach((villageId, i) => {
+    const totalVillages = $icons.length;
+    if (totalVillages === 0) {
+      UI.ErrorMessage('Nenhuma aldeia para renomear nesta página.');
+      return;
+    }
+
+    UI.InfoMessage(`Iniciando renomeação de ${totalVillages} aldeias...`);
+
+    for (let i = 0; i < totalVillages; i++) {
       setTimeout(() => {
         const $icon = $icons.eq(i);
-        if ($icon.length === 0) {
-          UI.ErrorMessage(`Ícone de renomear não encontrado no índice ${i}`);
-          return;
-        }
         $icon.click();
 
-        const numberPart = firstboxChecked
-          ? String(startNumber + i).padStart(padLength, '0')
+        const numPart = settings.numerar
+          ? String(settings.startNumber + i).padStart(settings.digits, '0')
           : '';
 
-        $('.vis input[type="text"]').val(`${numberPart} ${secondboxChecked ? textName : ''}`);
+        const texto = settings.usarTexto ? settings.textoBase : '';
+        const novoNome = `${numPart} ${texto}`.trim();
+
+        $('.vis input[type="text"]').val(novoNome);
         $('input[type="button"]').click();
 
-        UI.SuccessMessage(`Success: ${i + 1} / ${villages.length}`);
-        localStorage.setItem('lastCount', startNumber + i);
-      }, i * 250);
-    });
-  });
-} else {
-  UI.InfoMessage('Redirecting...');
-  window.location.href = game_data.link_base_pure + 'overview_villages&mode=combined&group=0';
-}
+        UI.SuccessMessage(`Aldeia ${i + 1} / ${totalVillages} renomeada: "${novoNome}"`);
+
+        localStorage.setItem('lastCount', settings.startNumber + i);
+
+        if (i + 1 === totalVillages) {
+          setTimeout(() => {
+            UI.SuccessMessage('Renomeação concluída!');
+            localStorage.removeItem(STORAGE_KEY);
+          }, 500);
+        }
+      }, i * 300);
+    }
+  }
+
+  // --- EXECUÇÃO ---
+
+  if (window.location.href.includes('screen=overview_villages')) {
+    // Página de aldeias - tentar rodar renomeação
+    const savedSettingsRaw = localStorage.getItem(STORAGE_KEY);
+    if (savedSettingsRaw) {
+      const settings = JSON.parse(savedSettingsRaw);
+      await runRenamer(settings);
+    } else {
+      UI.InfoMessage('Nenhuma configuração de renomeação salva. Execute a seleção de grupo primeiro.');
+    }
+  } else {
+    // Qualquer outra página - abrir seletor
+    const groups = await loadGroups();
+    if (groups.length === 0) {
+      UI.ErrorMessage('Nenhum grupo encontrado.');
+      return;
+    }
+    await showGroupSelector(groups);
+  }
+})();
