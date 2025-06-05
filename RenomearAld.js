@@ -16,7 +16,7 @@
             <td><input id="end" type="number" min="1" max="10" value="2" style="width:35px;"></td>
           </tr>
           <tr>
-            <td><input id="secondbox" type="checkbox"> Nome</td>
+            <td><input id="secondbox" type="checkbox">Nome</td>
             <td><input id="textname" type="text" maxlength="32" style="width:90px;" placeholder="Nome"></td>
           </tr>
           <tr>
