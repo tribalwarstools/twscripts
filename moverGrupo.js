@@ -137,5 +137,6 @@ function processarDados(lista) {
 function removerDuplicados(array, chave) {
     return [...new Map(array.map(item => [item[chave], item])).values()];
 }
-  window.abrirJanelaGrupo = abrirJanelaGrupo;
+ window.abrirJanelaGrupo = abrirJanelaGrupo;
 })();
+
