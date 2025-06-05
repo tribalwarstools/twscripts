@@ -11,25 +11,6 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos (na terceira coluna da tabela)
-  const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
-  const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
-  const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
-
-  rows.forEach(row => {
-    const cells = row.querySelectorAll("td");
-    const coordMatch = row.innerText.match(/\d+\|\d+/);
-    if (coordMatch && cells.length > 2) {
-      const coord = coordMatch[0];
-      const pontosTd = cells[2]; // terceira coluna tem a pontuação
-      const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
-      const points = parseInt(rawText, 10);
-      if (!isNaN(points)) {
-        coordToPoints[coord] = points;
-      }
-    }
-  });
-
   // Carrega grupos
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
@@ -49,6 +30,25 @@
       <hr>
       <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
     </div>
+    <style>
+      .progress-bar-container {
+        background: #ddd;
+        border-radius: 4px;
+        width: 100%;
+        height: 18px;
+        position: relative;
+      }
+      .progress-bar-fill {
+        background: linear-gradient(90deg, #6aaf6a, #3b8a3b);
+        height: 100%;
+        border-radius: 4px;
+        text-align: center;
+        color: #fff;
+        font-weight: bold;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+    </style>
   `;
   Dialog.show("tw_group_viewer", html);
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
@@ -65,6 +65,7 @@
     select.appendChild(opt);
   });
 
+  // Funções dos botões externos
   $("#abrirRenamer").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
       .done(() => setTimeout(() => {
@@ -104,6 +105,7 @@
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
 
+    // Busca aldeias do grupo
     const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
     const doc = new DOMParser().parseFromString(response.html, "text/html");
     const rows = doc.querySelectorAll("#group_table tbody tr");
@@ -114,8 +116,44 @@
       return;
     }
 
+    // Pega coordenadas das aldeias para buscar pontuação
+    const coordsList = [];
+    rows.forEach(row => {
+      const tds = row.querySelectorAll("td");
+      if (tds.length >= 2) {
+        coordsList.push(tds[1].textContent.trim());
+      }
+    });
+
+    // Agora busca pontuações atualizadas da tela de produção (prod)
+    const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
+    const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
+    const pointsMap = {};
+    prodDoc.querySelectorAll("table#production_table tbody tr").forEach(row => {
+      const tds = row.querySelectorAll("td");
+      if (tds.length >= 3) {
+        const coord = tds[2].textContent.trim();
+        const pointsText = tds[0].textContent.trim();
+        // Pontuação está na primeira coluna, com pontos (ex: "1.234")
+        const points = parseInt(pointsText.replace(/\./g, ""), 10);
+        pointsMap[coord] = points;
+      }
+    });
+
+    // Calcula min e max para barra de progresso
+    let minPoints = Infinity;
+    let maxPoints = -Infinity;
+    coordsList.forEach(c => {
+      const p = pointsMap[c] || 0;
+      if (p < minPoints) minPoints = p;
+      if (p > maxPoints) maxPoints = p;
+    });
+    if (minPoints === Infinity) minPoints = 0;
+    if (maxPoints === -Infinity) maxPoints = 1;
+
+    // Monta tabela com barra
     let output = `<table class="vis" width="100%">
-      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
+      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:120px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
     let total = 0;
 
     rows.forEach(row => {
@@ -124,12 +162,26 @@
         const name = tds[0].textContent.trim();
         const coords = tds[1].textContent.trim();
         const id = coordToId[coords];
-        const points = coordToPoints[coords] || 0;
+        const points = pointsMap[coords] || 0;
+
         const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
+
+        // Calcula percentual para barra
+        let pct = 0;
+        if (maxPoints > minPoints) {
+          pct = ((points - minPoints) / (maxPoints - minPoints)) * 100;
+        } else {
+          pct = 100;
+        }
+
         output += `<tr>
           <td>${link}</td>
           <td><span class="coord-val">${coords}</span></td>
-          <td>${points.toLocaleString()}</td>
+          <td>
+            <div class="progress-bar-container" title="${points.toLocaleString()} pontos">
+              <div class="progress-bar-fill" style="width:${pct}%; min-width: 30px;">${points.toLocaleString()}</div>
+            </div>
+          </td>
           <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
         </tr>`;
         total++;
