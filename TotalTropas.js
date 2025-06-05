@@ -52,7 +52,7 @@ contadorTropas.somaTropas = [];
 let filtroAtual = "0";
 
 // Monta janela de diálogo
-const janelaHtml = `
+const $html = `
 <h2 align='center'>${lang[0]}</h2>
 <table width='100%'>
     <tr>
