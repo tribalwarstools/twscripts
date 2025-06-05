@@ -82,7 +82,7 @@
 
 //
   $("#abrirGrupo").on("click", () => {
-  $.getScript("https://tribalwarstools.github.io/twscripts/moverGrupo.js")
+  $.getScript("https://tribalwarstools.github.io/twscripts/addGrupo.js")
     .done(() => {
       setTimeout(() => {
         if (typeof abrirJanelaGrupo === "function") {
