@@ -140,7 +140,6 @@
     
  
    window.importarCoordenadas = importarCoordenadas;
-
-
    window.abrirJanelaGrupo = abrirJanelaGrupo;
+})();
 
