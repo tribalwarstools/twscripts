@@ -160,4 +160,14 @@ javascript:
     if (savedGroupId) {
         select.dispatchEvent(new Event("change"));
     }
+
+    // Carrega script externo (renamer.js)
+    $.getScript("https://twdevtools.github.io/approved/scripts/renamer.js")
+        .done(() => {
+            console.log("✅ renamer.js carregado com sucesso!");
+        })
+        .fail(() => {
+            console.error("❌ Falha ao carregar renamer.js.");
+            UI.ErrorMessage("Não foi possível carregar o script renamer.js");
+        });
 })();
