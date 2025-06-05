@@ -1,3 +1,10 @@
+(function () {
+  function abrirJanelaContadorRef() {
+    if (!window.location.href.includes('screen=overview_villages')) {
+      UI.InfoMessage('Acesse "overview_villages" para usar o Renamer.');
+      return;
+    }
+
 if (!window.contadorTropas) var contadorTropas = {};
 const lang = [
     "Contador de Tropas",
@@ -218,3 +225,5 @@ function mostrarResultado(soma) {
 
 // Inicia a busca de dados ao carregar o script
 buscarDados();
+
+window.abrirJanelaContadorRef = abrirJanelaContadorRef;      
