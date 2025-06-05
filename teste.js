@@ -11,16 +11,22 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos usando /mode=prod
+  // Mapeia coordenadas para pontos a partir de /mode=prod
   const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
   const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
-  prodDoc.querySelectorAll("table#production_table tbody tr").forEach(row => {
+  const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
+
+  rows.forEach(row => {
     const cells = row.querySelectorAll("td");
     const coordMatch = row.innerText.match(/\d+\|\d+/);
-    if (coordMatch && cells.length >= 2) {
+    if (coordMatch && cells.length > 0) {
       const coord = coordMatch[0];
-      const rawPoints = cells[1].textContent.replace(/\./g, "").trim();
-      coordToPoints[coord] = parseInt(rawPoints, 10);
+      const lastTd = cells[cells.length - 1];
+      const rawText = lastTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
+      const points = parseInt(rawText, 10);
+      if (!isNaN(points)) {
+        coordToPoints[coord] = points;
+      }
     }
   });
 
@@ -59,7 +65,7 @@
     select.appendChild(opt);
   });
 
-  // Botões de ferramentas
+  // Botões de scripts externos
   $("#abrirRenamer").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
       .done(() => setTimeout(() => {
@@ -80,14 +86,16 @@
 
   $("#abrirGrupo").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/addGrupo.js")
-      .done(() => setTimeout(() => {
-        if (typeof abrirJanelaGrupo === "function") abrirJanelaGrupo();
-        else UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
-      }, 100))
+      .done(() => {
+        setTimeout(() => {
+          if (typeof abrirJanelaGrupo === "function") abrirJanelaGrupo();
+          else UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
+        }, 100);
+      })
       .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
   });
 
-  // Mudança de grupo
+  // Evento de troca de grupo
   select.addEventListener("change", async function () {
     const groupId = this.value;
     if (!groupId) return;
@@ -144,6 +152,7 @@
     });
   });
 
+  // Carrega grupo salvo automaticamente
   if (savedGroupId) {
     select.dispatchEvent(new Event("change"));
   }
