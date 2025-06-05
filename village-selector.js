@@ -95,7 +95,7 @@
     $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
       .done(() => {
         if (typeof abrirJanelaContador === "function") {
-          abrirJanelaContadorRef();
+          abrirJanelaContador();
         } else {
           UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
         }
