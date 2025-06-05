@@ -54,7 +54,7 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
-  //const savedGroupId = localStorage.getItem(STORAGE_KEY);
+  const savedGroupId = localStorage.getItem(STORAGE_KEY);
   const placeholder = new Option("Selecione um grupo", "", true, true);
   placeholder.disabled = true;
   select.appendChild(placeholder);
