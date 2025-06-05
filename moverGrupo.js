@@ -1,17 +1,14 @@
- function abrirJanelaGrupo() {
+function abrirJanelaGrupo() {
     if (!window.location.href.includes('screen=overview_villages')) {
-      UI.InfoMessage('Acesse "overview_villages" para usar o Total de Tropas.');
-      return;
+        UI.InfoMessage('Acesse "overview_villages" para usar o Total de Tropas.');
+        return;
     }
-(function () {
+
     let aldeiasSelecionadas = [];
     let gruposManuais = [];
     let listaAldeias = [];
-    
-   
-    
-        
-        // Obter IDs dos grupos manuais
+
+    // Obter IDs dos grupos manuais
     $.get("/game.php?&screen=groups&mode=overview&ajax=load_group_menu&", function (data) {
         data.result.forEach(elemento => {
             if (elemento.group_id != 0 && elemento.type != "group_dynamic" && elemento.type != "separator") {
@@ -50,28 +47,6 @@
         }).done(function () {
             processarDados(dadosAldeias);
         });
-    }
-
-    // Utilitário para converter CSV em array
-    function CSVParaArray(strData, delimitador) {
-        delimitador = (delimitador || ",");
-        let padrao = new RegExp(
-            ("(\\" + delimitador + "|\\r?\\n|\\r|^)" +
-                "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
-                "([^\"\\" + delimitador + "\\r\\n]*))"),
-            "gi"
-        );
-        let arrDados = [[]];
-        let resultado = null;
-        while (resultado = padrao.exec(strData)) {
-            let separadorEncontrado = resultado[1];
-            if (separadorEncontrado.length && separadorEncontrado !== delimitador) {
-                arrDados.push([]);
-            }
-            let valorLido = resultado[2] ? resultado[2].replace(/\"\"/g, "\"") : resultado[3];
-            arrDados[arrDados.length - 1].push(valorLido);
-        }
-        return arrDados;
     }
 
     // Criar interface para inserção de coordenadas
@@ -136,14 +111,34 @@
         listaAldeias = CSVParaArray(lista);
     }
 
+    function CSVParaArray(strData, delimitador) {
+        delimitador = (delimitador || ",");
+        let padrao = new RegExp(
+            ("(\\" + delimitador + "|\\r?\\n|\\r|^)" +
+                "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
+                "([^\"\\" + delimitador + "\\r\\n]*))"),
+            "gi"
+        );
+        let arrDados = [[]];
+        let resultado = null;
+        while (resultado = padrao.exec(strData)) {
+            let separadorEncontrado = resultado[1];
+            if (separadorEncontrado.length && separadorEncontrado !== delimitador) {
+                arrDados.push([]);
+            }
+            let valorLido = resultado[2] ? resultado[2].replace(/\"\"/g, "\"") : resultado[3];
+            arrDados[arrDados.length - 1].push(valorLido);
+        }
+        return arrDados;
+    }
+
     function removerDuplicados(array, chave) {
         return [...new Map(array.map(item => [item[chave], item])).values()];
     }
 
-    // Expõe função usada no botão
-    
- 
-   window.importarCoordenadas = importarCoordenadas;
-   window.abrirJanelaGrupo = abrirJanelaGrupo;
-})();
+    // Expor a função de importação
+    window.importarCoordenadas = importarCoordenadas;
+}
 
+// Tornar a função principal disponível globalmente (opcional, se chamada via botão ou script externo)
+window.abrirJanelaGrupo = abrirJanelaGrupo;
