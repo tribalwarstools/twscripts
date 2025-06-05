@@ -1,6 +1,7 @@
 (async function () {
   const groups = [];
   const coordToId = {};
+  const coordToPoints = {};
   const STORAGE_KEY = "tw_last_selected_group";
 
   // Função para carregar mapa coordenadas -> id
@@ -11,6 +12,14 @@
     const coord = `${x}|${y}`;
     coordToId[coord] = id;
   });
+
+  // Tenta carregar pontos das aldeias a partir do array global (se disponível)
+  if (window.villages) {
+    window.villages.forEach(v => {
+      const coord = `${v.x}|${v.y}`;
+      coordToPoints[coord] = v.points;
+    });
+  }
 
   // Carrega grupos do jogador
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
@@ -45,11 +54,9 @@
     maxWidth: "90vw"
   });
 
-  // Referências aos elementos
   const select = document.getElementById("groupSelect");
   const savedGroupId = localStorage.getItem(STORAGE_KEY);
 
-  // Placeholder option
   const placeholder = document.createElement("option");
   placeholder.disabled = true;
   placeholder.selected = true;
@@ -57,7 +64,6 @@
   placeholder.textContent = "Selecione um grupo";
   select.appendChild(placeholder);
 
-  // Adiciona grupos na combo
   groups.forEach(g => {
     const opt = document.createElement("option");
     opt.value = g.group_id;
@@ -73,7 +79,6 @@
     select.appendChild(opt);
   });
 
-  // Evento para botão abrir renomeador
   $("#abrirRenamer").on("click", function () {
     $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
       .done(() => {
@@ -88,9 +93,6 @@
       });
   });
 
-//
-
-  // Evento para botão abrir Total de Tropas
   $("#abrirTotalTropas").on("click", function () {
     $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
       .done(() => {
@@ -100,15 +102,13 @@
           } else {
             UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
           }
-        }, 100); // atraso de 100ms para garantir execução do script
+        }, 100);
       })
       .fail(() => {
         UI.ErrorMessage("Erro ao carregar o script Total de Tropas.");
       });
   });
 
-  
-  // Evento de seleção de grupo
   select.addEventListener("change", async function () {
     const groupId = this.value;
     if (!groupId) return;
@@ -135,7 +135,7 @@
     }
 
     let output = `<table class="vis" width="100%">
-      <thead><tr><th>Nome</th><th style="width: 90px;">Coordenadas</th><th>Ações</th></tr></thead><tbody>`;
+      <thead><tr><th>Nome</th><th style="width: 90px;">Coordenadas</th><th style="width: 90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
     let total = 0;
 
     rows.forEach(row => {
@@ -143,6 +143,7 @@
       if (tds.length >= 2) {
         const name = tds[0].textContent.trim();
         const coords = tds[1].textContent.trim();
+        const points = coordToPoints[coords] ?? "-";
         const id = coordToId[coords];
         const link = id
           ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>`
@@ -151,6 +152,7 @@
         output += `<tr>
           <td>${link}</td>
           <td><span class="coord-val">${coords}</span></td>
+          <td>${points}</td>
           <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
         </tr>`;
         total++;
@@ -164,14 +166,12 @@
     `);
     $("#villageCount").text(`${total}`);
 
-    // Copiar coordenada individual
     $(".copy-coord").on("click", function () {
       const coord = $(this).data("coord");
       navigator.clipboard.writeText(coord);
       UI.SuccessMessage(`Coordenada ${coord} copiada!`);
     });
 
-    // Copiar todas as coordenadas
     $("#copyAllCoords").on("click", function () {
       const coords = [...document.querySelectorAll(".coord-val")]
         .map(el => el.textContent.trim())
@@ -181,7 +181,6 @@
     });
   });
 
-  // Se houver grupo salvo, já carrega
   if (savedGroupId) {
     select.dispatchEvent(new Event("change"));
   }
