@@ -138,7 +138,9 @@
 
     // Expõe função usada no botão
     
-    window.abrirJanelaGrupo = abrirJanelaGrupo;
-})();
+ 
    window.importarCoordenadas = importarCoordenadas;
+})();
+
+   window.abrirJanelaGrupo = abrirJanelaGrupo;
 })();
