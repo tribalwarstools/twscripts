@@ -137,6 +137,8 @@
     }
 
     // Expõe função usada no botão
-    window.importarCoordenadas = importarCoordenadas;
+    
     window.abrirJanelaGrupo = abrirJanelaGrupo;
+})();
+   window.importarCoordenadas = importarCoordenadas;
 })();
