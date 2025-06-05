@@ -2,7 +2,6 @@
   const groups = [];
   const coordToId = {};
   const STORAGE_KEY = "tw_last_selected_group";
-  let totalTropasLoaded = false; // Controle de carregamento do TotalTropas
 
   // Função para carregar mapa coordenadas -> id
   const mapData = await $.get("map/village.txt");
@@ -22,7 +21,7 @@
   // Monta HTML do painel com o botão para abrir renomeador e TotalTropas
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Grupos de Aldeias</h2>
+      <h2>Ver Grupos de Aldeias</h2>
       <button id="abrirRenamer" class="btn" style="margin-bottom:10px;">Abrir Renomeador</button>
       <button id="abrirTotalTropas" class="btn" style="margin-bottom:10px;">Abrir Total de Tropas</button>
       <div style="display: flex; align-items: center; gap: 10px;">
@@ -89,26 +88,32 @@
       });
   });
 
-  // Evento para botão abrir TotalTropas (corrigido para carregar só uma vez)
+  // Variáveis para controle do TotalTropas
+  let totalTropasLoaded = false;
+  let abrirJanelaContadorRef = null;
+
+  // Evento para botão abrir TotalTropas
   $("#abrirTotalTropas").on("click", function () {
     if (!totalTropasLoaded) {
       $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
         .done(() => {
           totalTropasLoaded = true;
+
           if (typeof abrirJanelaContador === "function") {
-            abrirJanelaContador();
+            abrirJanelaContadorRef = abrirJanelaContador;
+            abrirJanelaContadorRef();
           } else {
-            UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
+            UI.ErrorMessage("Função abrirJanelaContador não encontrada após carregar o script.");
           }
         })
         .fail(() => {
           UI.ErrorMessage("Erro ao carregar o script TotalTropas.");
         });
     } else {
-      if (typeof abrirJanelaContador === "function") {
-        abrirJanelaContador();
+      if (abrirJanelaContadorRef) {
+        abrirJanelaContadorRef();
       } else {
-        UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
+        UI.ErrorMessage("Função abrirJanelaContador não disponível.");
       }
     }
   });
