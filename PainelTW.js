@@ -11,16 +11,22 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos
+  // Mapeia coordenadas para pontos (na terceira coluna da tabela)
   const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
   const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
-  prodDoc.querySelectorAll("table#production_table tbody tr").forEach(row => {
+  const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
+
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
     const coordMatch = row.innerText.match(/\d+\|\d+/);
-    const pointsTd = row.querySelector("td:nth-child(2)");
-    if (coordMatch && pointsTd) {
+    if (coordMatch && cells.length > 2) {
       const coord = coordMatch[0];
-      const points = pointsTd.textContent.replace(/\./g, "").trim();
-      coordToPoints[coord] = parseInt(points, 10);
+      const pontosTd = cells[2]; // terceira coluna tem a pontuação
+      const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
+      const points = parseInt(rawText, 10);
+      if (!isNaN(points)) {
+        coordToPoints[coord] = points;
+      }
     }
   });
 
@@ -59,18 +65,15 @@
     select.appendChild(opt);
   });
 
-  
-  //
- $("#abrirRenamer").on("click", () => {
-  $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
-    .done(() => setTimeout(() => {
-      if (typeof abrirPainelRenomear === "function") abrirPainelRenomear();
-      else UI.ErrorMessage("Função abrirPainelRenomear não encontrada.");
-    }, 100))
-    .fail(() => UI.ErrorMessage("Erro ao carregar o script de renomeação."));
-});
-  
-  //
+  $("#abrirRenamer").on("click", () => {
+    $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
+      .done(() => setTimeout(() => {
+        if (typeof abrirPainelRenomear === "function") abrirPainelRenomear();
+        else UI.ErrorMessage("Função abrirPainelRenomear não encontrada.");
+      }, 100))
+      .fail(() => UI.ErrorMessage("Erro ao carregar o script de renomeação."));
+  });
+
   $("#abrirTotalTropas").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
       .done(() => setTimeout(() => {
@@ -80,24 +83,19 @@
       .fail(() => UI.ErrorMessage("Erro ao carregar o script Total de Tropas."));
   });
 
-//
   $("#abrirGrupo").on("click", () => {
-  $.getScript("https://tribalwarstools.github.io/twscripts/addGrupo.js")
-    .done(() => {
-      setTimeout(() => {
-        if (typeof abrirJanelaGrupo === "function") {
-          abrirJanelaGrupo();
-        } else {
-          UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
-        }
-      }, 100); // aguarda 100ms antes de verificar
-    })
-    .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
-});
-
-
-
-
+    $.getScript("https://tribalwarstools.github.io/twscripts/addGrupo.js")
+      .done(() => {
+        setTimeout(() => {
+          if (typeof abrirJanelaGrupo === "function") {
+            abrirJanelaGrupo();
+          } else {
+            UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
+          }
+        }, 100);
+      })
+      .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
+  });
 
   select.addEventListener("change", async function () {
     const groupId = this.value;
