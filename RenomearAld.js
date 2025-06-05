@@ -1,9 +1,9 @@
-(function () {
+/*(function () {
   function abrirPainelRenomear() {
     if (!window.location.href.includes('screen=overview_villages')) {
       UI.InfoMessage('Acesse "overview_villages" para usar o Renamer.');
       return;
-    }
+    }*/
 
     const contadorAtual = parseInt(localStorage.getItem('renamer_counter') || '1', 10);
 
