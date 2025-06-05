@@ -2,7 +2,11 @@
     let aldeiasSelecionadas = [];
     let gruposManuais = [];
     let listaAldeias = [];
-
+    function abrirJanelaGrupo() {
+    if (!window.location.href.includes('screen=overview_villages')) {
+      UI.InfoMessage('Acesse "overview_villages" para usar o Total de Tropas.');
+      return;
+    }
     // Obter IDs dos grupos manuais
     $.get("/game.php?&screen=groups&mode=overview&ajax=load_group_menu&", function (data) {
         data.result.forEach(elemento => {
