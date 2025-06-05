@@ -36,7 +36,7 @@
           </tr>
         </table>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>v2.1 - <span style="color:red;">KINGS</span></strong>
+          <strong>Versão - <span style="color:red;">1.0</span></strong>
         </div>
       </div>`;
 
