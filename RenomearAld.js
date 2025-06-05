@@ -115,4 +115,4 @@
   }
 
   window.abrirPainelRenomear = abrirPainelRenomear;
-)();
+})();
