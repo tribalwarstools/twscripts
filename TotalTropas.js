@@ -1,5 +1,5 @@
 (function () {
-  function abrirJanelaContadorRef() {
+  function abrirJanelaContador() {
     if (!window.location.href.includes('screen=overview_villages')) {
       UI.InfoMessage('Acesse "overview_villages" para usar o Total de Tropas.');
       return;
@@ -226,4 +226,4 @@ function mostrarResultado(soma) {
 // Inicia a busca de dados ao carregar o script
 buscarDados();
 
-window.abrirJanelaContadorRef = abrirJanelaContadorRef;      
+window.abrirJanelaContador = abrirJanelaContador;      
