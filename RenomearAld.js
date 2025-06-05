@@ -12,7 +12,7 @@
         <h2 align='center'>Renomear aldeias</h2>
         <table class="vis" style="width:100%; margin-top:4px;">
           <tr>
-            <td><input id="firstbox" type="checkbox">Dígitos</td>
+            <td><input id="firstbox" type="checkbox">N Dígitos</td>
             <td><input id="end" type="number" min="1" max="10" value="2" style="width:35px;"></td>
           </tr>
           <tr>
@@ -115,4 +115,4 @@
   }
 
   window.abrirPainelRenomear = abrirPainelRenomear;
-})();
+     })();
