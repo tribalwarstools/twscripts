@@ -49,6 +49,7 @@
     $('#secondbox').prop('checked', config.secondbox || false);
     $('#textname').val(config.textname || '');
 
+    // Salvar configurações
     $('#save').on('click', () => {
       config = {
         firstbox: $('#firstbox').prop('checked'),
@@ -60,12 +61,24 @@
       UI.SuccessMessage('Configurações salvas.');
     });
 
+    // Resetar tudo
     $('#resetCounter').on('click', () => {
-      localStorage.setItem('renamer_counter', '1');
+      // Limpar localStorage
+      localStorage.removeItem('renamer_counter');
+      localStorage.removeItem('renamer_config');
+
+      // Resetar campos visuais
+      $('#firstbox').prop('checked', false);
+      $('#end').val('3');
+      $('#secondbox').prop('checked', false);
+      $('#textname').val('');
+      $('#setCounter').val('');
       $('#contadorAtual').text('1');
-      UI.SuccessMessage('Contador resetado.');
+
+      UI.SuccessMessage('Tudo resetado e limpo.');
     });
 
+    // Renomear aldeias
     $('#rename').on('click', function (e) {
       e.preventDefault();
 
