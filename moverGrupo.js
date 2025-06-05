@@ -1,13 +1,14 @@
+ function abrirJanelaGrupo() {
+    if (!window.location.href.includes('screen=overview_villages')) {
+      UI.InfoMessage('Acesse "overview_villages" para usar o Total de Tropas.');
+      return;
+    }
 (function () {
     let aldeiasSelecionadas = [];
     let gruposManuais = [];
     let listaAldeias = [];
     
-    function abrirJanelaGrupo() {
-    if (!window.location.href.includes('screen=overview_villages')) {
-      UI.InfoMessage('Acesse "overview_villages" para usar o Total de Tropas.');
-      return;
-    }
+   
     
         
         // Obter IDs dos grupos manuais
