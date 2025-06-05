@@ -44,11 +44,10 @@ javascript:
         </div>
     `;
     Dialog.show("tw_group_viewer", html);
-$("#popup_box_tw_group_viewer").css({
-    width: "700px", // ou ajuste conforme preferir (ex: "800px")
-    maxWidth: "90vw"
-});
-
+    $("#popup_box_tw_group_viewer").css({
+        width: "700px",
+        maxWidth: "90vw"
+    });
 
     const select = document.getElementById("groupSelect");
     const savedGroupId = localStorage.getItem(STORAGE_KEY);
@@ -104,7 +103,14 @@ $("#popup_box_tw_group_viewer").css({
         }
 
         let output = `<table class="vis" width="100%">
-            <thead><tr><th>Nome</th><th>Coordenadas</th><th>Ações</th></tr></thead><tbody>`;
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th style="width: 100px; white-space: nowrap;">Coordenadas</th>
+                    <th style="width: 60px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>`;
         let total = 0;
 
         rows.forEach(row => {
@@ -119,7 +125,7 @@ $("#popup_box_tw_group_viewer").css({
 
                 output += `<tr>
                     <td>${link}</td>
-                    <td><span class="coord-val">${coords}</span></td>
+                    <td style="white-space: nowrap;"><span class="coord-val">${coords}</span></td>
                     <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
                 </tr>`;
                 total++;
