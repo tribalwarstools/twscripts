@@ -52,7 +52,7 @@ function abrirJanelaGrupo() {
     // Criar interface para inserção de coordenadas
     let htmlCoordenadas = `<div class="vis">
         <table class="vis">
-            <textarea id="campoCoordenadas" cols="60" rows="12" placeholder="Digite as coordenadas aqui"></textarea>
+            <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui"></textarea>
             <center><button type="button" class="btn btn-confirm-yes" onclick="importarCoordenadas()">Selecionar coordenadas</button></center>
         </table>
     </div>`;
