@@ -2,7 +2,7 @@
   const groups = [];
   const coordToId = {};
   const coordToPoints = {};
-  const STORAGE_KEY = "tw_last_selected_group";
+  //const STORAGE_KEY = "tw_last_selected_group";
 
   // Mapeia coordenadas para ID
   const mapData = await $.get("map/village.txt");
