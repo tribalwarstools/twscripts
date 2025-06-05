@@ -53,7 +53,7 @@
     $('#save').on('click', () => {
       config = {
         firstbox: $('#firstbox').prop('checked'),
-        end: parseInt($('#end').val()) || 3,
+        end: parseInt($('#end').val()) || 2,
         secondbox: $('#secondbox').prop('checked'),
         textname: $('#textname').val()
       };
@@ -69,7 +69,7 @@
 
       // Resetar campos visuais
       $('#firstbox').prop('checked', false);
-      $('#end').val('3');
+      $('#end').val('2');
       $('#secondbox').prop('checked', false);
       $('#textname').val('');
       $('#setCounter').val('');
@@ -83,7 +83,7 @@
       e.preventDefault();
 
       const usarNumeracao = $('#firstbox').prop('checked');
-      const digitos = parseInt($('#end').val()) || 3;
+      const digitos = parseInt($('#end').val()) || 2;
       const usarTexto = $('#secondbox').prop('checked');
       const textoBase = $('#textname').val() || '';
       const novoInicio = parseInt($('#setCounter').val());
