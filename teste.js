@@ -11,16 +11,16 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos a partir do modo COMBINED (mais confiável)
-  const combinedHtml = await $.get("/game.php?screen=overview_villages&mode=combined");
-  const combinedDoc = new DOMParser().parseFromString(combinedHtml, "text/html");
-  combinedDoc.querySelectorAll("table#combined_table tbody tr").forEach(row => {
+  // Mapeia coordenadas para pontos usando /mode=prod
+  const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
+  const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
+  prodDoc.querySelectorAll("table#production_table tbody tr").forEach(row => {
+    const cells = row.querySelectorAll("td");
     const coordMatch = row.innerText.match(/\d+\|\d+/);
-    const tds = row.querySelectorAll("td");
-    if (coordMatch && tds.length >= 3) {
+    if (coordMatch && cells.length >= 2) {
       const coord = coordMatch[0];
-      const points = parseInt(tds[2].textContent.replace(/\./g, "").trim(), 10);
-      coordToPoints[coord] = points;
+      const rawPoints = cells[1].textContent.replace(/\./g, "").trim();
+      coordToPoints[coord] = parseInt(rawPoints, 10);
     }
   });
 
@@ -59,7 +59,7 @@
     select.appendChild(opt);
   });
 
-  // Botões de scripts externos
+  // Botões de ferramentas
   $("#abrirRenamer").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
       .done(() => setTimeout(() => {
@@ -80,19 +80,14 @@
 
   $("#abrirGrupo").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/addGrupo.js")
-      .done(() => {
-        setTimeout(() => {
-          if (typeof abrirJanelaGrupo === "function") {
-            abrirJanelaGrupo();
-          } else {
-            UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
-          }
-        }, 100);
-      })
+      .done(() => setTimeout(() => {
+        if (typeof abrirJanelaGrupo === "function") abrirJanelaGrupo();
+        else UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
+      }, 100))
       .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
   });
 
-  // Carregamento de aldeias do grupo
+  // Mudança de grupo
   select.addEventListener("change", async function () {
     const groupId = this.value;
     if (!groupId) return;
