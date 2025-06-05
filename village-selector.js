@@ -92,7 +92,11 @@
   $("#abrirTotalTropas").on("click", function () {
     $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
       .done(() => {
-        UI.SuccessMessage("Script TotalTropas carregado com sucesso!");
+        if (typeof abrirJanelaContador === "function") {
+          abrirJanelaContador();
+        } else {
+          UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
+        }
       })
       .fail(() => {
         UI.ErrorMessage("Erro ao carregar o script TotalTropas.");
