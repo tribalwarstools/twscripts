@@ -64,13 +64,36 @@ javascript:
 
         UI.InfoMessage("Carregando aldeias do grupo...");
 
-        const resp = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
+             let resp;
+        try {
+            resp = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
+        } catch (e) {
+            UI.ErrorMessage("Erro ao carregar o grupo. Tente novamente.");
+            return;
+        }
+
+        if (!resp.html) {
+            UI.ErrorMessage("Grupo vazio ou estrutura inesperada. Verifique o grupo selecionado.");
+            return;
+        }
+
         const doc = new DOMParser().parseFromString(resp.html, "text/html");
-        const rows = doc.querySelectorAll("#group_table tbody tr");
+        const table = doc.querySelector("#group_table");
+        if (!table) {
+            UI.ErrorMessage("Tabela de aldeias não encontrada. Estrutura inesperada.");
+            return;
+        }
+
+        const rows = table.querySelectorAll("tbody tr");
+        if (!rows.length) {
+            UI.ErrorMessage("Nenhuma aldeia encontrada no grupo.");
+            return;
+        }
 
         const groupCoords = Array.from(rows).map(row =>
             row.querySelectorAll("td")[1].textContent.trim()
         );
+
 
         const renameIcons = $(".rename-icon");
         let renamed = 0;
