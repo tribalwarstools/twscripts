@@ -53,7 +53,7 @@ function abrirJanelaGrupo() {
     let htmlCoordenadas = `<div class="vis">
         <table class="vis">
             <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui"></textarea>
-            <center><button type="button" class="btn btn-confirm-yes" onclick="importarCoordenadas()">Adicionar coordenadas</button></center>
+            <center><button type="button" class="btn btn-confirm-yes" onclick="importarCoordenadas()">Importar</button></center>
         </table>
     </div>`;
     Dialog.show("campoCoordenadas", htmlCoordenadas);
