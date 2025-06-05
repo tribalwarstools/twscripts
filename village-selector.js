@@ -88,7 +88,27 @@
       });
   });
 
-  // Variáveis para controle do TotalTropas
+//
+
+  // Evento para botão abrir Total de Tropas
+  $("#abrirTotalTropas").on("click", function () {
+    $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
+      .done(() => {
+        if (typeof abrirJanelaContador === "function") {
+          abrirJanelaContadorRef();
+        } else {
+          UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
+        }
+      })
+      .fail(() => {
+        UI.ErrorMessage("Erro ao carregar o script Total de Tropas.");
+      });
+  });
+
+  
+//
+  
+ /* // Variáveis para controle do TotalTropas
   let totalTropasLoaded = false;
   let abrirJanelaContadorRef = null;
 
@@ -116,7 +136,7 @@
         UI.ErrorMessage("Função abrirJanelaContador não disponível.");
       }
     }
-  });
+  });*/
 
   // Evento de seleção de grupo
   select.addEventListener("change", async function () {
