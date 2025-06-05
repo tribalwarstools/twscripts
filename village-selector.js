@@ -106,38 +106,6 @@
   });
 
   
-//
-  
- /* // Variáveis para controle do TotalTropas
-  let totalTropasLoaded = false;
-  let abrirJanelaContadorRef = null;
-
-  // Evento para botão abrir TotalTropas
-  $("#abrirTotalTropas").on("click", function () {
-    if (!totalTropasLoaded) {
-      $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
-        .done(() => {
-          totalTropasLoaded = true;
-
-          if (typeof abrirJanelaContador === "function") {
-            abrirJanelaContadorRef = abrirJanelaContador;
-            abrirJanelaContadorRef();
-          } else {
-            UI.ErrorMessage("Função abrirJanelaContador não encontrada após carregar o script.");
-          }
-        })
-        .fail(() => {
-          UI.ErrorMessage("Erro ao carregar o script TotalTropas.");
-        });
-    } else {
-      if (abrirJanelaContadorRef) {
-        abrirJanelaContadorRef();
-      } else {
-        UI.ErrorMessage("Função abrirJanelaContador não disponível.");
-      }
-    }
-  });*/
-
   // Evento de seleção de grupo
   select.addEventListener("change", async function () {
     const groupId = this.value;
