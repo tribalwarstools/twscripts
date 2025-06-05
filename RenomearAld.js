@@ -45,7 +45,7 @@
     // Carregar configurações
     let config = JSON.parse(localStorage.getItem('renamer_config') || '{}');
     $('#firstbox').prop('checked', config.firstbox || false);
-    $('#end').val(config.end || 3);
+    $('#end').val(config.end || 2);
     $('#secondbox').prop('checked', config.secondbox || false);
     $('#textname').val(config.textname || '');
 
