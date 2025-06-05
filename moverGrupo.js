@@ -1,9 +1,10 @@
 (function () {
   function abrirJanelaGrupo() {
     if (!window.location.href.includes('screen=overview_villages')) {
-      UI.InfoMessage('Acesse janela de grupos');
+      UI.InfoMessage('Acesse "overview_villages" para usar o Grupo.');
       return;
     }
+
 
 
 let aldeiasSelecionadas = [];
