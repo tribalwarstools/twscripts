@@ -1,14 +1,3 @@
-/*
-         This script has been approved by Tribal Wars as of 06/05/2020, ticket t13921470.
-
-         scriptname:       Licznik wojska
-         author:           To6iasz
-         editor:           Rinne, Gangsta Anime Girl
-         original url:     https://media.innogamescdn.com/com_DS_PL/skrypty/licznik_wojska.js
-
-         editor:           natanprog
-         url:              https://natanprog.github.io/scripts/tw/troop_counter.js
-*/
 javascript:
     if (!licznik_wojska) var licznik_wojska = {};
 var langScript = [];
