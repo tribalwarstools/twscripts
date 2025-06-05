@@ -11,7 +11,7 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos (na terceira coluna da tabela prod)
+  // Mapeia coordenadas para pontos (na terceira coluna da tabela "prod")
   const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
   const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
   const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
@@ -33,6 +33,37 @@
   // Carrega grupos
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
+
+  // Função que cria a barra de progresso com degradê quente
+  function createProgressBar(value, max) {
+    const percent = Math.min((value / max) * 100, 100);
+    return `
+      <div style="background:#ddd; width: 90px; height: 16px; border-radius: 6px; overflow: hidden; position: relative; box-shadow: inset 0 0 5px rgba(0,0,0,0.1);">
+        <div style="
+          width: ${percent}%;
+          height: 100%;
+          background: linear-gradient(to right, #e74c3c, #f39c12, #f1c40f);
+          border-radius: 6px 0 0 6px;
+          transition: width 0.3s ease;
+        "></div>
+        <div style="
+          position: absolute;
+          width: 100%;
+          text-align: center;
+          top: 0;
+          left: 0;
+          font-size: 12px;
+          font-weight: bold;
+          color: #000;
+          text-shadow: 0 0 3px #fff;
+          line-height: 16px;
+          user-select: none;
+        ">
+          ${value.toLocaleString()}
+        </div>
+      </div>
+    `;
+  }
 
   // Monta painel
   const html = `
@@ -114,20 +145,8 @@
       return;
     }
 
-    function createProgressBar(value, max) {
-      const percent = Math.min((value / max) * 100, 100);
-      return `
-        <div style="background:#ddd; width: 90px; height: 16px; border-radius: 6px; overflow: hidden; position: relative;">
-          <div style="background:#4caf50; width: ${percent}%; height: 100%;"></div>
-          <div style="position: absolute; width: 100%; text-align: center; top: 0; left: 0; font-size: 12px; font-weight: bold; color: #000;">
-            ${value.toLocaleString()}
-          </div>
-        </div>
-      `;
-    }
-
     let output = `<table class="vis" width="100%">
-      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:120px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
+      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:110px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
     let total = 0;
     const MAX_POINTS = 12000;
 
@@ -139,11 +158,11 @@
         const id = coordToId[coords];
         const points = coordToPoints[coords] || 0;
         const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
-
+        const progressBar = createProgressBar(points, MAX_POINTS);
         output += `<tr>
           <td>${link}</td>
           <td><span class="coord-val">${coords}</span></td>
-          <td>${createProgressBar(points, MAX_POINTS)}</td>
+          <td>${progressBar}</td>
           <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
         </tr>`;
         total++;
