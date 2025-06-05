@@ -11,7 +11,7 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos (na terceira coluna da tabela da tela prod)
+  // Mapeia coordenadas para pontos (na terceira coluna da tabela "prod")
   const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
   const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
   const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
@@ -21,7 +21,7 @@
     const coordMatch = row.innerText.match(/\d+\|\d+/);
     if (coordMatch && cells.length > 2) {
       const coord = coordMatch[0];
-      const pontosTd = cells[2]; // terceira coluna = pontuação
+      const pontosTd = cells[2]; // terceira coluna tem a pontuação
       const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
       const points = parseInt(rawText, 10);
       if (!isNaN(points)) {
@@ -34,8 +34,36 @@
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-  // Adiciona grupo "Todos" manualmente com group_id = "0"
-  groups.unshift({ group_id: "0", group_name: "Todos" });
+  // Função que cria a barra de progresso com degradê quente
+  function createProgressBar(value, max) {
+    const percent = Math.min((value / max) * 100, 100);
+    return `
+      <div style="background:#ddd; width: 90px; height: 16px; border-radius: 6px; overflow: hidden; position: relative; box-shadow: inset 0 0 5px rgba(0,0,0,0.1);">
+        <div style="
+          width: ${percent}%;
+          height: 100%;
+          background: linear-gradient(to right, #e74c3c, #f39c12, #f1c40f);
+          border-radius: 6px 0 0 6px;
+          transition: width 0.3s ease;
+        "></div>
+        <div style="
+          position: absolute;
+          width: 100%;
+          text-align: center;
+          top: 0;
+          left: 0;
+          font-size: 12px;
+          font-weight: bold;
+          color: #000;
+          text-shadow: 0 0 3px #fff;
+          line-height: 16px;
+          user-select: none;
+        ">
+          ${value.toLocaleString()}
+        </div>
+      </div>
+    `;
+  }
 
   // Monta painel
   const html = `
@@ -57,23 +85,17 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
+  const savedGroupId = localStorage.getItem(STORAGE_KEY);
+  const placeholder = new Option("Selecione um grupo", "", true, true);
+  placeholder.disabled = true;
+  select.appendChild(placeholder);
 
-  // Adiciona opções no select
   groups.forEach(g => {
-    const opt = new Option(g.group_name, g.group_id, false, false);
+    const opt = new Option(g.group_name, g.group_id, false, g.group_id == savedGroupId);
     if (!g.group_name) opt.disabled = true;
     select.appendChild(opt);
   });
 
-  // Define valor salvo ou padrão "0" (Todos)
-  const savedGroupId = localStorage.getItem(STORAGE_KEY);
-  if (savedGroupId && groups.some(g => g.group_id === savedGroupId)) {
-    select.value = savedGroupId;
-  } else {
-    select.value = "0"; // seleciona "Todos"
-  }
-
-  // Eventos dos botões
   $("#abrirRenamer").on("click", () => {
     $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
       .done(() => setTimeout(() => {
@@ -108,88 +130,48 @@
 
   select.addEventListener("change", async function () {
     const groupId = this.value;
+    if (!groupId) return;
     localStorage.setItem(STORAGE_KEY, groupId);
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
 
-    // Se selecionou "Todos" (group_id=0), carrega todas as aldeias do jogador
-    let response;
-    if (groupId === "0") {
-      // Carregar overview com todas as aldeias combinadas
-      response = await $.get("/game.php?screen=overview_villages&mode=combined");
-      const doc = new DOMParser().parseFromString(response, "text/html");
-      const rows = doc.querySelectorAll("#production_table tbody tr, #production_table1 tbody tr, table.vis tbody tr"); // tenta pegar linhas
+    const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
+    const doc = new DOMParser().parseFromString(response.html, "text/html");
+    const rows = doc.querySelectorAll("#group_table tbody tr");
 
-      if (!rows.length) {
-        $("#groupVillages").html("<p><i>Nenhuma aldeia encontrada.</i></p>");
-        $("#villageCount").text("0 aldeias");
-        return;
-      }
-
-      let output = `<table class="vis" width="100%">
-        <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
-      let total = 0;
-
-      rows.forEach(row => {
-        const tds = row.querySelectorAll("td");
-        if (tds.length >= 6) {
-          const name = tds[0].textContent.trim();
-          const coords = tds[1].textContent.trim();
-          const id = coordToId[coords];
-          const points = coordToPoints[coords] || 0;
-          const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
-          output += `<tr>
-            <td>${link}</td>
-            <td><span class="coord-val">${coords}</span></td>
-            <td>${points.toLocaleString()}</td>
-            <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
-          </tr>`;
-          total++;
-        }
-      });
-
-      output += "</tbody></table>";
-      $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
-      $("#villageCount").text(`${total} aldeias`);
-
-    } else {
-      // Carrega aldeias do grupo selecionado
-      const res = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
-      const doc = new DOMParser().parseFromString(res.html, "text/html");
-      const rows = doc.querySelectorAll("#group_table tbody tr");
-
-      if (!rows.length) {
-        $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
-        $("#villageCount").text("0 aldeias");
-        return;
-      }
-
-      let output = `<table class="vis" width="100%">
-        <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
-      let total = 0;
-
-      rows.forEach(row => {
-        const tds = row.querySelectorAll("td");
-        if (tds.length >= 2) {
-          const name = tds[0].textContent.trim();
-          const coords = tds[1].textContent.trim();
-          const id = coordToId[coords];
-          const points = coordToPoints[coords] || 0;
-          const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
-          output += `<tr>
-            <td>${link}</td>
-            <td><span class="coord-val">${coords}</span></td>
-            <td>${points.toLocaleString()}</td>
-            <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
-          </tr>`;
-          total++;
-        }
-      });
-
-      output += "</tbody></table>";
-      $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
-      $("#villageCount").text(`${total} aldeias`);
+    if (!rows.length) {
+      $("#groupVillages").html("<p><i>Nenhuma aldeia no grupo.</i></p>");
+      $("#villageCount").text("0 aldeias");
+      return;
     }
+
+    let output = `<table class="vis" width="100%">
+      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:110px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
+    let total = 0;
+    const MAX_POINTS = 12000;
+
+    rows.forEach(row => {
+      const tds = row.querySelectorAll("td");
+      if (tds.length >= 2) {
+        const name = tds[0].textContent.trim();
+        const coords = tds[1].textContent.trim();
+        const id = coordToId[coords];
+        const points = coordToPoints[coords] || 0;
+        const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
+        const progressBar = createProgressBar(points, MAX_POINTS);
+        output += `<tr>
+          <td>${link}</td>
+          <td><span class="coord-val">${coords}</span></td>
+          <td>${progressBar}</td>
+          <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
+        </tr>`;
+        total++;
+      }
+    });
+
+    output += "</tbody></table>";
+    $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
+    $("#villageCount").text(`${total} aldeias`);
 
     $(".copy-coord").on("click", function () {
       const coord = $(this).data("coord");
@@ -204,6 +186,7 @@
     });
   });
 
-  // Dispara mudança para carregar grupos ao abrir
-  select.dispatchEvent(new Event("change"));
+  if (savedGroupId) {
+    select.dispatchEvent(new Event("change"));
+  }
 })();
