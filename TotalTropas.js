@@ -222,8 +222,9 @@ function mostrarResultado(soma) {
     const qtdAldeias = (contadorTropas.tabelaDados.rows.length - 1) / 5;
     document.getElementById("contadorAldeias").innerHTML = lang[16] + qtdAldeias + lang[17];
 }
-window.abrirJanelaContador = abrirJanelaContador; 
+
 // Inicia a busca de dados ao carregar o script
 buscarDados();
 
-     
+  window.abrirJanelaContador = abrirJanelaContador;     
+})();     
