@@ -12,11 +12,11 @@
         <div style="text-align:center; font-weight:bold;">Renamer</div>
         <table class="vis" style="width:100%; margin-top:4px;">
           <tr>
-            <td><input id="firstbox" type="checkbox"> Num</td>
+            <td><input id="firstbox" type="checkbox">Dígitos</td>
             <td><input id="end" type="number" min="1" max="10" value="2" style="width:35px;"></td>
           </tr>
           <tr>
-            <td><input id="secondbox" type="checkbox"> Txt</td>
+            <td><input id="secondbox" type="checkbox"> Nome</td>
             <td><input id="textname" type="text" maxlength="32" style="width:90px;" placeholder="Nome"></td>
           </tr>
           <tr>
