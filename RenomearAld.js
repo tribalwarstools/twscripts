@@ -1,16 +1,10 @@
 (function () {
-  async function getGrupoAtivoNomeViaURL() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const grupoId = parseInt(urlParams.get("group") || "0", 10);
-    if (grupoId === 0) return "Nenhum";
-
-    try {
-      const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
-      const grupo = groupData.result.find(g => g.group_id == grupoId);
-      return grupo ? grupo.name : "Desconhecido";
-    } catch (e) {
-      return "Erro ao buscar grupo";
-    }
+  function getGrupoAtivoViaMenu() {
+    const ativo = document.querySelector('strong.group-menu-item');
+    if (!ativo) return { id: 0, name: "Nenhum" };
+    const id = parseInt(ativo.getAttribute('data-group-id') || "0");
+    const texto = ativo.textContent.trim().replace(/[><]/g, '');
+    return { id, name: texto };
   }
 
   function abrirPainelRenomear() {
@@ -59,7 +53,7 @@
         </table>
         <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.8</span></strong>
+          <strong>Versão - <span style="color:red;">1.9</span></strong>
         </div>
       </div>`;
 
@@ -101,9 +95,9 @@
       UI.SuccessMessage('Tudo resetado e limpo.');
     });
 
-    // Visualizar nomes com nome do grupo
     $('#preview').on('click', async () => {
-      const grupoNome = await getGrupoAtivoNomeViaURL();
+      const grupoAtivo = getGrupoAtivoViaMenu();
+      const grupoNome = grupoAtivo.name;
 
       const usarNumeracao = $('#firstbox').prop('checked');
       const digitos = parseInt($('#end').val()) || 2;
@@ -130,7 +124,6 @@
       $('#previewList').html(htmlPreview);
     });
 
-    // Renomear aldeias
     $('#rename').on('click', function (e) {
       e.preventDefault();
 
