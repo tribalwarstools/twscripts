@@ -15,26 +15,26 @@
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-  // Carrega overview de produção
-  const prodPage = await $.get("/game.php?screen=overview_villages&mode=prod&page=-1");
-  const doc = new DOMParser().parseFromString(prodPage, "text/html");
-  const nameElems = doc.querySelectorAll("span.quickedit-vn");
-  const pointElems = doc.querySelectorAll("#production_table th");
+  // Carrega overview de produção e extrai pontos com jQuery (como mercado.js)
+  const html = await $.get("/game.php?screen=overview_villages&mode=prod&page=-1");
+  const $page = $(html);
+  const villageElems = $page.find("span.quickedit-vn");
+  const pointElems = $page.find("#production_table th");
 
-  nameElems.forEach((el, i) => {
-    const name = el.textContent.trim();
+  villageElems.each(function (i) {
+    const name = $(this).text().trim();
     const coords = name.match(/\d{3}\|\d{3}/)?.[0];
-    const pointsText = pointElems[(i * 2) + 1]?.textContent.trim();
-    const points = parseInt(pointsText?.replace(/\./g, ""), 10);
+    const pointsText = pointElems.eq(i * 2 + 1).text().replace(/\./g, "");
+    const points = parseInt(pointsText, 10);
     if (coords && !isNaN(points)) {
       villagePointsMap[coords] = points;
     }
   });
 
-  // Monta painel
-  const html = `
+  // Painel HTML
+  const htmlPanel = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts 3.0</h2>
+      <h2>Painel de Scripts 4.0</h2>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
@@ -44,7 +44,7 @@
       <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
     </div>
   `;
-  Dialog.show("tw_group_viewer", html);
+  Dialog.show("tw_group_viewer", htmlPanel);
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
