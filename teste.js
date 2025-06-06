@@ -1,7 +1,7 @@
 (async function () {
   const groups = [];
   const coordToId = {};
-  const villagePointsMap = {};
+  let villagePointsMap = {}; // mapa de coord → pontos
   const STORAGE_KEY = "tw_last_selected_group";
 
   // Mapeia coordenadas para ID
@@ -15,22 +15,57 @@
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-  // Coleta pontos exatamente como no mercado.js
-  const html = await $.get("/game.php?screen=overview_villages&mode=prod&page=-1");
-  const $page = $(html);
-  const allVillages = $page.find(".quickedit-vn");
-  const productionTable = $page.find("#production_table th");
+  // --- FUNÇÃO QUE BUSCA TODAS AS PONTUAÇÕES DE ALDEIAS ---
+  async function fetchAllVillagePoints() {
+    villagePointsMap = {};
 
-  allVillages.each(function (i) {
-    const name = $(this).text().trim();
-    const coord = name.match(/\d{3}\|\d{3}/)?.[0];
-    const thIndex = (i * 2) + 1;
-    const pointText = productionTable.eq(thIndex).text().replace(/\./g, '').replace(',', '');
-    const points = parseInt(pointText, 10);
-    if (coord && !isNaN(points)) {
-      villagePointsMap[coord] = points;
+    async function parseVillagesFromHTML(html) {
+      let doc = new DOMParser().parseFromString(html, "text/html");
+      let rows = doc.querySelectorAll("#production_table tbody tr");
+      let villages = [];
+
+      rows.forEach(row => {
+        let villageName = row.querySelector("span.quickedit-vn")?.innerText.trim();
+        let coordMatch = villageName?.match(/\d{3}\|\d{3}/);
+        let coord = coordMatch ? coordMatch[0] : null;
+        let pointsText = row.querySelector("td:nth-child(3)")?.innerText.trim();
+        let points = pointsText ? parseInt(pointsText.replace(/\./g, '').replace(',', ''), 10) : 0;
+
+        if (coord && villageName && !isNaN(points)) {
+          villages.push({ coord, points });
+        }
+      });
+
+      return villages;
     }
-  });
+
+    function getTotalPages(html) {
+      let doc = new DOMParser().parseFromString(html, "text/html");
+      let pager = doc.querySelector(".pager");
+      if (!pager) return 1;
+      let pages = Array.from(pager.querySelectorAll("a"))
+        .map(a => parseInt(a.textContent))
+        .filter(n => !isNaN(n));
+      return pages.length > 0 ? Math.max(...pages) : 1;
+    }
+
+    const firstPageHtml = await $.get("/game.php?screen=overview_villages&mode=prod&page=1");
+    const totalPages = getTotalPages(firstPageHtml);
+
+    let villages = await parseVillagesFromHTML(firstPageHtml);
+
+    for (let page = 2; page <= totalPages; page++) {
+      const html = await $.get(`/game.php?screen=overview_villages&mode=prod&page=${page}`);
+      villages = villages.concat(await parseVillagesFromHTML(html));
+    }
+
+    villages.forEach(v => {
+      villagePointsMap[v.coord] = v.points;
+    });
+  }
+
+  // Chama a função para popular o mapa de pontos antes de montar o painel
+  await fetchAllVillagePoints();
 
   // Painel visual
   const htmlPanel = `
