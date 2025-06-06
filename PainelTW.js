@@ -11,6 +11,20 @@
     coordToId[`${x}|${y}`] = id;
   });
 
+  // Função para criar a barra de progresso verde
+  function criarBarraProgresso(pontos) {
+    const max = 13000;
+    const perc = Math.min(pontos / max, 1) * 100;
+    return `
+      <div style="background:#fff; border:1px solid #ccc; width: 90px; height: 18px; border-radius: 5px; overflow: hidden; position: relative;">
+        <div style="background: linear-gradient(to right, #b7f2b7, #2c8f2c); width: ${perc}%; height: 100%;"></div>
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; line-height: 18px; text-align: center; font-weight: bold; font-size: 12px; color: #000; user-select:none;">
+          ${pontos.toLocaleString()}
+        </div>
+      </div>
+    `;
+  }
+
   // Mapeia coordenadas para pontos (na terceira coluna da tabela)
   const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
   const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
@@ -37,14 +51,15 @@
   // Monta painel
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts</h2>
+      <h2>Painel de Scripts 2.8</h2>
       <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
       <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
       <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Importar grupos</button>
-      <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
         <span id="villageCount" style="font-weight: bold;"></span>
+        <button id="refreshPoints" class="btn" style="margin-left: auto;">Atualizar pontuação</button>
       </div>
       <hr>
       <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
@@ -97,13 +112,9 @@
       .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
   });
 
-  select.addEventListener("change", async function () {
-    const groupId = this.value;
-    if (!groupId) return;
-    localStorage.setItem(STORAGE_KEY, groupId);
+  async function carregarVillagesPorGrupo(groupId) {
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
-
     const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
     const doc = new DOMParser().parseFromString(response.html, "text/html");
     const rows = doc.querySelectorAll("#group_table tbody tr");
@@ -115,7 +126,7 @@
     }
 
     let output = `<table class="vis" width="100%">
-      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
+      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:110px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
     let total = 0;
 
     rows.forEach(row => {
@@ -126,10 +137,11 @@
         const id = coordToId[coords];
         const points = coordToPoints[coords] || 0;
         const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
+        const barra = criarBarraProgresso(points);
         output += `<tr>
           <td>${link}</td>
           <td><span class="coord-val">${coords}</span></td>
-          <td>${points.toLocaleString()}</td>
+          <td style="padding: 4px 8px;">${barra}</td>
           <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
         </tr>`;
         total++;
@@ -151,9 +163,50 @@
       navigator.clipboard.writeText(coords);
       UI.SuccessMessage("Todas as coordenadas copiadas!");
     });
+  }
+
+  select.addEventListener("change", async function () {
+    const groupId = this.value;
+    if (!groupId) return;
+    localStorage.setItem(STORAGE_KEY, groupId);
+    await carregarVillagesPorGrupo(groupId);
+  });
+
+  $("#refreshPoints").on("click", async () => {
+    // Atualiza os pontos do overview novamente
+    const prodHtmlAtual = await $.get("/game.php?screen=overview_villages&mode=prod");
+    const prodDocAtual = new DOMParser().parseFromString(prodHtmlAtual, "text/html");
+    const rowsAtual = prodDocAtual.querySelectorAll("table#production_table tbody tr");
+
+    rowsAtual.forEach(row => {
+      const cells = row.querySelectorAll("td");
+      const coordMatch = row.innerText.match(/\d+\|\d+/);
+      if (coordMatch && cells.length > 2) {
+        const coord = coordMatch[0];
+        const pontosTd = cells[2];
+        const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
+        const points = parseInt(rawText, 10);
+        if (!isNaN(points)) {
+          coordToPoints[coord] = points;
+        }
+      }
+    });
+
+    // Atualiza a tabela exibida, se houver
+    $("#groupVillages table tbody tr").each(function () {
+      const linha = $(this);
+      const coord = linha.find(".coord-val").text().trim();
+      if (coordToPoints[coord] !== undefined) {
+        const barraAtualizada = criarBarraProgresso(coordToPoints[coord]);
+        linha.find("td").eq(2).html(barraAtualizada);
+      }
+    });
+
+    UI.SuccessMessage("Pontuação atualizada!");
   });
 
   if (savedGroupId) {
+    select.value = savedGroupId;
     select.dispatchEvent(new Event("change"));
   }
 })();
