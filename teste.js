@@ -1,7 +1,7 @@
 (async function () {
   const groups = [];
   const coordToId = {};
-  let villagePointsMap = {};
+  const coordToPoints = {};
   const STORAGE_KEY = "tw_last_selected_group";
 
   // Mapeia coordenadas para ID
@@ -11,59 +11,96 @@
     coordToId[`${x}|${y}`] = id;
   });
 
+  // Mapeia coordenadas para pontos (na terceira coluna da tabela)
+  const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
+  const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
+  const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
+
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    const coordMatch = row.innerText.match(/\d+\|\d+/);
+    if (coordMatch && cells.length > 2) {
+      const coord = coordMatch[0];
+      const pontosTd = cells[2]; // terceira coluna tem a pontuação
+      const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
+      const points = parseInt(rawText, 10);
+      if (!isNaN(points)) {
+        coordToPoints[coord] = points;
+      }
+    }
+  });
+
   // Carrega grupos
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-  async function fetchAllVillagePoints() {
-    villagePointsMap = {};
+  // Monta painel
+  const html = `
+    <div class="vis" style="padding: 10px;">
+      <h2>Painel de Scripts</h2>
+      <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
+      <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
+      <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Importar grupos</button>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <label for="groupSelect"><b>Visualizador de grupo:</b></label>
+        <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
+        <span id="villageCount" style="font-weight: bold;"></span>
+      </div>
+      <hr>
+      <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
+    </div>
+  `;
+  Dialog.show("tw_group_viewer", html);
+  $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
-    async function parseVillagesFromHTML(html) {
-      let doc = new DOMParser().parseFromString(html, "text/html");
-      let rows = doc.querySelectorAll("#production_table tbody tr");
-      let villages = [];
+  const select = document.getElementById("groupSelect");
+  const savedGroupId = localStorage.getItem(STORAGE_KEY);
+  const placeholder = new Option("Selecione um grupo", "", true, true);
+  placeholder.disabled = true;
+  select.appendChild(placeholder);
 
-      rows.forEach(row => {
-        let villageName = row.querySelector("span.quickedit-vn")?.innerText.trim();
-        let coordMatch = villageName?.match(/\d{3}\|\d{3}/);
-        let coord = coordMatch ? coordMatch[0] : null;
-        let pointsText = row.querySelector("td:nth-child(3)")?.innerText.trim();
-        let points = pointsText ? parseInt(pointsText.replace(/\./g, '').replace(',', ''), 10) : 0;
+  groups.forEach(g => {
+    const opt = new Option(g.group_name, g.group_id, false, g.group_id == savedGroupId);
+    if (!g.group_name) opt.disabled = true;
+    select.appendChild(opt);
+  });
 
-        if (coord && villageName && !isNaN(points)) {
-          villages.push({ coord, points });
-        }
-      });
+  $("#abrirRenamer").on("click", () => {
+    $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
+      .done(() => setTimeout(() => {
+        if (typeof abrirPainelRenomear === "function") abrirPainelRenomear();
+        else UI.ErrorMessage("Função abrirPainelRenomear não encontrada.");
+      }, 100))
+      .fail(() => UI.ErrorMessage("Erro ao carregar o script de renomeação."));
+  });
 
-      return villages;
-    }
+  $("#abrirTotalTropas").on("click", () => {
+    $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
+      .done(() => setTimeout(() => {
+        if (typeof abrirJanelaContador === "function") abrirJanelaContador();
+        else UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
+      }, 100))
+      .fail(() => UI.ErrorMessage("Erro ao carregar o script Total de Tropas."));
+  });
 
-    function getTotalPages(html) {
-      let doc = new DOMParser().parseFromString(html, "text/html");
-      let pager = doc.querySelector(".pager");
-      if (!pager) return 1;
-      let pages = Array.from(pager.querySelectorAll("a"))
-        .map(a => parseInt(a.textContent))
-        .filter(n => !isNaN(n));
-      return pages.length > 0 ? Math.max(...pages) : 1;
-    }
+  $("#abrirGrupo").on("click", () => {
+    $.getScript("https://tribalwarstools.github.io/twscripts/addGrupo.js")
+      .done(() => {
+        setTimeout(() => {
+          if (typeof abrirJanelaGrupo === "function") {
+            abrirJanelaGrupo();
+          } else {
+            UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
+          }
+        }, 100);
+      })
+      .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
+  });
 
-    const firstPageHtml = await $.get("/game.php?screen=overview_villages&mode=prod&page=1");
-    const totalPages = getTotalPages(firstPageHtml);
-
-    let villages = await parseVillagesFromHTML(firstPageHtml);
-
-    for (let page = 2; page <= totalPages; page++) {
-      const html = await $.get(`/game.php?screen=overview_villages&mode=prod&page=${page}`);
-      villages = villages.concat(await parseVillagesFromHTML(html));
-    }
-
-    villages.forEach(v => {
-      villagePointsMap[v.coord] = v.points;
-    });
-  }
-
-  async function renderVillages(groupId) {
+  select.addEventListener("change", async function () {
+    const groupId = this.value;
+    if (!groupId) return;
+    localStorage.setItem(STORAGE_KEY, groupId);
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
 
@@ -77,41 +114,32 @@
       return;
     }
 
-    const villages = [];
+    let output = `<table class="vis" width="100%">
+      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
+    let total = 0;
+
     rows.forEach(row => {
       const tds = row.querySelectorAll("td");
       if (tds.length >= 2) {
         const name = tds[0].textContent.trim();
         const coords = tds[1].textContent.trim();
         const id = coordToId[coords];
-        const points = villagePointsMap[coords] || 0;
-        if (id) villages.push({ id, name, coords, points });
+        const points = coordToPoints[coords] || 0;
+        const link = id ? `<a href="/game.php?village=${id}&screen=overview" target="_blank">${name}</a>` : name;
+        output += `<tr>
+          <td>${link}</td>
+          <td><span class="coord-val">${coords}</span></td>
+          <td>${points.toLocaleString()}</td>
+          <td><button class="btn copy-coord" data-coord="${coords}">📋</button></td>
+        </tr>`;
+        total++;
       }
     });
 
-    let output = `
-      <button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>
-      <button id="copyAllCoords" class="btn" style="margin-bottom:5px; margin-left:5px;">📋 Copiar todas as coordenadas</button>
-    `;
-
-    output += `<table class="vis" width="100%">
-      <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
-
-    villages.forEach(village => {
-      const link = `<a href="/game.php?village=${village.id}&screen=overview" target="_blank">${village.name}</a>`;
-      output += `<tr>
-        <td>${link}</td>
-        <td><span class="coord-val">${village.coords}</span></td>
-        <td class="points-cell">${village.points.toLocaleString()}</td>
-        <td><button class="btn copy-coord" data-coord="${village.coords}">📋</button></td>
-      </tr>`;
-    });
-
     output += "</tbody></table>";
-    $("#groupVillages").html(output);
-    $("#villageCount").text(`${villages.length} aldeias`);
+    $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
+    $("#villageCount").text(`${total} aldeias`);
 
-    // Eventos dos botões
     $(".copy-coord").on("click", function () {
       const coord = $(this).data("coord");
       navigator.clipboard.writeText(coord);
@@ -123,59 +151,9 @@
       navigator.clipboard.writeText(coords);
       UI.SuccessMessage("Todas as coordenadas copiadas!");
     });
+  });
 
-    $("#refreshPoints").on("click", async function () {
-      $(this).prop("disabled", true).text("Atualizando...");
-      await fetchAllVillagePoints();
-      await renderVillages(groupId);
-      UI.SuccessMessage("Pontuação atualizada!");
-      $(this).prop("disabled", false).text("🔄 Atualizar Pontuação");
-    });
+  if (savedGroupId) {
+    select.dispatchEvent(new Event("change"));
   }
-
-  // Painel visual
-  const htmlPanel = `
-    <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts ta dificil</h2>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <label for="groupSelect"><b>Visualizador de grupo:</b></label>
-        <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
-        <span id="villageCount" style="font-weight: bold;"></span>
-      </div>
-      <hr>
-      <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
-    </div>
-  `;
-
-  Dialog.show("tw_group_viewer", htmlPanel);
-  $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
-
-  const select = document.getElementById("groupSelect");
-  const savedGroupId = localStorage.getItem(STORAGE_KEY) || "0";
-
-  const placeholder = new Option("Selecione um grupo", "", true, false);
-  placeholder.disabled = true;
-  select.appendChild(placeholder);
-
-  groups.forEach(g => {
-    const isSelected = g.group_id == savedGroupId;
-    const opt = new Option(g.group_name, g.group_id, false, isSelected);
-    if (!g.group_name) opt.disabled = true;
-    select.appendChild(opt);
-  });
-
-  select.value = savedGroupId;
-
-  // Atualiza grupo e pontuações ao trocar grupo
-  select.addEventListener("change", async function () {
-    localStorage.setItem(STORAGE_KEY, this.value);
-    // Atualiza pontuação antes de renderizar aldeias
-    await fetchAllVillagePoints();
-    await renderVillages(this.value);
-  });
-
-  // Na inicialização: carrega as pontuações e depois renderiza as aldeias do grupo salvo
-  await fetchAllVillagePoints();
-  await renderVillages(savedGroupId);
-
 })();
