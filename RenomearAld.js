@@ -19,12 +19,12 @@
             <td><input id="end" type="number" min="1" max="10" value="2" style="width:35px;"></td>
           </tr>
           <tr>
-            <td><input id="secondbox" type="checkbox">Nome</td>
-            <td><input id="textname" type="text" maxlength="32" style="width:90px;" placeholder="Nome"></td>
+            <td><input id="prefixcheck" type="checkbox">Prefixo</td>
+            <td><input id="prefixbox" type="text" maxlength="8" style="width:50px;" placeholder="Ex: 08"></td>
           </tr>
           <tr>
-            <td>Prefixo:</td>
-            <td><input id="prefixbox" type="text" maxlength="8" style="width:50px;" placeholder="Ex: 08"></td>
+            <td><input id="secondbox" type="checkbox">Nome</td>
+            <td><input id="textname" type="text" maxlength="32" style="width:90px;" placeholder="Nome"></td>
           </tr>
           <tr>
             <td>Atual:</td>
@@ -45,7 +45,7 @@
         </table>
         <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.2</span></strong>
+          <strong>Versão - <span style="color:red;">1.3</span></strong>
         </div>
       </div>`;
 
@@ -55,18 +55,20 @@
     let config = JSON.parse(localStorage.getItem('renamer_config') || '{}');
     $('#firstbox').prop('checked', config.firstbox || false);
     $('#end').val(config.end || 2);
+    $('#prefixcheck').prop('checked', config.prefixcheck || false);
+    $('#prefixbox').val(config.prefixbox || '');
     $('#secondbox').prop('checked', config.secondbox || false);
     $('#textname').val(config.textname || '');
-    $('#prefixbox').val(config.prefixbox || '');
 
     // Salvar configurações
     $('#save').on('click', () => {
       config = {
         firstbox: $('#firstbox').prop('checked'),
         end: parseInt($('#end').val()) || 2,
+        prefixcheck: $('#prefixcheck').prop('checked'),
+        prefixbox: $('#prefixbox').val(),
         secondbox: $('#secondbox').prop('checked'),
-        textname: $('#textname').val(),
-        prefixbox: $('#prefixbox').val()
+        textname: $('#textname').val()
       };
       localStorage.setItem('renamer_config', JSON.stringify(config));
       UI.SuccessMessage('Configurações salvas.');
@@ -78,9 +80,10 @@
       localStorage.removeItem('renamer_config');
       $('#firstbox').prop('checked', false);
       $('#end').val('2');
+      $('#prefixcheck').prop('checked', false);
+      $('#prefixbox').val('');
       $('#secondbox').prop('checked', false);
       $('#textname').val('');
-      $('#prefixbox').val('');
       $('#setCounter').val('');
       $('#contadorAtual').text('1');
       $('#previewList').html('');
@@ -91,9 +94,10 @@
     $('#preview').on('click', () => {
       const usarNumeracao = $('#firstbox').prop('checked');
       const digitos = parseInt($('#end').val()) || 2;
+      const usarPrefixo = $('#prefixcheck').prop('checked');
+      const prefixo = $('#prefixbox').val().trim();
       const usarTexto = $('#secondbox').prop('checked');
       const textoBase = $('#textname').val() || '';
-      const prefixo = $('#prefixbox').val().trim();
       const novoInicio = parseInt($('#setCounter').val());
       let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
 
@@ -104,7 +108,7 @@
       for (let i = 0; i < total; i++) {
         const nome = [
           usarNumeracao ? String(contador++).padStart(digitos, '0') : '',
-          prefixo,
+          usarPrefixo ? prefixo : '',
           usarTexto ? textoBase : ''
         ].filter(Boolean).join(' ').trim();
         htmlPreview += `• ${nome}<br>`;
@@ -118,9 +122,10 @@
 
       const usarNumeracao = $('#firstbox').prop('checked');
       const digitos = parseInt($('#end').val()) || 2;
+      const usarPrefixo = $('#prefixcheck').prop('checked');
+      const prefixo = $('#prefixbox').val().trim();
       const usarTexto = $('#secondbox').prop('checked');
       const textoBase = $('#textname').val() || '';
-      const prefixo = $('#prefixbox').val().trim();
       const novoInicio = parseInt($('#setCounter').val());
 
       let contador = !isNaN(novoInicio) ? novoInicio : parseInt(localStorage.getItem('renamer_counter') || '1', 10);
@@ -139,7 +144,7 @@
           $($btn).click();
           const novoNome = [
             usarNumeracao ? String(contador++).padStart(digitos, '0') : '',
-            prefixo,
+            usarPrefixo ? prefixo : '',
             usarTexto ? textoBase : ''
           ].filter(Boolean).join(' ').trim();
           $('.vis input[type="text"]').val(novoNome);
