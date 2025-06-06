@@ -59,7 +59,7 @@
         </table>
         <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.5</span></strong>
+          <strong>Versão - <span style="color:red;">1.8</span></strong>
         </div>
       </div>`;
 
