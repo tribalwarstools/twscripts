@@ -33,11 +33,13 @@
           <tr>
             <td colspan="2" style="text-align:center; padding-top:4px;">
               <input id="rename" type="button" class="btn" value="Renomear">
+              <input id="preview" type="button" class="btn" value="Visualizar">
               <input id="resetCounter" type="button" class="btn" value="Reset">
               <input id="save" type="button" class="btn" value="Salvar">
             </td>
           </tr>
         </table>
+        <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
           <strong>Versão - <span style="color:red;">1.0</span></strong>
         </div>
@@ -74,7 +76,28 @@
       $('#textname').val('');
       $('#setCounter').val('');
       $('#contadorAtual').text('1');
+      $('#previewList').html('');
       UI.SuccessMessage('Tudo resetado e limpo.');
+    });
+
+    // Visualizar nomes
+    $('#preview').on('click', () => {
+      const usarNumeracao = $('#firstbox').prop('checked');
+      const digitos = parseInt($('#end').val()) || 2;
+      const usarTexto = $('#secondbox').prop('checked');
+      const textoBase = $('#textname').val() || '';
+      const novoInicio = parseInt($('#setCounter').val());
+      let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
+
+      const $aldeias = $('.rename-icon');
+      const total = $aldeias.length;
+
+      let htmlPreview = `<b>Prévia de renomeação (${total}):</b><br>`;
+      for (let i = 0; i < total; i++) {
+        const nome = `${usarNumeracao ? String(contador++).padStart(digitos, '0') : ''} ${usarTexto ? textoBase : ''}`.trim();
+        htmlPreview += `• ${nome}<br>`;
+      }
+      $('#previewList').html(htmlPreview);
     });
 
     // Renomear aldeias
