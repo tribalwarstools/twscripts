@@ -2,6 +2,7 @@
   const groups = [];
   const coordToId = {};
   const coordToPoints = {};
+  const STORAGE_KEY = "tw_last_selected_group";
 
   // Mapeia coordenadas para ID
   const mapData = await $.get("map/village.txt");
@@ -10,27 +11,42 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos (na terceira coluna da tabela prod)
-  const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
-  const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
-  const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
+  // Carrega pontuações das aldeias com proteção
+  async function carregarPontuacoes() {
+    try {
+      const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
+      const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
+      const table = prodDoc.querySelector("table#production_table");
 
-  rows.forEach(row => {
-    const cells = row.querySelectorAll("td");
-    const coordMatch = row.innerText.match(/\d+\|\d+/);
-    if (coordMatch && cells.length > 2) {
-      const coord = coordMatch[0];
-      const pontosTd = cells[2];
-      const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
-      const points = parseInt(rawText, 10);
-      if (!isNaN(points)) {
-        coordToPoints[coord] = points;
+      if (!table) {
+        console.warn("Tabela de produção não encontrada.");
+        return;
       }
+
+      const rows = table.querySelectorAll("tbody tr");
+      rows.forEach(row => {
+        const cells = row.querySelectorAll("td");
+        const coordMatch = row.innerText.match(/\d+\|\d+/);
+        if (coordMatch && cells.length > 2) {
+          const coord = coordMatch[0];
+          const pontosTd = cells[2];
+          const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
+          const points = parseInt(rawText, 10);
+          if (!isNaN(points)) {
+            coordToPoints[coord] = points;
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Erro ao carregar pontos das aldeias:", error);
+      UI.ErrorMessage("Erro ao carregar pontos das aldeias.");
     }
-  });
+  }
+  await carregarPontuacoes();
 
   // Carrega grupos
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
+  groups.push({ group_id: 0, group_name: "Todos" }); // Grupo padrão
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
   // Monta painel
@@ -53,9 +69,6 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
-  const placeholder = new Option("Selecione um grupo", "", true, true);
-  placeholder.disabled = true;
-  select.appendChild(placeholder);
 
   groups.forEach(g => {
     const opt = new Option(g.group_name, g.group_id, false, g.group_id == 0);
@@ -97,8 +110,7 @@
 
   select.addEventListener("change", async function () {
     const groupId = this.value;
-    if (!groupId) return;
-
+    if (!groupId && groupId !== "0") return;
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
 
@@ -165,7 +177,7 @@
     });
   });
 
-  // Inicia com grupo "Todos" (ID 0)
+  // Força seleção do grupo "Todos" ao iniciar
   select.value = "0";
   select.dispatchEvent(new Event("change"));
 })();
