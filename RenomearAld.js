@@ -13,7 +13,7 @@
         <table class="vis" style="width:100%; margin-top:4px;">
           <tr>
             <td><input id="firstbox" type="checkbox"> Dígitos</td>
-            <td><input id="end" type="number" min="1" value="2" style="width:35px;"></td>
+            <td><input id="end" type="number" min="1" max="10" value="2" style="width:35px;"></td>
           </tr>
           <tr>
             <td><input id="prefixbox" type="checkbox"> Prefixo</td>
@@ -25,7 +25,10 @@
           </tr>
           <tr>
             <td>Prévia:</td>
-            <td><span id="preview" style="color:blue;">-</span></td>
+            <td>
+              <span id="preview" style="color:blue;">-</span>
+              <input id="verPreview" class="btn" type="button" value="Visualizar" style="margin-left:4px; padding:1px 4px;">
+            </td>
           </tr>
           <tr>
             <td>Atual:</td>
@@ -44,7 +47,7 @@
           </tr>
         </table>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.4</span></strong>
+          <strong>Versão - <span style="color:red;">1.7</span></strong>
         </div>
       </div>`;
 
@@ -67,8 +70,8 @@
       const usarPrefixo = $('#prefixbox').prop('checked');
       const prefixo = usarPrefixo ? $('#prefix').val().trim() : '';
 
-      const usarNome = $('#secondbox').prop('checked');
-      const nome = usarNome ? $('#textname').val().trim() : '';
+      const usarTexto = $('#secondbox').prop('checked');
+      const nome = usarTexto ? $('#textname').val().trim() : '';
 
       const partes = [];
       if (numero) partes.push(numero);
@@ -78,8 +81,7 @@
       $('#preview').text(partes.join(' ') || '-');
     }
 
-    $('#firstbox, #end, #prefixbox, #prefix, #secondbox, #textname').on('input change', atualizarPreview);
-    atualizarPreview();
+    $('#verPreview').on('click', atualizarPreview);
 
     $('#save').on('click', () => {
       config = {
