@@ -1,20 +1,19 @@
-(async function () {
-  async function fetchGroups() {
-    const groups = [];
+(function () {
+  async function getGrupoAtivoNomeViaURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const grupoId = parseInt(urlParams.get("group") || "0", 10);
+    if (grupoId === 0) return "Nenhum";
+
     try {
       const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
-      groupData.result.forEach(group => {
-        if (group.group_id != 0) {
-          groups.push({ group_id: group.group_id, group_name: group.name });
-        }
-      });
+      const grupo = groupData.result.find(g => g.group_id == grupoId);
+      return grupo ? grupo.name : "Desconhecido";
     } catch (e) {
-      console.error("Erro ao buscar grupos:", e);
+      return "Erro ao buscar grupo";
     }
-    return groups;
   }
 
-  async function abrirPainelRenomear() {
+  function abrirPainelRenomear() {
     const url = window.location.href;
     const urlBase = '/game.php?screen=overview_villages&mode=combined';
 
@@ -24,16 +23,6 @@
     }
 
     const contadorAtual = parseInt(localStorage.getItem('renamer_counter') || '1', 10);
-
-    // Buscar todos os grupos via AJAX
-    const groups = await fetchGroups();
-
-    // Pegar grupo ativo pelo select da tela
-    const select = document.querySelector('select[name="group"]');
-    const selectedGroupId = select ? parseInt(select.value, 10) : 0;
-
-    // Buscar o nome do grupo ativo
-    const grupoAtual = groups.find(g => g.group_id === selectedGroupId)?.group_name || 'Nenhum';
 
     const $html = `
       <div style="font-size:11px; line-height:1.2;">
@@ -70,13 +59,12 @@
         </table>
         <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.5</span></strong>
+          <strong>Versão - <span style="color:red;">1.3</span></strong>
         </div>
       </div>`;
 
     Dialog.show('rename', $html);
 
-    // Carregar configurações salvas
     let config = JSON.parse(localStorage.getItem('renamer_config') || '{}');
     $('#firstbox').prop('checked', config.firstbox || false);
     $('#end').val(config.end || 2);
@@ -85,7 +73,6 @@
     $('#secondbox').prop('checked', config.secondbox || false);
     $('#textname').val(config.textname || '');
 
-    // Botão salvar configurações
     $('#save').on('click', () => {
       config = {
         firstbox: $('#firstbox').prop('checked'),
@@ -99,7 +86,6 @@
       UI.SuccessMessage('Configurações salvas.');
     });
 
-    // Botão resetar tudo
     $('#resetCounter').on('click', () => {
       localStorage.removeItem('renamer_counter');
       localStorage.removeItem('renamer_config');
@@ -115,8 +101,10 @@
       UI.SuccessMessage('Tudo resetado e limpo.');
     });
 
-    // Visualizar nomes com nome do grupo atual
-    $('#preview').on('click', () => {
+    // Visualizar nomes com nome do grupo
+    $('#preview').on('click', async () => {
+      const grupoNome = await getGrupoAtivoNomeViaURL();
+
       const usarNumeracao = $('#firstbox').prop('checked');
       const digitos = parseInt($('#end').val()) || 2;
       const usarPrefixo = $('#prefixcheck').prop('checked');
@@ -129,7 +117,7 @@
       const $aldeias = $('.rename-icon');
       const total = $aldeias.length;
 
-      let htmlPreview = `<b>Prévia de renomeação (${total}) - Grupo: <span style="color:blue;">${grupoAtual}</span></b><br>`;
+      let htmlPreview = `<b>Prévia de renomeação (${total}) - Grupo: <span style="color:blue;">${grupoNome}</span></b><br>`;
       for (let i = 0; i < total; i++) {
         const nome = [
           usarNumeracao ? String(contador++).padStart(digitos, '0') : '',
@@ -138,10 +126,11 @@
         ].filter(Boolean).join(' ').trim();
         htmlPreview += `• ${nome}<br>`;
       }
+
       $('#previewList').html(htmlPreview);
     });
 
-    // Renomear aldeias (igual seu código)
+    // Renomear aldeias
     $('#rename').on('click', function (e) {
       e.preventDefault();
 
@@ -183,6 +172,5 @@
     });
   }
 
-  // Expor globalmente para chamar
   window.abrirPainelRenomear = abrirPainelRenomear;
 })();
