@@ -11,20 +11,20 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos via AJAX (modo combined)
-  const fetchVillagesData = await $.get("/game.php?screen=overview_villages&mode=combined&ajax=fetch_villages");
-  const combinedDoc = new DOMParser().parseFromString(fetchVillagesData.villages, "text/html");
-  const combinedRows = combinedDoc.querySelectorAll("tr");
+  // Mapeia coordenadas para pontos (requisição AJAX mais rápida)
+  const fetchVillagesHtml = await $.get("/game.php?screen=overview_villages&mode=combined");
+  const combinedDoc = new DOMParser().parseFromString(fetchVillagesHtml, "text/html");
+  const combinedRows = combinedDoc.querySelectorAll("#combined_table tbody tr");
 
   combinedRows.forEach(row => {
-    const coordMatch = row.innerText.match(/\d+\|\d+/);
-    const pontosTd = row.querySelector("td:nth-child(3)");
-    if (coordMatch && pontosTd) {
-      const coord = coordMatch[0];
-      const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
-      const points = parseInt(rawText, 10);
-      if (!isNaN(points)) {
-        coordToPoints[coord] = points;
+    const tds = row.querySelectorAll("td");
+    if (tds.length >= 3) {
+      const coordMatch = row.innerText.match(/\d+\|\d+/);
+      const coord = coordMatch ? coordMatch[0] : null;
+      const pontosText = tds[2].textContent.trim().replace(/\./g, "").replace(/,/g, "");
+
+      if (coord && !isNaN(parseInt(pontosText))) {
+        coordToPoints[coord] = parseInt(pontosText, 10);
       }
     }
   });
