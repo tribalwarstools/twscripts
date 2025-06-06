@@ -45,7 +45,7 @@
         </table>
         <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.0</span></strong>
+          <strong>Versão - <span style="color:red;">1.1</span></strong>
         </div>
       </div>`;
 
@@ -104,7 +104,8 @@
       const $aldeias = $('.rename-icon');
       const total = $aldeias.length;
 
-      let htmlPreview = `<b>Prévia de renomeação (${total}):</b><br>`;
+      const grupoNome = $('select[name="group"] option:selected').text().trim();
+      let htmlPreview = `<b>Prévia de renomeação (${total}) - Grupo: <span style="color:blue;">${grupoNome}</span></b><br>`;
       for (let i = 0; i < total; i++) {
         const nome = [
           usarNumeracao ? String(contador++).padStart(digitos, '0') : '',
