@@ -15,7 +15,6 @@
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-  // Função para buscar todas as pontuações de aldeias
   async function fetchAllVillagePoints() {
     villagePointsMap = {};
 
@@ -64,13 +63,9 @@
     });
   }
 
-  // Função para renderizar aldeias no painel
   async function renderVillages(groupId) {
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
-
-    // Atualiza pontuações sempre que renderiza
-    await fetchAllVillagePoints();
 
     const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
     const doc = new DOMParser().parseFromString(response.html, "text/html");
@@ -116,6 +111,7 @@
     $("#groupVillages").html(output);
     $("#villageCount").text(`${villages.length} aldeias`);
 
+    // Eventos dos botões
     $(".copy-coord").on("click", function () {
       const coord = $(this).data("coord");
       navigator.clipboard.writeText(coord);
@@ -133,13 +129,14 @@
       await fetchAllVillagePoints();
       await renderVillages(groupId);
       UI.SuccessMessage("Pontuação atualizada!");
+      $(this).prop("disabled", false).text("🔄 Atualizar Pontuação");
     });
   }
 
   // Painel visual
   const htmlPanel = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts reloadGroup</h2>
+      <h2>Painel de Scripts ta dificil</h2>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
@@ -149,6 +146,7 @@
       <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
     </div>
   `;
+
   Dialog.show("tw_group_viewer", htmlPanel);
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
@@ -168,10 +166,16 @@
 
   select.value = savedGroupId;
 
+  // Atualiza grupo e pontuações ao trocar grupo
   select.addEventListener("change", async function () {
     localStorage.setItem(STORAGE_KEY, this.value);
+    // Atualiza pontuação antes de renderizar aldeias
+    await fetchAllVillagePoints();
     await renderVillages(this.value);
   });
 
+  // Na inicialização: carrega as pontuações e depois renderiza as aldeias do grupo salvo
+  await fetchAllVillagePoints();
   await renderVillages(savedGroupId);
+
 })();
