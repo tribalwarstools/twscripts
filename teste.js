@@ -92,6 +92,9 @@
     });
 
     let output = `<button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>`;
+   // Botão copiar todas as coordenadas
+    $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
+
 
     output += `<table class="vis" width="100%">
       <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
@@ -117,11 +120,11 @@
     });
 
     // Botão para copiar todas as coordenadas (se quiser, posso reativar)
-    // $("#copyAllCoords").on("click", function () {
-    //   const coords = [...document.querySelectorAll(".coord-val")].map(el => el.textContent.trim()).join(" ");
-    //   navigator.clipboard.writeText(coords);
-    //   UI.SuccessMessage("Todas as coordenadas copiadas!");
-    // });
+     $("#copyAllCoords").on("click", function () {
+       const coords = [...document.querySelectorAll(".coord-val")].map(el => el.textContent.trim()).join(" ");
+       navigator.clipboard.writeText(coords);
+       UI.SuccessMessage("Todas as coordenadas copiadas!");
+     });
 
     // Evento do botão atualizar pontuação
     $("#refreshPoints").on("click", async function () {
