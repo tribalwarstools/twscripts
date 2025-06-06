@@ -91,10 +91,10 @@
       }
     });
 
-let output = `
-  <button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>
-  <button id="copyAllCoords" class="btn" style="margin-bottom:5px; margin-left:5px;">📋 Copiar todas as coordenadas</button>
-`;
+    let output = `
+      <button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>
+      <button id="copyAllCoords" class="btn" style="margin-bottom:5px; margin-left:5px;">📋 Copiar todas as coordenadas</button>
+    `;
 
     output += `<table class="vis" width="100%">
       <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
@@ -119,18 +119,16 @@ let output = `
       UI.SuccessMessage(`Coordenada ${coord} copiada!`);
     });
 
-    // Botão para copiar todas as coordenadas (se quiser, posso reativar)
-     $("#copyAllCoords").on("click", function () {
-       const coords = [...document.querySelectorAll(".coord-val")].map(el => el.textContent.trim()).join(" ");
-       navigator.clipboard.writeText(coords);
-       UI.SuccessMessage("Todas as coordenadas copiadas!");
-     });
+    $("#copyAllCoords").on("click", function () {
+      const coords = [...document.querySelectorAll(".coord-val")].map(el => el.textContent.trim()).join(" ");
+      navigator.clipboard.writeText(coords);
+      UI.SuccessMessage("Todas as coordenadas copiadas!");
+    });
 
-    // Evento do botão atualizar pontuação
     $("#refreshPoints").on("click", async function () {
       $(this).prop("disabled", true).text("Atualizando...");
       await fetchAllVillagePoints();
-      await renderVillages(groupId); // Re-renderiza o painel com as novas pontuações
+      await renderVillages(groupId);
       UI.SuccessMessage("Pontuação atualizada!");
     });
   }
@@ -138,7 +136,7 @@ let output = `
   // Painel visual
   const htmlPanel = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts 5.0</h2>
+      <h2>Painel de Scripts (reload, atualizar grupo)</h2>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
@@ -152,7 +150,7 @@ let output = `
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
-  const savedGroupId = "0";
+  const savedGroupId = "0"; // iniciar no grupo 0 (todos)
 
   const placeholder = new Option("Selecione um grupo", "", true, false);
   placeholder.disabled = true;
@@ -169,8 +167,10 @@ let output = `
 
   select.addEventListener("change", async function () {
     localStorage.setItem(STORAGE_KEY, this.value);
+    await fetchAllVillagePoints(); // Atualiza pontuação ao trocar de grupo
     await renderVillages(this.value);
   });
 
-  await renderVillages(savedGroupId);
+  await fetchAllVillagePoints(); // Busca pontuação inicial
+  await renderVillages(savedGroupId); // Renderiza painel já com pontuação
 })();
