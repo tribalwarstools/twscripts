@@ -1,7 +1,7 @@
 (async function () {
   // Redireciona para a tela combinada, se necessário
-  if (!location.href.includes("screen=overview_villages&mode=combined")) {
-    location.href = `/game.php?village=${game_data.village.id}&screen=overview_villages&mode=combined`;
+  if (!location.href.includes("screen=overview_villages&mode=combined&group=0")) {
+    location.href = `/game.php?village=${game_data.village.id}&screen=overview_villages&mode=combined&group=0`;
     return;
   }
 
