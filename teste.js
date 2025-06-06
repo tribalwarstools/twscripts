@@ -70,7 +70,7 @@
   // Painel visual
   const htmlPanel = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts 6.0</h2>
+      <h2>Painel de Scripts 7.0</h2>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
@@ -84,16 +84,22 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
-  const savedGroupId = localStorage.getItem(STORAGE_KEY);
-  const placeholder = new Option("Selecione um grupo", "", true, true);
+
+  // Força iniciar no grupo 0 (Todos)
+  const savedGroupId = "0";
+
+  const placeholder = new Option("Selecione um grupo", "", true, false);
   placeholder.disabled = true;
   select.appendChild(placeholder);
 
   groups.forEach(g => {
-    const opt = new Option(g.group_name, g.group_id, false, g.group_id == savedGroupId);
+    const isSelected = g.group_id == savedGroupId;
+    const opt = new Option(g.group_name, g.group_id, false, isSelected);
     if (!g.group_name) opt.disabled = true;
     select.appendChild(opt);
   });
+
+  select.value = savedGroupId;
 
   select.addEventListener("change", async function () {
     const groupId = this.value;
@@ -154,7 +160,6 @@
     });
   });
 
-  if (savedGroupId) {
-    select.dispatchEvent(new Event("change"));
-  }
+  // Dispara o evento para carregar as aldeias do grupo 0 no início
+  select.dispatchEvent(new Event("change"));
 })();
