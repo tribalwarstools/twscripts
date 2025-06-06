@@ -116,12 +116,12 @@
       UI.SuccessMessage(`Coordenada ${coord} copiada!`);
     });
 
-    // Botão para copiar todas as coordenadas (se quiser, posso reativar)
-    // $("#copyAllCoords").on("click", function () {
-    //   const coords = [...document.querySelectorAll(".coord-val")].map(el => el.textContent.trim()).join(" ");
-    //   navigator.clipboard.writeText(coords);
-    //   UI.SuccessMessage("Todas as coordenadas copiadas!");
-    // });
+     Botão para copiar todas as coordenadas (se quiser, posso reativar)
+     $("#copyAllCoords").on("click", function () {
+       const coords = [...document.querySelectorAll(".coord-val")].map(el => el.textContent.trim()).join(" ");
+       navigator.clipboard.writeText(coords);
+       UI.SuccessMessage("Todas as coordenadas copiadas!");
+     });
 
     // Evento do botão atualizar pontuação
     $("#refreshPoints").on("click", async function () {
