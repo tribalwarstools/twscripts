@@ -15,28 +15,26 @@
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-  // Carrega dados de produção
+  // Carrega overview de produção
   const prodPage = await $.get("/game.php?screen=overview_villages&mode=prod&page=-1");
   const doc = new DOMParser().parseFromString(prodPage, "text/html");
+  const nameElems = doc.querySelectorAll("span.quickedit-vn");
+  const pointElems = doc.querySelectorAll("#production_table th");
 
-  const villageElems = doc.querySelectorAll("span.quickedit-vn");
-  const prodHeaders = doc.querySelectorAll("#production_table th");
-
-  villageElems.forEach((villageElem, i) => {
-    const name = villageElem.textContent.trim();
-    const coordsMatch = name.match(/\d{3}\|\d{3}/);
-    const coords = coordsMatch ? coordsMatch[0] : null;
-    if (coords) {
-      const pointsRaw = prodHeaders[(i * 2) + 1]?.textContent.trim();
-      const points = parseInt(pointsRaw?.replace(/\./g, ""), 10);
-      villagePointsMap[coords] = isNaN(points) ? 0 : points;
+  nameElems.forEach((el, i) => {
+    const name = el.textContent.trim();
+    const coords = name.match(/\d{3}\|\d{3}/)?.[0];
+    const pointsText = pointElems[(i * 2) + 1]?.textContent.trim();
+    const points = parseInt(pointsText?.replace(/\./g, ""), 10);
+    if (coords && !isNaN(points)) {
+      villagePointsMap[coords] = points;
     }
   });
 
-  // Painel
+  // Monta painel
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts 2.0</h2>
+      <h2>Painel de Scripts 3.0</h2>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
