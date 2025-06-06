@@ -69,6 +69,9 @@
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
 
+    // Atualiza pontuações sempre que renderiza
+    await fetchAllVillagePoints();
+
     const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
     const doc = new DOMParser().parseFromString(response.html, "text/html");
     const rows = doc.querySelectorAll("#group_table tbody tr");
@@ -136,7 +139,7 @@
   // Painel visual
   const htmlPanel = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts (reload, atualizar grupo)</h2>
+      <h2>Painel de Scripts reloadGroup</h2>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
@@ -150,7 +153,7 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
-  const savedGroupId = "0"; // iniciar no grupo 0 (todos)
+  const savedGroupId = localStorage.getItem(STORAGE_KEY) || "0";
 
   const placeholder = new Option("Selecione um grupo", "", true, false);
   placeholder.disabled = true;
@@ -167,10 +170,8 @@
 
   select.addEventListener("change", async function () {
     localStorage.setItem(STORAGE_KEY, this.value);
-    await fetchAllVillagePoints(); // Atualiza pontuação ao trocar de grupo
     await renderVillages(this.value);
   });
 
-  await fetchAllVillagePoints(); // Busca pontuação inicial
-  await renderVillages(savedGroupId); // Renderiza painel já com pontuação
+  await renderVillages(savedGroupId);
 })();
