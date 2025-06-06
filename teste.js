@@ -1,7 +1,7 @@
 (async function () {
   const groups = [];
   const coordToId = {};
-  const coordToPoints = {};
+  const coordToPoints = {}; // ✅ Corrigido: declarado aqui
   const STORAGE_KEY = "tw_last_selected_group";
 
   // Mapeia coordenadas para ID
@@ -11,20 +11,24 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos (requisição AJAX mais rápida)
-  const fetchVillagesHtml = await $.get("/game.php?screen=overview_villages&mode=combined");
-  const combinedDoc = new DOMParser().parseFromString(fetchVillagesHtml, "text/html");
-  const combinedRows = combinedDoc.querySelectorAll("#combined_table tbody tr");
+  // Mapeia coordenadas para pontos (pontuação na terceira coluna)
+  const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
+  const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
+  const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
 
-  combinedRows.forEach(row => {
-    const tds = row.querySelectorAll("td");
-    if (tds.length >= 3) {
-      const coordMatch = row.innerText.match(/\d+\|\d+/);
-      const coord = coordMatch ? coordMatch[0] : null;
-      const pontosText = tds[2].textContent.trim().replace(/\./g, "").replace(/,/g, "");
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    const coordMatch = row.innerText.match(/\d+\|\d+/);
+    if (coordMatch && cells.length > 2) {
+      const coord = coordMatch[0];
+      const pontosTd = cells[2]; // terceira coluna
+      const pontosText = pontosTd.textContent.trim().replace(/\./g, "").replace(/,/g, "");
 
-      if (coord && !isNaN(parseInt(pontosText))) {
-        coordToPoints[coord] = parseInt(pontosText, 10);
+      console.log("DEBUG:", coord, pontosText); // 👈 Debug: coord e pontuação
+
+      const points = parseInt(pontosText, 10);
+      if (!isNaN(points)) {
+        coordToPoints[coord] = points;
       }
     }
   });
@@ -36,7 +40,7 @@
   // Monta painel
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts 3.0</h2>
+      <h2>Painel de Scripts</h2>
       <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
       <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
       <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Importar grupos</button>
