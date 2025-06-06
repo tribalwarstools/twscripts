@@ -11,48 +11,33 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Carrega pontuações das aldeias com proteção
-  async function carregarPontuacoes() {
-    try {
-      const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
-      const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
-      const table = prodDoc.querySelector("table#production_table");
+  // Mapeia coordenadas para pontos
+  const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
+  const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
+  const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
 
-      if (!table) {
-        console.warn("Tabela de produção não encontrada.");
-        return;
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    const coordMatch = row.innerText.match(/\d+\|\d+/);
+    if (coordMatch && cells.length > 2) {
+      const coord = coordMatch[0];
+      const pontosTd = cells[2];
+      const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
+      const points = parseInt(rawText, 10);
+      if (!isNaN(points)) {
+        coordToPoints[coord] = points;
       }
-
-      const rows = table.querySelectorAll("tbody tr");
-      rows.forEach(row => {
-        const cells = row.querySelectorAll("td");
-        const coordMatch = row.innerText.match(/\d+\|\d+/);
-        if (coordMatch && cells.length > 2) {
-          const coord = coordMatch[0];
-          const pontosTd = cells[2];
-          const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
-          const points = parseInt(rawText, 10);
-          if (!isNaN(points)) {
-            coordToPoints[coord] = points;
-          }
-        }
-      });
-    } catch (error) {
-      console.error("Erro ao carregar pontos das aldeias:", error);
-      UI.ErrorMessage("Erro ao carregar pontos das aldeias.");
     }
-  }
-  await carregarPontuacoes();
+  });
 
   // Carrega grupos
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
-  groups.push({ group_id: 0, group_name: "Todos" }); // Grupo padrão
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
   // Monta painel
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts</h2>
+      <h2>Painel de Scripts 2.0</h2>
       <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
       <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
       <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Importar grupos</button>
@@ -69,9 +54,16 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
+  const placeholder = new Option("Selecione um grupo", "", true, true);
+  placeholder.disabled = true;
+  select.appendChild(placeholder);
+
+  // Adiciona opção "Todos"
+  const optTodos = new Option("Todos", 0, true, true); // selecionado por padrão
+  select.appendChild(optTodos);
 
   groups.forEach(g => {
-    const opt = new Option(g.group_name, g.group_id, false, g.group_id == 0);
+    const opt = new Option(g.group_name, g.group_id);
     if (!g.group_name) opt.disabled = true;
     select.appendChild(opt);
   });
@@ -110,9 +102,21 @@
 
   select.addEventListener("change", async function () {
     const groupId = this.value;
-    if (!groupId && groupId !== "0") return;
+    if (groupId === "") return;
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
+
+    // Atualiza grupo no jogo (sem recarregar a página)
+    try {
+      if (typeof TribalWars !== "undefined" && TribalWars.villageGroups) {
+        TribalWars.villageGroups.setGroup(parseInt(groupId));
+      }
+      if (typeof TWMap !== "undefined" && TWMap.reload) {
+        TWMap.reload(); // atualiza o mapa se estiver presente
+      }
+    } catch (e) {
+      console.warn("Não foi possível atualizar grupo no jogo:", e);
+    }
 
     const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
     const doc = new DOMParser().parseFromString(response.html, "text/html");
@@ -177,7 +181,6 @@
     });
   });
 
-  // Força seleção do grupo "Todos" ao iniciar
-  select.value = "0";
+  // Dispara automaticamente o "Todos" ao iniciar
   select.dispatchEvent(new Event("change"));
 })();
