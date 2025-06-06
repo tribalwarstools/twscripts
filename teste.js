@@ -12,23 +12,27 @@
   });
 
   // Mapeia coordenadas para pontos (na terceira coluna da tabela)
-  const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
-  const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
-  const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
+  async function atualizarPontuacoesGlobais() {
+    const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
+    const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
+    const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
 
-  rows.forEach(row => {
-    const cells = row.querySelectorAll("td");
-    const coordMatch = row.innerText.match(/\d+\|\d+/);
-    if (coordMatch && cells.length > 2) {
-      const coord = coordMatch[0];
-      const pontosTd = cells[2]; // terceira coluna tem a pontuação
-      const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
-      const points = parseInt(rawText, 10);
-      if (!isNaN(points)) {
-        coordToPoints[coord] = points;
+    rows.forEach(row => {
+      const cells = row.querySelectorAll("td");
+      const coordMatch = row.innerText.match(/\d+\|\d+/);
+      if (coordMatch && cells.length > 2) {
+        const coord = coordMatch[0];
+        const pontosTd = cells[2]; // terceira coluna tem a pontuação
+        const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
+        const points = parseInt(rawText, 10);
+        if (!isNaN(points)) {
+          coordToPoints[coord] = points;
+        }
       }
-    }
-  });
+    });
+  }
+
+  await atualizarPontuacoesGlobais();
 
   // Carrega grupos
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
@@ -37,7 +41,7 @@
   // Monta painel
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts</h2>
+      <h2>Painel de Scripts 1.0</h2>
       <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
       <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
       <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Importar grupos</button>
@@ -114,7 +118,25 @@
       return;
     }
 
-    let output = `<table class="vis" width="100%">
+    async function atualizarPontuacao() {
+      $("#btnAtualizarPontuacao").prop("disabled", true).text("Atualizando...");
+      await atualizarPontuacoesGlobais();
+      // Atualiza a coluna de pontos na tabela da UI
+      $("#groupVillages table tbody tr").each(function () {
+        const linha = $(this);
+        const coord = linha.find(".coord-val").text().trim();
+        if (coordToPoints[coord] !== undefined) {
+          linha.find("td").eq(2).text(coordToPoints[coord].toLocaleString());
+        }
+      });
+      UI.SuccessMessage("Pontuações atualizadas!");
+      $("#btnAtualizarPontuacao").prop("disabled", false).text("Atualizar Pontuação");
+    }
+
+    let output = `<button id="btnAtualizarPontuacao" class="btn" style="margin-bottom:5px; margin-right:10px;">Atualizar Pontuação</button>`;
+    output += `<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>`;
+
+    output += `<table class="vis" width="100%">
       <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
     let total = 0;
 
@@ -137,8 +159,10 @@
     });
 
     output += "</tbody></table>";
-    $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
+    $("#groupVillages").html(output);
     $("#villageCount").text(`${total} aldeias`);
+
+    $("#btnAtualizarPontuacao").on("click", atualizarPontuacao);
 
     $(".copy-coord").on("click", function () {
       const coord = $(this).data("coord");
