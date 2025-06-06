@@ -37,7 +37,7 @@
   // Painel
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts 1110</h2>
+      <h2>Painel de Scripts</h2>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
