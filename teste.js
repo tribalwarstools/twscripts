@@ -92,8 +92,7 @@
     });
 
     let output = `<button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>`;
-    let output = `<button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>`;
-   
+    let output = `<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">Copiar todas as coordenadas</button>`;
 
     output += `<table class="vis" width="100%">
       <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
@@ -109,11 +108,8 @@
     });
 
     output += "</tbody></table>";
-    // Botão copiar todas as coordenadas
-    $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
     $("#groupVillages").html(output);
     $("#villageCount").text(`${villages.length} aldeias`);
-    
 
     $(".copy-coord").on("click", function () {
       const coord = $(this).data("coord");
@@ -140,7 +136,7 @@
   // Painel visual
   const htmlPanel = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts</h2>
+      <h2>Painel de Scripts 5.0</h2>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
