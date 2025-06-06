@@ -92,6 +92,7 @@
     });
 
     let output = `<button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>`;
+    let output = `<button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>`;
    
 
     output += `<table class="vis" width="100%">
