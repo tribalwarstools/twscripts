@@ -1,7 +1,7 @@
 (async function () {
   const groups = [];
   const coordToId = {};
-  let villagePointsMap = {}; // mapa de coord → pontos
+  let villagePointsMap = {};
   const STORAGE_KEY = "tw_last_selected_group";
 
   // Mapeia coordenadas para ID
@@ -15,7 +15,7 @@
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-  // --- FUNÇÃO QUE BUSCA TODAS AS PONTUAÇÕES DE ALDEIAS ---
+  // Função para buscar todas as pontuações de aldeias
   async function fetchAllVillagePoints() {
     villagePointsMap = {};
 
@@ -64,47 +64,8 @@
     });
   }
 
-  // Chama a função para popular o mapa de pontos antes de montar o painel
-  await fetchAllVillagePoints();
-
-  // Painel visual
-  const htmlPanel = `
-    <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts 7.0</h2>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <label for="groupSelect"><b>Visualizador de grupo:</b></label>
-        <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
-        <span id="villageCount" style="font-weight: bold;"></span>
-      </div>
-      <hr>
-      <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
-    </div>
-  `;
-  Dialog.show("tw_group_viewer", htmlPanel);
-  $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
-
-  const select = document.getElementById("groupSelect");
-
-  // Força iniciar no grupo 0 (Todos)
-  const savedGroupId = "0";
-
-  const placeholder = new Option("Selecione um grupo", "", true, false);
-  placeholder.disabled = true;
-  select.appendChild(placeholder);
-
-  groups.forEach(g => {
-    const isSelected = g.group_id == savedGroupId;
-    const opt = new Option(g.group_name, g.group_id, false, isSelected);
-    if (!g.group_name) opt.disabled = true;
-    select.appendChild(opt);
-  });
-
-  select.value = savedGroupId;
-
-  select.addEventListener("change", async function () {
-    const groupId = this.value;
-    if (!groupId) return;
-    localStorage.setItem(STORAGE_KEY, groupId);
+  // Função para renderizar aldeias no painel
+  async function renderVillages(groupId) {
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
 
@@ -130,7 +91,9 @@
       }
     });
 
-    let output = `<table class="vis" width="100%">
+    let output = `<button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>`;
+
+    output += `<table class="vis" width="100%">
       <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
 
     villages.forEach(village => {
@@ -138,13 +101,13 @@
       output += `<tr>
         <td>${link}</td>
         <td><span class="coord-val">${village.coords}</span></td>
-        <td>${village.points.toLocaleString()}</td>
+        <td class="points-cell">${village.points.toLocaleString()}</td>
         <td><button class="btn copy-coord" data-coord="${village.coords}">📋</button></td>
       </tr>`;
     });
 
     output += "</tbody></table>";
-    $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
+    $("#groupVillages").html(output);
     $("#villageCount").text(`${villages.length} aldeias`);
 
     $(".copy-coord").on("click", function () {
@@ -153,13 +116,58 @@
       UI.SuccessMessage(`Coordenada ${coord} copiada!`);
     });
 
-    $("#copyAllCoords").on("click", function () {
-      const coords = [...document.querySelectorAll(".coord-val")].map(el => el.textContent.trim()).join(" ");
-      navigator.clipboard.writeText(coords);
-      UI.SuccessMessage("Todas as coordenadas copiadas!");
+    // Botão para copiar todas as coordenadas (se quiser, posso reativar)
+    // $("#copyAllCoords").on("click", function () {
+    //   const coords = [...document.querySelectorAll(".coord-val")].map(el => el.textContent.trim()).join(" ");
+    //   navigator.clipboard.writeText(coords);
+    //   UI.SuccessMessage("Todas as coordenadas copiadas!");
+    // });
+
+    // Evento do botão atualizar pontuação
+    $("#refreshPoints").on("click", async function () {
+      $(this).prop("disabled", true).text("Atualizando...");
+      await fetchAllVillagePoints();
+      await renderVillages(groupId); // Re-renderiza o painel com as novas pontuações
+      UI.SuccessMessage("Pontuação atualizada!");
     });
+  }
+
+  // Painel visual
+  const htmlPanel = `
+    <div class="vis" style="padding: 10px;">
+      <h2>Painel de Scripts 8.0</h2>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <label for="groupSelect"><b>Visualizador de grupo:</b></label>
+        <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
+        <span id="villageCount" style="font-weight: bold;"></span>
+      </div>
+      <hr>
+      <div id="groupVillages" style="max-height: 300px; overflow-y: auto;"></div>
+    </div>
+  `;
+  Dialog.show("tw_group_viewer", htmlPanel);
+  $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
+
+  const select = document.getElementById("groupSelect");
+  const savedGroupId = "0";
+
+  const placeholder = new Option("Selecione um grupo", "", true, false);
+  placeholder.disabled = true;
+  select.appendChild(placeholder);
+
+  groups.forEach(g => {
+    const isSelected = g.group_id == savedGroupId;
+    const opt = new Option(g.group_name, g.group_id, false, isSelected);
+    if (!g.group_name) opt.disabled = true;
+    select.appendChild(opt);
   });
 
-  // Dispara o evento para carregar as aldeias do grupo 0 no início
-  select.dispatchEvent(new Event("change"));
+  select.value = savedGroupId;
+
+  select.addEventListener("change", async function () {
+    localStorage.setItem(STORAGE_KEY, this.value);
+    await renderVillages(this.value);
+  });
+
+  await renderVillages(savedGroupId);
 })();
