@@ -44,16 +44,16 @@
           </tr>
           <tr>
             <td colspan="2" style="text-align:center; padding-top:4px;">
-              <input id="rename" type="button" class="btn" value="Renomear">
               <input id="preview" type="button" class="btn" value="Visualizar">
-              <input id="resetCounter" type="button" class="btn" value="Reset">
+              <input id="rename" type="button" class="btn" value="Renomear">
+              <input id="resetCounter" type="button" class="btn" value="Limpar">
               <input id="save" type="button" class="btn" value="Salvar">
             </td>
           </tr>
         </table>
         <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.9</span></strong>
+          <strong>Versão: <span style="color:red;">2.0</span></strong>
         </div>
       </div>`;
 
