@@ -36,7 +36,7 @@
   // Monta painel
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts</h2>
+      <h2>Painel de Scripts 3.0</h2>
       <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
       <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
       <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Importar grupos</button>
