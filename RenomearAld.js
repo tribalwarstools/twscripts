@@ -47,7 +47,7 @@
           </tr>
         </table>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">2.1</span></strong>
+          <strong>Versão - <span style="color:red;">2.5</span></strong>
         </div>
       </div>`;
 
