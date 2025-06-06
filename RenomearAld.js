@@ -1,19 +1,39 @@
-(function () {
-  function abrirPainelRenomear() {
-    const url = window.location.href;
-    const urlBase = '/game.php?screen=overview_villages&mode=combined';
-
-    if (!url.includes('screen=overview_villages') || !url.includes('mode=combined')) {
-      window.location.href = urlBase;
-      return;
+(async function () {
+  async function abrirPainelRenomear() {
+    // Busca grupos via AJAX
+    let groups = [];
+    try {
+      const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
+      groupData.result.forEach(group => {
+        if (group.group_id != 0) {
+          groups.push({ group_id: group.group_id, group_name: group.name });
+        }
+      });
+    } catch (e) {
+      console.error('Erro ao buscar grupos:', e);
     }
+
+    // Monta as options do select
+    let optionsHTML = '<option value="">-- Nenhum --</option>';
+    groups.forEach(g => {
+      optionsHTML += `<option value="${g.group_id}">${g.group_name}</option>`;
+    });
 
     const contadorAtual = parseInt(localStorage.getItem('renamer_counter') || '1', 10);
 
+    // HTML do painel com select dos grupos
     const $html = `
       <div style="font-size:11px; line-height:1.2;">
         <h2 align='center'>Renomear aldeias</h2>
         <table class="vis" style="width:100%; margin-top:4px;">
+          <tr>
+            <td>Grupo:</td>
+            <td>
+              <select name="group" style="width:100%;">
+                ${optionsHTML}
+              </select>
+            </td>
+          </tr>
           <tr>
             <td><input id="firstbox" type="checkbox">Dígitos</td>
             <td><input id="end" type="number" min="1" max="10" value="2" style="width:40px;"></td>
@@ -45,13 +65,13 @@
         </table>
         <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.3</span></strong>
+          <strong>Versão - <span style="color:red;">1.4</span></strong>
         </div>
       </div>`;
 
     Dialog.show('rename', $html);
 
-    // Carregar configurações
+    // Carregar configurações salvas
     let config = JSON.parse(localStorage.getItem('renamer_config') || '{}');
     $('#firstbox').prop('checked', config.firstbox || false);
     $('#end').val(config.end || 2);
@@ -60,7 +80,7 @@
     $('#secondbox').prop('checked', config.secondbox || false);
     $('#textname').val(config.textname || '');
 
-    // Salvar configurações
+    // Botão salvar configurações
     $('#save').on('click', () => {
       config = {
         firstbox: $('#firstbox').prop('checked'),
@@ -74,7 +94,7 @@
       UI.SuccessMessage('Configurações salvas.');
     });
 
-    // Resetar tudo
+    // Botão resetar configurações e contador
     $('#resetCounter').on('click', () => {
       localStorage.removeItem('renamer_counter');
       localStorage.removeItem('renamer_config');
@@ -90,7 +110,7 @@
       UI.SuccessMessage('Tudo resetado e limpo.');
     });
 
-    // Visualizar nomes com nome do grupo
+    // Botão preview (visualizar)
     $('#preview').on('click', () => {
       const usarNumeracao = $('#firstbox').prop('checked');
       const digitos = parseInt($('#end').val()) || 2;
@@ -104,15 +124,19 @@
       const $aldeias = $('.rename-icon');
       const total = $aldeias.length;
 
-      // Captura nome do grupo selecionado
-      let grupoNome = '';
+      // Pega o grupo selecionado no select
       const grupoSelect = document.querySelector('select[name="group"]');
+      let grupoNome = '';
       if (grupoSelect) {
         const selectedOption = grupoSelect.options[grupoSelect.selectedIndex];
-        if (selectedOption) grupoNome = selectedOption.text.trim();
+        if (selectedOption && selectedOption.value !== "") {
+          grupoNome = selectedOption.text.trim();
+        } else {
+          grupoNome = 'Nenhum';
+        }
       }
 
-      let htmlPreview = `<b>Prévia de renomeação (${total}) - Grupo: <span style="color:blue;">${grupoNome || 'Nenhum'}</span></b><br>`;
+      let htmlPreview = `<b>Prévia de renomeação (${total}) - Grupo: <span style="color:blue;">${grupoNome}</span></b><br>`;
       for (let i = 0; i < total; i++) {
         const nome = [
           usarNumeracao ? String(contador++).padStart(digitos, '0') : '',
@@ -124,7 +148,7 @@
       $('#previewList').html(htmlPreview);
     });
 
-    // Renomear aldeias
+    // Botão renomear aldeias
     $('#rename').on('click', function (e) {
       e.preventDefault();
 
