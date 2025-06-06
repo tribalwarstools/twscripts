@@ -47,7 +47,7 @@
           </tr>
         </table>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.7</span></strong>
+          <strong>Versão - <span style="color:red;">2.0</span></strong>
         </div>
       </div>`;
 
@@ -62,7 +62,7 @@
     $('#secondbox').prop('checked', config.secondbox || false);
     $('#textname').val(config.textname || '');
 
-    function atualizarPreview() {
+    $('#verPreview').on('click', () => {
       const usarNumero = $('#firstbox').prop('checked');
       const digitos = parseInt($('#end').val()) || 2;
       const numero = usarNumero ? String(contadorAtual).padStart(digitos, '0') : '';
@@ -78,10 +78,9 @@
       if (prefixo) partes.push(prefixo);
       if (nome) partes.push(nome);
 
-      $('#preview').text(partes.join(' ') || '-');
-    }
-
-    $('#verPreview').on('click', atualizarPreview);
+      const resultado = partes.join(' ') || '-';
+      $('#preview').text(resultado);
+    });
 
     $('#save').on('click', () => {
       config = {
