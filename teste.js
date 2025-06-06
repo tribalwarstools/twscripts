@@ -92,9 +92,7 @@
     });
 
     let output = `<button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>`;
-   // Botão copiar todas as coordenadas
-    $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
-
+   
 
     output += `<table class="vis" width="100%">
       <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
@@ -110,8 +108,11 @@
     });
 
     output += "</tbody></table>";
+    // Botão copiar todas as coordenadas
+    $("#groupVillages").html(`<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">📋 Copiar todas as coordenadas</button>${output}`);
     $("#groupVillages").html(output);
     $("#villageCount").text(`${villages.length} aldeias`);
+    
 
     $(".copy-coord").on("click", function () {
       const coord = $(this).data("coord");
