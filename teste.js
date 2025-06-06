@@ -17,23 +17,11 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos (na terceira coluna da tabela prod)
-  const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
-  const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
-  const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
-
-  rows.forEach(row => {
-    const cells = row.querySelectorAll("td");
-    const coordMatch = row.innerText.match(/\d+\|\d+/);
-    if (coordMatch && cells.length > 2) {
-      const coord = coordMatch[0];
-      const pontosTd = cells[2];
-      const rawText = pontosTd.textContent.replace(/\./g, "").replace(/,/g, "").trim();
-      const points = parseInt(rawText, 10);
-      if (!isNaN(points)) {
-        coordToPoints[coord] = points;
-      }
-    }
+  // Mapeia coordenadas para pontos usando AJAX
+  const data = await $.get('/game.php?screen=overview_villages&mode=combined&ajax=fetch_villages');
+  Object.values(data.villages).forEach(v => {
+    const coord = `${v.x}|${v.y}`;
+    coordToPoints[coord] = parseInt(v.points.replace('.', ''), 10);
   });
 
   // Carrega grupos
@@ -43,7 +31,7 @@
   // Monta painel
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts 2.3</h2>
+      <h2>Painel de Scripts 2.5</h2>
       <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
       <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
       <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Importar grupos</button>
