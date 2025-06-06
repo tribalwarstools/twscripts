@@ -91,8 +91,10 @@
       }
     });
 
-    let output = `<button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>`;
-    let output = `<button id="copyAllCoords" class="btn" style="margin-bottom:5px;">Copiar todas as coordenadas</button>`;
+let output = `
+  <button id="refreshPoints" class="btn" style="margin-bottom:5px;">🔄 Atualizar Pontuação</button>
+  <button id="copyAllCoords" class="btn" style="margin-bottom:5px; margin-left:5px;">📋 Copiar todas as coordenadas</button>
+`;
 
     output += `<table class="vis" width="100%">
       <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
