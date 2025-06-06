@@ -20,7 +20,7 @@
           </tr>
           <tr>
             <td><input id="prefixcheck" type="checkbox">Prefixo</td>
-            <td><input id="prefixbox" type="text" maxlength="8" style="width:50px;" placeholder="Ex: 08"></td>
+            <td><input id="prefixbox" type="text" maxlength="10" style="width:50px;" placeholder="Ex: 08"></td>
           </tr>
           <tr>
             <td><input id="secondbox" type="checkbox">Nome</td>
