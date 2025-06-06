@@ -1,4 +1,10 @@
 (async function () {
+  // Redireciona para a tela combinada, se necessário
+  if (!location.href.includes("screen=overview_villages&mode=combined")) {
+    location.href = `/game.php?village=${game_data.village.id}&screen=overview_villages&mode=combined`;
+    return;
+  }
+
   const groups = [];
   const coordToId = {};
   const coordToPoints = {};
@@ -11,7 +17,7 @@
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Mapeia coordenadas para pontos
+  // Mapeia coordenadas para pontos (na terceira coluna da tabela prod)
   const prodHtml = await $.get("/game.php?screen=overview_villages&mode=prod");
   const prodDoc = new DOMParser().parseFromString(prodHtml, "text/html");
   const rows = prodDoc.querySelectorAll("table#production_table tbody tr");
@@ -37,7 +43,7 @@
   // Monta painel
   const html = `
     <div class="vis" style="padding: 10px;">
-      <h2>Painel de Scripts 2.0</h2>
+      <h2>Painel de Scripts 2.1</h2>
       <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
       <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
       <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Importar grupos</button>
@@ -54,13 +60,9 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
-  const placeholder = new Option("Selecione um grupo", "", true, true);
-  placeholder.disabled = true;
+  const placeholder = new Option("Todos (grupo 0)", "0", true, true);
+  placeholder.disabled = false;
   select.appendChild(placeholder);
-
-  // Adiciona opção "Todos"
-  const optTodos = new Option("Todos", 0, true, true); // selecionado por padrão
-  select.appendChild(optTodos);
 
   groups.forEach(g => {
     const opt = new Option(g.group_name, g.group_id);
@@ -102,21 +104,10 @@
 
   select.addEventListener("change", async function () {
     const groupId = this.value;
-    if (groupId === "") return;
+    if (!groupId) return;
+    localStorage.setItem(STORAGE_KEY, groupId);
     $("#groupVillages").html("<i>Carregando aldeias...</i>");
     $("#villageCount").text("");
-
-    // Atualiza grupo no jogo (sem recarregar a página)
-    try {
-      if (typeof TribalWars !== "undefined" && TribalWars.villageGroups) {
-        TribalWars.villageGroups.setGroup(parseInt(groupId));
-      }
-      if (typeof TWMap !== "undefined" && TWMap.reload) {
-        TWMap.reload(); // atualiza o mapa se estiver presente
-      }
-    } catch (e) {
-      console.warn("Não foi possível atualizar grupo no jogo:", e);
-    }
 
     const response = await $.post("/game.php?screen=groups&ajax=load_villages_from_group", { group_id: groupId });
     const doc = new DOMParser().parseFromString(response.html, "text/html");
@@ -181,6 +172,6 @@
     });
   });
 
-  // Dispara automaticamente o "Todos" ao iniciar
+  // Executa automaticamente para o grupo "Todos"
   select.dispatchEvent(new Event("change"));
 })();
