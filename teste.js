@@ -1,26 +1,43 @@
 (async function () {
   const groups = [];
   const coordToId = {};
+  const villagePointsMap = {};
   const STORAGE_KEY = "tw_last_selected_group";
 
-  // Mapeia coordenadas para ID a partir do arquivo map/village.txt
+  // Mapeia coordenadas para ID
   const mapData = await $.get("map/village.txt");
   mapData.trim().split("\n").forEach(line => {
     const [id, , x, y] = line.split(",");
     coordToId[`${x}|${y}`] = id;
   });
 
-  // Carrega grupos de aldeias
+  // Carrega grupos
   const groupData = await $.get("/game.php?screen=groups&mode=overview&ajax=load_group_menu");
   groupData.result.forEach(g => groups.push({ group_id: g.group_id, group_name: g.name }));
 
-  // Monta painel HTML
+  // Carrega pontos das aldeias via overview_villages&mode=prod
+  const prodPage = await $.get("/game.php?screen=overview_villages&mode=prod&page=-1");
+  const doc = new DOMParser().parseFromString(prodPage, "text/html");
+  const rows = doc.querySelectorAll("#production_table tr");
+
+  rows.forEach(row => {
+    const nameEl = row.querySelector("span.quickedit-vn");
+    const pointsEl = row.querySelector("td:nth-child(2)");
+    if (nameEl && pointsEl) {
+      const name = nameEl.textContent.trim();
+      const coordsMatch = name.match(/\d{3}\|\d{3}/);
+      const coords = coordsMatch ? coordsMatch[0] : null;
+      if (coords) {
+        const points = parseInt(pointsEl.textContent.trim().replace(/\./g, ""), 10);
+        villagePointsMap[coords] = points;
+      }
+    }
+  });
+
+  // Painel
   const html = `
     <div class="vis" style="padding: 10px;">
       <h2>Painel de Scripts 1110</h2>
-      <button id="abrirRenamer" class="btn btn-confirm-yes" style="margin-bottom:10px;">Renomear aldeias</button>
-      <button id="abrirTotalTropas" class="btn btn-confirm-yes" style="margin-bottom:10px;">Contador de tropas</button>
-      <button id="abrirGrupo" class="btn btn-confirm-yes" style="margin-bottom:10px;">Importar grupos</button>
       <div style="display: flex; align-items: center; gap: 10px;">
         <label for="groupSelect"><b>Visualizador de grupo:</b></label>
         <select id="groupSelect" style="padding:4px; background:#f4e4bc; color:#000; border:1px solid #603000; font-weight:bold;"></select>
@@ -44,72 +61,6 @@
     if (!g.group_name) opt.disabled = true;
     select.appendChild(opt);
   });
-
-  $("#abrirRenamer").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
-      .done(() => setTimeout(() => {
-        if (typeof abrirPainelRenomear === "function") abrirPainelRenomear();
-        else UI.ErrorMessage("Função abrirPainelRenomear não encontrada.");
-      }, 100))
-      .fail(() => UI.ErrorMessage("Erro ao carregar o script de renomeação."));
-  });
-
-  $("#abrirTotalTropas").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
-      .done(() => setTimeout(() => {
-        if (typeof abrirJanelaContador === "function") abrirJanelaContador();
-        else UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
-      }, 100))
-      .fail(() => UI.ErrorMessage("Erro ao carregar o script Total de Tropas."));
-  });
-
-  $("#abrirGrupo").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/addGrupo.js")
-      .done(() => {
-        setTimeout(() => {
-          if (typeof abrirJanelaGrupo === "function") {
-            abrirJanelaGrupo();
-          } else {
-            UI.ErrorMessage("Função abrirJanelaGrupo não encontrada.");
-          }
-        }, 100);
-      })
-      .fail(() => UI.ErrorMessage("Erro ao carregar o script abrirJanelaGrupo."));
-  });
-
-  // Limita número de requisições AJAX simultâneas
-  async function parallelLimit(tasks, limit) {
-    const results = [];
-    const executing = [];
-
-    for (const task of tasks) {
-      const p = Promise.resolve().then(() => task());
-      results.push(p);
-
-      if (limit <= tasks.length) {
-        const e = p.then(() => executing.splice(executing.indexOf(e), 1));
-        executing.push(e);
-        if (executing.length >= limit) {
-          await Promise.race(executing);
-        }
-      }
-    }
-
-    return Promise.all(results);
-  }
-
-  // Função que busca pontos da aldeia via AJAX (endpoint do TW)
-  async function getVillagePointsAjax(villageId) {
-    try {
-      const response = await $.get(`/game.php?ajax=village_info&village_id=${villageId}`);
-      if (response && response.data && response.data.village && typeof response.data.village.points === 'number') {
-        return response.data.village.points;
-      }
-    } catch (e) {
-      console.error("Erro ao buscar pontos da aldeia:", villageId, e);
-    }
-    return 0;
-  }
 
   select.addEventListener("change", async function () {
     const groupId = this.value;
@@ -135,24 +86,20 @@
         const name = tds[0].textContent.trim();
         const coords = tds[1].textContent.trim();
         const id = coordToId[coords];
-        if (id) villages.push({ id, name, coords });
+        const points = villagePointsMap[coords] || 0;
+        if (id) villages.push({ id, name, coords, points });
       }
     });
-
-    // Busca pontuações limitando a 5 requisições paralelas para evitar sobrecarga
-    const tasks = villages.map(village => () => getVillagePointsAjax(village.id));
-    const pointsList = await parallelLimit(tasks, 5);
 
     let output = `<table class="vis" width="100%">
       <thead><tr><th>Nome</th><th style="width:90px;">Coord</th><th style="width:90px;">Pontos</th><th>Ações</th></tr></thead><tbody>`;
 
-    villages.forEach((village, i) => {
-      const points = pointsList[i] || 0;
+    villages.forEach(village => {
       const link = `<a href="/game.php?village=${village.id}&screen=overview" target="_blank">${village.name}</a>`;
       output += `<tr>
         <td>${link}</td>
         <td><span class="coord-val">${village.coords}</span></td>
-        <td>${points.toLocaleString()}</td>
+        <td>${village.points.toLocaleString()}</td>
         <td><button class="btn copy-coord" data-coord="${village.coords}">📋</button></td>
       </tr>`;
     });
