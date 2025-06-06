@@ -45,7 +45,7 @@
         </table>
         <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão - <span style="color:red;">1.2</span></strong>
+          <strong>Versão - <span style="color:red;">1.3</span></strong>
         </div>
       </div>`;
 
@@ -90,7 +90,7 @@
       UI.SuccessMessage('Tudo resetado e limpo.');
     });
 
-    // Visualizar nomes
+    // Visualizar nomes com nome do grupo
     $('#preview').on('click', () => {
       const usarNumeracao = $('#firstbox').prop('checked');
       const digitos = parseInt($('#end').val()) || 2;
@@ -104,7 +104,7 @@
       const $aldeias = $('.rename-icon');
       const total = $aldeias.length;
 
-      // Captura nome do grupo
+      // Captura nome do grupo selecionado
       let grupoNome = '';
       const grupoSelect = document.querySelector('select[name="group"]');
       if (grupoSelect) {
