@@ -60,7 +60,7 @@
   $("#popup_box_tw_group_viewer").css({ width: "750px", maxWidth: "95vw" });
 
   const select = document.getElementById("groupSelect");
-  const placeholder = new Option("Todos (grupo 0)", "0", true, true);
+  //const placeholder = new Option("Todos (grupo 0)", "0", true, true);
   placeholder.disabled = false;
   select.appendChild(placeholder);
 
