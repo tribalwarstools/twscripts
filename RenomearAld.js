@@ -1,7 +1,10 @@
 (function () {
   function abrirPainelRenomear() {
-    if (!window.location.href.includes('screen=overview_villages')) {
-      UI.InfoMessage('Acesse "overview_villages" para usar o Renamer.');
+    const url = window.location.href;
+    const urlBase = '/game.php?screen=overview_villages&mode=combined';
+
+    if (!url.includes('screen=overview_villages') || !url.includes('mode=combined')) {
+      window.location.href = urlBase;
       return;
     }
 
@@ -63,18 +66,14 @@
 
     // Resetar tudo
     $('#resetCounter').on('click', () => {
-      // Limpar localStorage
       localStorage.removeItem('renamer_counter');
       localStorage.removeItem('renamer_config');
-
-      // Resetar campos visuais
       $('#firstbox').prop('checked', false);
       $('#end').val('2');
       $('#secondbox').prop('checked', false);
       $('#textname').val('');
       $('#setCounter').val('');
       $('#contadorAtual').text('1');
-
       UI.SuccessMessage('Tudo resetado e limpo.');
     });
 
