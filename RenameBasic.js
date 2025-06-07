@@ -1,99 +1,166 @@
-if (window.location.href.includes('screen=overview_villages')) {
-	const $html = `<h3 align="center">Renamer</h3>
-	<div>
-		<div class="info_box">
-			<div class="content" style="margin-left: 4px">
-				<b>1 -</b> Example 1, starting with 001.<br>
-				<b>2 -</b> Example 3, starting with 3 digits.
-			</div>
-		</div>
-		<input id="firstbox" type="checkbox">
-		<input id="start" type="text" placeholder="1" size="3">
-		<input id="end" type="text" placeholder="3" size="1">
-	</div>
-	<div style="margin-top: 4px">
-		<input id="secondbox" type="checkbox">
-		<input id="textname" type="text" placeholder="Your text here" maxlength="32">
-	</div>
-	<div style="padding-top: 8px;">
-		<input id="rename" type="button" class="btn" value="Rename Villages">
-		<input id="save" type="button" class="btn" value="Save Options">
-	</div>
-	<br>
-	<div>
-		<small>
-			<strong>Rename Villages v1.2 by<span style="color: red;"> K I N G S </span></strong>
-		</small>
-	</div>`;
+(function () {
+  function getGrupoAtivoViaMenu() {
+    const ativo = document.querySelector('strong.group-menu-item');
+    if (!ativo) return { id: 0, name: "Nenhum" };
+    const id = parseInt(ativo.getAttribute('data-group-id') || "0");
+    const texto = ativo.textContent.trim().replace(/[><]/g, '');
+    return { id, name: texto };
+  }
 
-	Dialog.show('rename', $html);
+  function abrirPainelRenomear() {
+    const url = window.location.href;
+    const urlBase = '/game.php?screen=overview_villages&mode=combined';
 
-	let set = localStorage.getItem('set');
-	let lastCount = localStorage.getItem('lastCount');
+    if (!url.includes('screen=overview_villages') || !url.includes('mode=combined')) {
+      window.location.href = urlBase;
+      return;
+    }
+    UI.InfoMessage('Iniciando...');
+    const contadorAtual = parseInt(localStorage.getItem('renamer_counter') || '1', 10);
 
-	if (set) {
-		set = JSON.parse(set);
-		$('#firstbox').prop('checked', set.firstbox);
-		$('#start').val(set.start);
-		$('#end').val(set.end);
-		$('#secondbox').prop('checked', set.secondbox);
-		$('#textname').val(set.textname);
-	}
+    const $html = `
+      <div style="font-size:11px; line-height:1.2;">
+        <h2 align='center'>Renomear aldeias</h2>
+        <table class="vis" style="width:100%; margin-top:4px;">
+          <tr>
+            <td><input id="firstbox" type="checkbox">Dígitos</td>
+            <td><input id="end" type="number" min="1" max="10" value="2" style="width:40px;"></td>
+          </tr>
+          <tr>
+            <td><input id="prefixcheck" type="checkbox">Prefixo</td>
+            <td><input id="prefixbox" type="text" maxlength="10" style="width:50px;" placeholder="Ex: 08"></td>
+          </tr>
+          <tr>
+            <td><input id="secondbox" type="checkbox">Nome</td>
+            <td><input id="textname" type="text" maxlength="32" style="width:90px;" placeholder="Nome"></td>
+          </tr>
+          <tr>
+            <td>Atual:</td>
+            <td><span id="contadorAtual" style="color:green;">${contadorAtual}</span></td>
+          </tr>
+          <tr>
+            <td>Início:</td>
+            <td><input id="setCounter" type="number" style="width:50px;"></td>
+          </tr>
+          <tr>
+            <td colspan="2" style="text-align:center; padding-top:4px;">
+              <input id="preview" type="button" class="btn" value="Visualizar">
+              <input id="rename" type="button" class="btn" value="Renomear">
+              <input id="resetCounter" type="button" class="btn" value="Limpar">
+              <input id="save" type="button" class="btn" value="Salvar">
+            </td>
+          </tr>
+        </table>
+        <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
+        <div style="text-align:center; font-size:10px; margin-top:4px;">
+          <strong>Versão: <span style="color:red;">2.0</span></strong>
+        </div>
+      </div>`;
 
-	// Se existir lastCount e for maior que o start salvo, atualiza o start
-	if (lastCount) {
-		let startVal = Number($('#start').val());
-		let savedCount = Number(lastCount);
-		if (!isNaN(savedCount) && savedCount >= startVal) {
-			$('#start').val(savedCount + 1);
-		}
-	}
+    Dialog.show('rename', $html);
 
-	$('#save').on('click', () => {
-		set = {
-			firstbox: $('#firstbox').prop('checked'),
-			start: $('#start').val(),
-			end: $('#end').val(),
-			secondbox: $('#secondbox').prop('checked'),
-			textname: $('#textname').val(),
-		};
+    let config = JSON.parse(localStorage.getItem('renamer_config') || '{}');
+    $('#firstbox').prop('checked', config.firstbox || false);
+    $('#end').val(config.end || 2);
+    $('#prefixcheck').prop('checked', config.prefixcheck || false);
+    $('#prefixbox').val(config.prefixbox || '');
+    $('#secondbox').prop('checked', config.secondbox || false);
+    $('#textname').val(config.textname || '');
 
-		localStorage.setItem('set', JSON.stringify(set));
-		UI.SuccessMessage('The settings have been saved successfully.');
-	});
+    $('#save').on('click', () => {
+      config = {
+        firstbox: $('#firstbox').prop('checked'),
+        end: parseInt($('#end').val()) || 2,
+        prefixcheck: $('#prefixcheck').prop('checked'),
+        prefixbox: $('#prefixbox').val(),
+        secondbox: $('#secondbox').prop('checked'),
+        textname: $('#textname').val()
+      };
+      localStorage.setItem('renamer_config', JSON.stringify(config));
+      UI.SuccessMessage('Configurações salvas.');
+    });
 
-	$('#rename').on('click', function (s) {
-		s.preventDefault();
+    $('#resetCounter').on('click', () => {
+      localStorage.removeItem('renamer_counter');
+      localStorage.removeItem('renamer_config');
+      $('#firstbox').prop('checked', false);
+      $('#end').val('2');
+      $('#prefixcheck').prop('checked', false);
+      $('#prefixbox').val('');
+      $('#secondbox').prop('checked', false);
+      $('#textname').val('');
+      $('#setCounter').val('');
+      $('#contadorAtual').text('1');
+      $('#previewList').html('');
+      UI.SuccessMessage('Tudo resetado e limpo.');
+    });
 
-		let n, e;
+    $('#preview').on('click', async () => {
+      const grupoAtivo = getGrupoAtivoViaMenu();
+      const grupoNome = grupoAtivo.name;
 
-		if ($('#firstbox').prop('checked')) {
-			n = Number($('#start').val());
-			e = Number($('#end').val());
-		}
+      const usarNumeracao = $('#firstbox').prop('checked');
+      const digitos = parseInt($('#end').val()) || 2;
+      const usarPrefixo = $('#prefixcheck').prop('checked');
+      const prefixo = $('#prefixbox').val().trim();
+      const usarTexto = $('#secondbox').prop('checked');
+      const textoBase = $('#textname').val() || '';
+      const novoInicio = parseInt($('#setCounter').val());
+      let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
 
-		const a = $('#secondbox').prop('checked') ? $('#textname').val() : '';
-		const total = game_data.player.villages;
+      const $aldeias = $('.rename-icon');
+      const total = $aldeias.length;
 
-		Dialog.close();
+      let htmlPreview = `<b>Prévia de renomeação (${total}) - Grupo: <span style="color:blue;">${grupoNome}</span></b><br>`;
+      for (let i = 0; i < total; i++) {
+        const nome = [
+          usarNumeracao ? String(contador++).padStart(digitos, '0') : '',
+          usarPrefixo ? prefixo : '',
+          usarTexto ? textoBase : ''
+        ].filter(Boolean).join(' ').trim();
+        htmlPreview += `• ${nome}<br>`;
+      }
 
-		$('.rename-icon').each(function (i) {
-			let $this = this;
-			setTimeout(function () {
-				$($this).click();
+      $('#previewList').html(htmlPreview);
+    });
 
-				const numberPart = (n && e !== undefined) ? String(n + i).padStart(e, '0') : '';
-				$('.vis input[type="text"]').val(`${numberPart} ${a}`);
+    $('#rename').on('click', function (e) {
+      e.preventDefault();
 
-				$('input[type="button"]').click();
-				UI.SuccessMessage(' Success: ' + (i + 1) + '/' + total);
+      const usarNumeracao = $('#firstbox').prop('checked');
+      const digitos = parseInt($('#end').val()) || 2;
+      const usarPrefixo = $('#prefixcheck').prop('checked');
+      const prefixo = $('#prefixbox').val().trim();
+      const usarTexto = $('#secondbox').prop('checked');
+      const textoBase = $('#textname').val() || '';
+      const novoInicio = parseInt($('#setCounter').val());
 
-				// Salva o último número renomeado após cada aldeia
-				localStorage.setItem('lastCount', n + i);
-			}, i * 200);
-		});
-	});
-} else {
-	UI.InfoMessage('Redirecting...');
-	window.location.href = game_data.link_base_pure + 'overview_villages&mode=combined&group=0';
-}
+      let contador = !isNaN(novoInicio) ? novoInicio : parseInt(localStorage.getItem('renamer_counter') || '1', 10);
+      if (!isNaN(novoInicio)) {
+        localStorage.setItem('renamer_counter', contador.toString());
+      }
+
+      Dialog.close();
+
+      const $aldeias = $('.rename-icon');
+      const total = $aldeias.length;
+
+      $aldeias.each(function (i) {
+        const $btn = this;
+        setTimeout(() => {
+          $($btn).click();
+          const novoNome = [
+            usarNumeracao ? String(contador++).padStart(digitos, '0') : '',
+            usarPrefixo ? prefixo : '',
+            usarTexto ? textoBase : ''
+          ].filter(Boolean).join(' ').trim();
+          $('.vis input[type="text"]').val(novoNome);
+          $('input[type="button"]').click();
+          UI.SuccessMessage(`Renomeada: ${i + 1}/${total}`);
+          if (i + 1 === total) {
+            localStorage.setItem('renamer_counter', String(contador));
+          }
+        }, i * 300);
+      });
+    });
+  }
