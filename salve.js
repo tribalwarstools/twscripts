@@ -2,7 +2,7 @@
     function abrirJanelaTropas() {
         const html = `
             <div class="vis">
-                <h3>Enviar Tropas para Coordenadas</h3>
+                <h3>Enviar Tropas para Coordenadas(1.0)</h3>
                 <p>Insira as coordenadas no formato <b>000|000</b>, separadas por espaço ou nova linha:</p>
                 <textarea id="campoCoordenadas" style="width: 95%; height: 80px;"></textarea>
                 <hr>
