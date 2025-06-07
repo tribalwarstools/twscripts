@@ -33,7 +33,7 @@
         <tr>
           <td>Link do script:</td>
           <td style="display:flex; gap:4px;">
-            <input id="inputHref" type="text" maxlength="200" style="flex:1;" value="${defaultHref}" readonly>
+            <input id="inputHref" type="text" maxlength="200" style="width:50%;" value="${defaultHref}" readonly>
             <button id="btnCopyUrl" class="btn" style="white-space: nowrap;">Copiar URL</button>
           </td>
         </tr>
