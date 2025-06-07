@@ -176,14 +176,14 @@
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px;">
                 <div style="flex:1 1 300px;">
                     <label for="raPlayers"><b>Jogador:</b></label><br>
-                    <input list="listPlayers" id="raPlayers" style="width: 100%;" placeholder="Digite ou escolha o jogador...">
+                    <input list="listPlayers" id="raPlayers" style="width: 50%;" placeholder="Digite ou escolha o jogador...">
                     <datalist id="listPlayers">
                         ${players.map(p => `<option value="${decodeName(p[1])}">`).join('')}
                     </datalist>
                 </div>
                 <div style="flex:1 1 300px;">
                     <label for="raTribes"><b>Tribo:</b></label><br>
-                    <input list="listTribes" id="raTribes" style="width: 100%;" placeholder="Digite ou escolha a tribo...">
+                    <input list="listTribes" id="raTribes" style="width: 50%;" placeholder="Digite ou escolha a tribo...">
                     <datalist id="listTribes">
                         ${tribes.map(t => `<option value="${decodeName(t[2])}">`).join('')}
                     </datalist>
@@ -192,7 +192,7 @@
 
             <!-- Linha 2: Textarea coordenadas -->
             <label for="campoCoordenadas" style="display:block; margin-bottom: 4px;"><b>Coordenadas (formato 000|000):</b></label>
-            <textarea id="campoCoordenadas" style="width: 100%; height: 80px; resize: vertical;" placeholder="Cole ou selecione coordenadas aqui"></textarea>
+            <textarea id="campoCoordenadas" style="width: 98%; height: 80px; resize: vertical;" placeholder="Cole as coordenadas aqui"></textarea>
 
             <!-- Linha 3: Botões Colar e Importar -->
             <div style="margin: 8px 0; display: flex; gap: 10px; flex-wrap: wrap;">
