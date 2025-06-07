@@ -13,6 +13,7 @@ function abrirJanelaGrupo() {
         data.result.forEach(elemento => {
             if (elemento.group_id != 0 && elemento.type != "group_dynamic" && elemento.type != "separator") {
                 gruposManuais.push({ "group_id": elemento.group_id, "group_name": elemento.name });
+                console.log(elemento);
             }
         });
     });
@@ -24,6 +25,7 @@ function abrirJanelaGrupo() {
     if (localStorage.getItem("barbmapVillageTime") != null) {
         let tempoSalvo = localStorage.getItem("barbmapVillageTime");
         if (tempoAtual >= parseInt(tempoSalvo) + 60 * 60 * 24 * 1000) {
+            console.log("Tempo expirado, coletando novamente os dados das aldeias");
             $.get("map/village.txt", function (data) {
                 dadosAldeias = data;
                 localStorage.setItem("barbmapVillageTime", Date.parse(new Date()));
@@ -32,10 +34,12 @@ function abrirJanelaGrupo() {
                 processarDados(dadosAldeias);
             });
         } else {
+            console.log("Ainda dentro do prazo, usando dados antigos");
             let dados = localStorage.getItem("barbmapVillageTxt");
             processarDados(dados);
         }
     } else {
+        console.log("Coletando village.txt pela primeira vez");
         $.get("map/village.txt", function (data) {
             dadosAldeias = data;
             localStorage.setItem("barbmapVillageTime", Date.parse(new Date()));
@@ -46,25 +50,23 @@ function abrirJanelaGrupo() {
     }
 
     // Criar interface para inserção de coordenadas
-    let htmlCoordenadas = `<div class="vis">
+    let htmlCoordenadas = <div class="vis">
         <table class="vis">
-            <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui o cole-as"></textarea>
+            <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui"></textarea>
             <center><button type="button" class="btn btn-confirm-yes" onclick="importarCoordenadas()">Importar</button></center>
         </table>
-    </div>`;
+    </div>;
     Dialog.show("campoCoordenadas", htmlCoordenadas);
 
-    // Função para importar coordenadas e mostrar formulário de grupos
     function importarCoordenadas() {
         let coordenadasTexto = $("#campoCoordenadas")[0].value.match(/\d+\|\d+/g);
+        console.log(coordenadasTexto);
         let coordenadasSeparadas = [];
 
         coordenadasTexto?.forEach(coord => {
             let partes = coord.split("|");
             coordenadasSeparadas.push({ "x": partes[0], "y": partes[1] });
         });
-
-        aldeiasSelecionadas = []; // reset
 
         coordenadasSeparadas.forEach(coord => {
             listaAldeias.forEach(aldeia => {
@@ -80,68 +82,29 @@ function abrirJanelaGrupo() {
 
         aldeiasSelecionadas = removerDuplicados(aldeiasSelecionadas, 'id');
 
-        // Criar formulário com botões para adicionar, remover e mover aldeias entre grupos
-        let formulario = `<form id="formGrupo" action="/game.php?village=${game_data.village.id}&screen=overview_villages&action=bulk_edit_villages&mode=groups&type=static&partial" method="post">
-            <table class="vis overview_table" width="100%" id="group_assign_table">`;
+        // Criar formulário para enviar aldeias ao grupo
+        let formulario = <form action="/game.php?village=${game_data.village.id}&screen=overview_villages&action=bulk_edit_villages&mode=groups&type=static&partial" method="post">
+            <table class="vis overview_table" width="100%" id="group_assign_table">;
 
         aldeiasSelecionadas.forEach(aldeia => {
-            formulario += `<tr><td><input type="checkbox" name="village_ids[]" value="${aldeia.id}" checked> ${decodeURIComponent(aldeia.name.replaceAll("+", " "))}</td></tr>`;
+            formulario += <tr><td><input type="checkbox" name="village_ids[]" value="${aldeia.id}" checked> ${decodeURIComponent(aldeia.name.replaceAll("+", " "))}</td></tr>;
         });
 
-        formulario += `</table>
+        formulario += </table>
             <p>Selecionar grupo:</p>
-            <select id="selectGrupo" name="selected_group">`;
+            <select name="selected_group">;
 
         gruposManuais.forEach(grupo => {
-            formulario += `<option value="${grupo.group_id}">${grupo.group_name}</option>`;
+            formulario += <option value="${grupo.group_id}">${grupo.group_name}</option>;
         });
 
-        formulario += `</select><br><br>
+        formulario += </select><br><br>
             <input class="btn" type="submit" name="add_to_group" value="Adicionar ao grupo">
             <input class="btn" type="submit" name="remove_from_group" value="Remover do grupo">
-            <input class="btn" type="button" id="btnMover" value="Mover para o grupo">
             <input type="hidden" name="h" value="${csrf_token}">
-        </form>`;
+        </form>;
 
         Dialog.show("formularioGrupo", formulario);
-
-        // Evento do botão mover
-        document.getElementById("btnMover").addEventListener("click", moverParaGrupo);
-    }
-
-    // Função que faz o mover em duas etapas
-    function moverParaGrupo() {
-        const form = document.getElementById("formGrupo");
-        const selectedGroupId = document.getElementById("selectGrupo").value;
-        const villageIds = Array.from(form.querySelectorAll('input[name="village_ids[]"]:checked')).map(i => i.value);
-
-        if (villageIds.length === 0) {
-            alert("Selecione pelo menos uma aldeia.");
-            return;
-        }
-
-        // Primeiro: remover do grupo atual (bulk remove)
-        $.post("/game.php?village=" + game_data.village.id + "&screen=overview_villages&action=bulk_edit_villages&mode=groups&type=static&partial", {
-            "village_ids[]": villageIds,
-            "remove_from_group": "1",
-            "selected_group": 0, // remover de todos os grupos
-            "h": csrf_token
-        }).done(() => {
-            // Depois: adicionar ao grupo selecionado
-            $.post("/game.php?village=" + game_data.village.id + "&screen=overview_villages&action=bulk_edit_villages&mode=groups&type=static&partial", {
-                "village_ids[]": villageIds,
-                "add_to_group": "1",
-                "selected_group": selectedGroupId,
-                "h": csrf_token
-            }).done(() => {
-                UI.InfoMessage("Aldeias movidas com sucesso!");
-                Dialog.close("formularioGrupo");
-            }).fail(() => {
-                alert("Erro ao adicionar aldeias ao grupo.");
-            });
-        }).fail(() => {
-            alert("Erro ao remover aldeias do grupo.");
-        });
     }
 
     function processarDados(lista) {
@@ -173,9 +136,9 @@ function abrirJanelaGrupo() {
         return [...new Map(array.map(item => [item[chave], item])).values()];
     }
 
+    // Expor a função de importação
     window.importarCoordenadas = importarCoordenadas;
-    window.moverParaGrupo = moverParaGrupo;
 }
 
-// Expor a função globalmente para chamar manualmente no console
+// Tornar a função principal disponível globalmente (opcional, se chamada via botão ou script externo)
 window.abrirJanelaGrupo = abrirJanelaGrupo;
