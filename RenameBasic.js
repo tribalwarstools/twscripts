@@ -15,6 +15,7 @@
       window.location.href = urlBase;
       return;
     }
+
     UI.InfoMessage('Iniciando...');
     const contadorAtual = parseInt(localStorage.getItem('renamer_counter') || '1', 10);
 
@@ -164,3 +165,7 @@
       });
     });
   }
+
+  // ✅ CHAMAR a função aqui:
+  abrirPainelRenomear();
+})();
