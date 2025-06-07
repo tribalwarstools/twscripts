@@ -1,6 +1,5 @@
 (function () {
-    UI.InfoMessage('Iniciando...');
-    // --- Funções das tropas (igual antes) ---
+    UI.InfoMessage('Iniciando teste...');
 
     function gerarTabelaTropas() {
         const unidades = [
@@ -77,8 +76,11 @@
             if (elem) elem.value = "0";
         });
         document.getElementById("previewContainer").innerHTML = "";
+        document.getElementById("raPlayers").value = "";
+        document.getElementById("raTribes").value = "";
         localStorage.removeItem("tropasSalvas");
         localStorage.removeItem("coordsSalvas");
+        UI.SuccessMessage("Todos os campos foram limpos.");
     }
 
     function carregarDados() {
@@ -132,8 +134,6 @@
         document.getElementById("previewContainer").innerHTML = html;
     }
 
-    // --- Painel coordenadas por jogador/tribo ---
-
     function decodeName(str) {
         return decodeURIComponent(str.replace(/\+/g, ' '));
     }
@@ -162,8 +162,6 @@
         return [];
     }
 
-    // --- Montar a janela ---
-
     async function abrirJanelaCompleta() {
         const villages = await fetchWorldData('village');
         const players = await fetchWorldData('player');
@@ -173,7 +171,6 @@
         <div class="vis" style="padding:10px; max-width: 700px;">
             <h2>Gerenciador de Envio de Tropas</h2>
 
-            <!-- Linha 1: Busca Jogador e Tribo -->
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px;">
                 <div style="flex:1 1 300px;">
                     <label for="raPlayers"><b>Jogador:</b></label><br>
@@ -191,37 +188,31 @@
                 </div>
             </div>
 
-            <!-- Linha 2: Textarea coordenadas -->
             <label for="campoCoordenadas" style="display:block; margin-bottom: 4px;"><b>Coordenadas (formato 000|000):</b></label>
             <textarea id="campoCoordenadas" style="width: 98%; height: 80px; resize: vertical;" placeholder="Cole as coordenadas aqui"></textarea>
 
-            <!-- Linha 3: Botões Colar e Importar -->
             <div style="margin: 8px 0; display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn" id="btnColar" style="flex: 1 1 120px; min-width: 100px;">Colar</button>
                 <button class="btn" id="btnImportar" style="flex: 1 1 120px; min-width: 100px;">Importar</button>
             </div>
 
-            <!-- Linha 4: Tabela tropas -->
             <h3>Quantidade de Tropas</h3>
             <table class="vis" style="width: 100%; text-align: left; margin-bottom: 8px;">
                 ${gerarTabelaTropas()}
             </table>
 
-            <!-- Linha 5: Botões Salvar, Limpar, Mostrar -->
             <div style="margin-bottom: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn" id="btnSalvar" style="flex: 1 1 120px; min-width: 100px;">Salvar</button>
                 <button class="btn" id="btnLimpar" style="flex: 1 1 120px; min-width: 100px;">Limpar</button>
                 <button class="btn" id="btnPreview" style="flex: 1 1 120px; min-width: 100px;">Mostrar Resultado</button>
             </div>
 
-            <!-- Linha 6: Preview -->
             <div id="previewContainer" style="max-height: 140px; overflow-y: auto; background:#f0f0f0; padding:5px; border: 1px solid #ccc;"></div>
         </div>
         `;
 
         Dialog.show("janela_tropas", html);
 
-        // Eventos do dropdown para preencher coords
         const raPlayers = document.getElementById('raPlayers');
         const raTribes = document.getElementById('raTribes');
         const campoCoordenadas = document.getElementById('campoCoordenadas');
@@ -250,7 +241,6 @@
             raPlayers.value = "";
         });
 
-        // Botões
         document.getElementById("btnColar").onclick = colarCoordenadas;
         document.getElementById("btnImportar").onclick = importarTropas;
         document.getElementById("btnSalvar").onclick = salvarDadosManualmente;
@@ -260,7 +250,5 @@
         carregarDados();
     }
 
-    // Abre a janela ao carregar o script
     abrirJanelaCompleta();
-
 })();
