@@ -1,9 +1,9 @@
 (function () {
   function abrirJanelaContador() {
-    UI.InfoMessage('Iniciando...');
-  }
-
-  abrirJanelaContador(); // <- chama a função uma vez
+    if (!window.location.href.includes('screen=overview_villages')) {
+      UI.InfoMessage('Acesse "overview_villages" para usar o Total de Tropas.');
+      return;
+    }
 
     if (!window.contadorTropas) window.contadorTropas = {};
     const lang = [
