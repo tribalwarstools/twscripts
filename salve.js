@@ -26,17 +26,22 @@
                     </tr>
                 </table>
                 <br>
-                <button class="btn btn-confirm-yes" onclick="importarTropas()">Importar</button>
+                <button class="btn btn-confirm-yes" onclick="importarTropas()">Importar e Salvar</button>
                 <button class="btn" onclick="limparCampos()">Limpar</button>
+                <button class="btn" onclick="mostrarPreview()">Mostrar Preview</button>
                 <button class="btn" onclick="Dialog.close()">Fechar</button>
+                <div id="previewContainer" style="margin-top:10px; max-height: 150px; overflow-y: auto; background:#f0f0f0; padding:5px; border: 1px solid #ccc;"></div>
             </div>
         `;
 
         Dialog.show("janela_tropas", html);
+
+        carregarDados(); // Preenche os campos se tiver dados salvos
     }
 
     function importarTropas() {
-        const coords = document.getElementById("campoCoordenadas").value.match(/\d{3}\|\d{3}/g) || [];
+        const coordsRaw = document.getElementById("campoCoordenadas").value;
+        const coords = coordsRaw.match(/\d{3}\|\d{3}/g) || [];
         if (coords.length === 0) {
             UI.ErrorMessage("Nenhuma coordenada válida encontrada.");
             return;
@@ -51,11 +56,9 @@
             heavy: +document.getElementById("heavy").value || 0
         };
 
-        UI.SuccessMessage(`Importado ${coords.length} coordenadas com tropas.`);
-        console.log("Coordenadas:", coords);
-        console.log("Tropas:", tropas);
-
-        // Aqui pode ser incluída lógica adicional
+        salvarDados(coordsRaw, tropas);
+        UI.SuccessMessage(`Importado e salvo ${coords.length} coordenadas com tropas.`);
+        mostrarPreview();
     }
 
     function limparCampos() {
@@ -63,11 +66,66 @@
         ["spear", "sword", "axe", "light", "spy", "heavy"].forEach(id => {
             document.getElementById(id).value = "0";
         });
+        document.getElementById("previewContainer").innerHTML = "";
+        localStorage.removeItem("tropasSalvas");
+        localStorage.removeItem("coordsSalvas");
+    }
+
+    function salvarDados(coordsText, tropasObj) {
+        localStorage.setItem("coordsSalvas", coordsText);
+        localStorage.setItem("tropasSalvas", JSON.stringify(tropasObj));
+    }
+
+    function carregarDados() {
+        const coordsSalvas = localStorage.getItem("coordsSalvas");
+        const tropasSalvas = localStorage.getItem("tropasSalvas");
+
+        if (coordsSalvas) document.getElementById("campoCoordenadas").value = coordsSalvas;
+
+        if (tropasSalvas) {
+            const tropas = JSON.parse(tropasSalvas);
+            Object.keys(tropas).forEach(unidade => {
+                const elem = document.getElementById(unidade);
+                if (elem) elem.value = tropas[unidade];
+            });
+        }
+
+        if (coordsSalvas && tropasSalvas) mostrarPreview();
+    }
+
+    function mostrarPreview() {
+        const coordsText = document.getElementById("campoCoordenadas").value;
+        const tropas = {
+            spear: +document.getElementById("spear").value || 0,
+            sword: +document.getElementById("sword").value || 0,
+            axe: +document.getElementById("axe").value || 0,
+            light: +document.getElementById("light").value || 0,
+            spy: +document.getElementById("spy").value || 0,
+            heavy: +document.getElementById("heavy").value || 0
+        };
+
+        const coords = coordsText.match(/\d{3}\|\d{3}/g) || [];
+
+        if (coords.length === 0) {
+            document.getElementById("previewContainer").innerHTML = "<i>Nenhuma coordenada válida para mostrar.</i>";
+            return;
+        }
+
+        let html = `<b>Preview:</b><br>`;
+        html += `Coordenadas (${coords.length}):<br>`;
+        html += coords.join(", ") + "<br><br>";
+        html += "Tropas:<br>";
+        html += Object.entries(tropas)
+            .map(([uni, qtd]) => `${uni}: ${qtd}`)
+            .join(", ");
+
+        document.getElementById("previewContainer").innerHTML = html;
     }
 
     window.abrirJanelaTropas = abrirJanelaTropas;
     window.importarTropas = importarTropas;
     window.limparCampos = limparCampos;
+    window.mostrarPreview = mostrarPreview;
 
     abrirJanelaTropas();
 })();
