@@ -49,13 +49,25 @@ function abrirJanelaGrupo() {
         });
     }
 
-    // Criar interface para inserção de coordenadas
+    // Criar interface para inserção de coordenadas com botões Importar e Colar
     let htmlCoordenadas = `<div class="vis">
-        <table class="vis">
-            <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui (Ctrl+V)"></textarea>
-            <center><button type="button" class="btn btn-confirm-yes" onclick="importarCoordenadas()">Importar</button></center>
+        <table class="vis" style="width: 100%;">
+            <tr>
+                <td colspan="2">
+                    <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui ou cole-as (Ctrl+V)"></textarea>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: center;">
+                    <button type="button" class="btn btn-confirm-yes" onclick="importarCoordenadas()">Importar</button>
+                </td>
+                <td style="text-align: center;">
+                    <button type="button" class="btn btn-confirm-yes" onclick="colarCoordenadas()">Colar</button>
+                </td>
+            </tr>
         </table>
     </div>`;
+
     Dialog.show("campoCoordenadas", htmlCoordenadas);
 
     function importarCoordenadas() {
@@ -107,6 +119,20 @@ function abrirJanelaGrupo() {
         Dialog.show("formularioGrupo", formulario);
     }
 
+    async function colarCoordenadas() {
+        try {
+            const texto = await navigator.clipboard.readText();
+            const textarea = document.getElementById("campoCoordenadas");
+            if (textarea) {
+                textarea.value = texto;
+                console.log("Texto colado do clipboard:", texto);
+            }
+        } catch (err) {
+            console.error("Falha ao colar do clipboard: ", err);
+            alert("Não foi possível acessar a área de transferência. Use Ctrl+V para colar manualmente.");
+        }
+    }
+
     function processarDados(lista) {
         listaAldeias = CSVParaArray(lista);
     }
@@ -136,8 +162,9 @@ function abrirJanelaGrupo() {
         return [...new Map(array.map(item => [item[chave], item])).values()];
     }
 
-    // Expor a função de importação
+    // Expor funções para escopo global
     window.importarCoordenadas = importarCoordenadas;
+    window.colarCoordenadas = colarCoordenadas;
 }
 
 // Tornar a função principal disponível globalmente (opcional, se chamada via botão ou script externo)
