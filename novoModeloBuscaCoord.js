@@ -1,5 +1,5 @@
 (function () {
-    UI.InfoMessage('Iniciando teste 123...');
+    UI.InfoMessage('Iniciando teste...');
 
     function gerarTabelaTropas() {
         const unidades = [
@@ -47,11 +47,8 @@
             UI.ErrorMessage("Nenhuma coordenada válida encontrada.");
             return;
         }
-
-        // Salva só as coordenadas no localStorage
         localStorage.setItem("coordsSalvas", coordsRaw);
-
-        UI.SuccessMessage(`Coordenadas importadas e salvas.`);
+        UI.SuccessMessage(`Importado ${coords.length} coordenadas.`);
     }
 
     function salvarDadosManualmente() {
@@ -196,7 +193,7 @@
 
             <div style="margin: 8px 0; display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn" id="btnColar" style="flex: 1 1 120px; min-width: 100px;">Colar</button>
-                <button class="btn" id="btnImportar" style="flex: 1 1 120px; min-width: 100px;">Importar</button>
+                <button class="btn" id="btnImportar" style="flex: 1 1 120px; min-width: 100px;">Importar Coordenadas</button>
             </div>
 
             <h3>Quantidade de Tropas</h3>
@@ -254,5 +251,4 @@
     }
 
     abrirJanelaCompleta();
-
 })();
