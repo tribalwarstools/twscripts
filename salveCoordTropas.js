@@ -13,6 +13,7 @@
                         <th><img src="/graphic/unit/unit_sword.png" title="Espadachim" /></th>
                         <th><img src="/graphic/unit/unit_axe.png" title="Machado" /></th>
                         <th><img src="/graphic/unit/unit_light.png" title="Cav. Leve" /></th>
+                        <th><img src="/graphic/unit/unit_spy.png" title="Espião" /></th>
                         <th><img src="/graphic/unit/unit_heavy.png" title="Cav. Pesada" /></th>
                     </tr>
                     <tr>
@@ -20,6 +21,7 @@
                         <td><input type="number" id="sword" min="0" value="0" style="width: 50px;"></td>
                         <td><input type="number" id="axe" min="0" value="0" style="width: 50px;"></td>
                         <td><input type="number" id="light" min="0" value="0" style="width: 50px;"></td>
+                        <td><input type="number" id="spy" min="0" value="0" style="width: 50px;"></td>
                         <td><input type="number" id="heavy" min="0" value="0" style="width: 50px;"></td>
                     </tr>
                 </table>
@@ -45,6 +47,7 @@
             sword: +document.getElementById("sword").value || 0,
             axe: +document.getElementById("axe").value || 0,
             light: +document.getElementById("light").value || 0,
+            spy: +document.getElementById("spy").value || 0,
             heavy: +document.getElementById("heavy").value || 0
         };
 
@@ -52,21 +55,19 @@
         console.log("Coordenadas:", coords);
         console.log("Tropas:", tropas);
 
-        // Aqui você pode aplicar lógica adicional, como gerar links de ataque ou salvar essas info.
+        // Aqui pode ser incluída lógica adicional
     }
 
     function limparCampos() {
         document.getElementById("campoCoordenadas").value = "";
-        ["spear", "sword", "axe", "light", "heavy"].forEach(id => {
+        ["spear", "sword", "axe", "light", "spy", "heavy"].forEach(id => {
             document.getElementById(id).value = "0";
         });
     }
 
-    // Tornar funções globais
     window.abrirJanelaTropas = abrirJanelaTropas;
     window.importarTropas = importarTropas;
     window.limparCampos = limparCampos;
 
-    // Abrir automaticamente (remova se quiser abrir via botão depois)
     abrirJanelaTropas();
 })();
