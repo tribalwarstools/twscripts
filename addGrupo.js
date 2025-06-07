@@ -1,6 +1,7 @@
 function abrirJanelaGrupo() {
     
         UI.InfoMessage('Iniciando ... "');
+        abrirJanelaGrupo();
         
     }
 
