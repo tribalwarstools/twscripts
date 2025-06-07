@@ -99,7 +99,7 @@
   });
 
   $("#abrirGrupo").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/PaineladdGrupo.js")
+    $.getScript("https://tribalwarstools.github.io/twscripts/PainelAddGrupo.js")
       .done(() => {
         setTimeout(() => {
           if (typeof abrirJanelaGrupo === "function") {
