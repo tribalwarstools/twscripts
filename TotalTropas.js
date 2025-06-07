@@ -1,7 +1,7 @@
 (function () {
   function abrirJanelaContador() {
 
-    }
+   
 
     if (!window.contadorTropas) window.contadorTropas = {};
     const lang = [
