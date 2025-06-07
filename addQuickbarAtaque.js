@@ -27,7 +27,7 @@
         <tr>
           <td>Nome do atalho:</td>
           <td>
-            <input id="inputName" type="text" maxlength="30" style="width:100%;" placeholder="Nome do atalho">
+            <input id="inputName" type="text" maxlength="30" style="width:50%;" placeholder="Nome do atalho">
           </td>
         </tr>
         <tr>
