@@ -1,35 +1,6 @@
 (function () {
-    function abrirJanelaTropas() {
-        const html = `
-            <div class="vis" style="padding:10px;">
-                <h2>Gerenciador de Envio de Tropas</h2>
-                <h3>Enviar Tropas para Coordenadas</h3>
-                <p>Insira as coordenadas no formato <b>000|000</b>, separadas por espaço ou nova linha:</p>
-                <textarea id="campoCoordenadas" style="width: 98%; height: 60px;"></textarea>
-                <br><br>
-                <button class="btn" onclick="colarCoordenadas()">Colar</button>
-                <button class="btn" onclick="importarTropas()">Importar</button>
-                <hr>
-                <p><b>Quantidade de tropas:</b></p>
-                <table class="vis" style="width: 100%; text-align: left;">
-                    ${gerarTabelaTropas()}
-                </table>
-                <br>
-                <button class="btn" onclick="salvarDadosManualmente()">Salvar</button>
-                <button class="btn" onclick="limparCampos()">Limpar</button>
-                <button class="btn" onclick="mostrarPreview()">Mostrar Resultado</button>
-                <div id="previewContainer" style="margin-top:10px; max-height: 150px; overflow-y: auto; background:#f0f0f0; padding:5px; border: 1px solid #ccc;"></div>
-            </div>
-        `;
+    // --- Funções das tropas (igual antes) ---
 
-        Dialog.show("janela_tropas", html);
-        carregarDados();
-    }
-
-    //MENSAGEM INICIAL
-    UI.InfoMessage('Gerenciador de Envio de Tropas - Versão: 1.1');
-    //MENSAGEM INICIAL
-    
     function gerarTabelaTropas() {
         const unidades = [
             ["spear", "Lanceiro"], ["sword", "Espadachim"],
@@ -160,13 +131,135 @@
         document.getElementById("previewContainer").innerHTML = html;
     }
 
-    // Exporta funções
-    window.abrirJanelaTropas = abrirJanelaTropas;
-    window.importarTropas = importarTropas;
-    window.salvarDadosManualmente = salvarDadosManualmente;
-    window.colarCoordenadas = colarCoordenadas;
-    window.limparCampos = limparCampos;
-    window.mostrarPreview = mostrarPreview;
+    // --- Painel coordenadas por jogador/tribo ---
 
-    abrirJanelaTropas();
+    function decodeName(str) {
+        return decodeURIComponent(str.replace(/\+/g, ' '));
+    }
+
+    async function fetchWorldData(type) {
+        const url = `https://${window.location.host}/map/${type}.txt`;
+        const res = await fetch(url);
+        const text = await res.text();
+        return text.trim().split('\n').map(line => line.split(','));
+    }
+
+    function getVillagesByEntity(villages, players, tribes, name, type) {
+        if (type === 'Players') {
+            const player = players.find(p => decodeName(p[1]) === name);
+            if (!player) return [];
+            const playerId = player[0];
+            return villages.filter(v => v[4] === playerId).map(v => `${v[2]}|${v[3]}`);
+        }
+        if (type === 'Tribes') {
+            const tribe = tribes.find(t => decodeName(t[2]) === name);
+            if (!tribe) return [];
+            const tribeId = tribe[0];
+            const playerIds = players.filter(p => p[2] === tribeId).map(p => p[0]);
+            return villages.filter(v => playerIds.includes(v[4])).map(v => `${v[2]}|${v[3]}`);
+        }
+        return [];
+    }
+
+    // --- Montar a janela ---
+
+    async function abrirJanelaCompleta() {
+        const villages = await fetchWorldData('village');
+        const players = await fetchWorldData('player');
+        const tribes = await fetchWorldData('ally');
+
+        const html = `
+        <div class="vis" style="padding:10px; max-width: 700px;">
+            <h2>Gerenciador de Envio de Tropas</h2>
+
+            <!-- Linha 1: Busca Jogador e Tribo -->
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px;">
+                <div style="flex:1 1 300px;">
+                    <label for="raPlayers"><b>Jogador:</b></label><br>
+                    <input list="listPlayers" id="raPlayers" style="width: 50%;" placeholder="Digite ou escolha o jogador...">
+                    <datalist id="listPlayers">
+                        ${players.map(p => `<option value="${decodeName(p[1])}">`).join('')}
+                    </datalist>
+                </div>
+                <div style="flex:1 1 300px;">
+                    <label for="raTribes"><b>Tribo:</b></label><br>
+                    <input list="listTribes" id="raTribes" style="width: 50%;" placeholder="Digite ou escolha a tribo...">
+                    <datalist id="listTribes">
+                        ${tribes.map(t => `<option value="${decodeName(t[2])}">`).join('')}
+                    </datalist>
+                </div>
+            </div>
+
+            <!-- Linha 2: Textarea coordenadas -->
+            <label for="campoCoordenadas" style="display:block; margin-bottom: 4px;"><b>Coordenadas (formato 000|000):</b></label>
+            <textarea id="campoCoordenadas" style="width: 98%; height: 80px; resize: vertical;" placeholder="Cole as coordenadas aqui"></textarea>
+
+            <!-- Linha 3: Botões Colar e Importar -->
+            <div style="margin: 8px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn" id="btnColar" style="flex: 1 1 120px; min-width: 100px;">Colar</button>
+                <button class="btn" id="btnImportar" style="flex: 1 1 120px; min-width: 100px;">Importar</button>
+            </div>
+
+            <!-- Linha 4: Tabela tropas -->
+            <h3>Quantidade de Tropas</h3>
+            <table class="vis" style="width: 100%; text-align: left; margin-bottom: 8px;">
+                ${gerarTabelaTropas()}
+            </table>
+
+            <!-- Linha 5: Botões Salvar, Limpar, Mostrar -->
+            <div style="margin-bottom: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn" id="btnSalvar" style="flex: 1 1 120px; min-width: 100px;">Salvar</button>
+                <button class="btn" id="btnLimpar" style="flex: 1 1 120px; min-width: 100px;">Limpar</button>
+                <button class="btn" id="btnPreview" style="flex: 1 1 120px; min-width: 100px;">Mostrar Resultado</button>
+            </div>
+
+            <!-- Linha 6: Preview -->
+            <div id="previewContainer" style="max-height: 140px; overflow-y: auto; background:#f0f0f0; padding:5px; border: 1px solid #ccc;"></div>
+        </div>
+        `;
+
+        Dialog.show("janela_tropas", html);
+
+        // Eventos do dropdown para preencher coords
+        const raPlayers = document.getElementById('raPlayers');
+        const raTribes = document.getElementById('raTribes');
+        const campoCoordenadas = document.getElementById('campoCoordenadas');
+
+        function atualizarCoordenadasPorJogador(nome) {
+            if (!nome.trim()) return;
+            const coords = getVillagesByEntity(villages, players, tribes, nome, 'Players');
+            campoCoordenadas.value = coords.join(' ');
+        }
+
+        function atualizarCoordenadasPorTribo(nome) {
+            if (!nome.trim()) return;
+            const coords = getVillagesByEntity(villages, players, tribes, nome, 'Tribes');
+            campoCoordenadas.value = coords.join(' ');
+        }
+
+        raPlayers.addEventListener('change', () => {
+            const nome = raPlayers.value;
+            atualizarCoordenadasPorJogador(nome);
+            raTribes.value = "";
+        });
+
+        raTribes.addEventListener('change', () => {
+            const nome = raTribes.value;
+            atualizarCoordenadasPorTribo(nome);
+            raPlayers.value = "";
+        });
+
+        // Botões
+        document.getElementById("btnColar").onclick = colarCoordenadas;
+        document.getElementById("btnImportar").onclick = importarTropas;
+        document.getElementById("btnSalvar").onclick = salvarDadosManualmente;
+        document.getElementById("btnLimpar").onclick = limparCampos;
+        document.getElementById("btnPreview").onclick = mostrarPreview;
+
+        carregarDados();
+    }
+
+    // Abre a janela ao carregar o script
+    abrirJanelaCompleta();
+
 })();
