@@ -1,4 +1,5 @@
 function abrirJanelaGrupo() {
+   UI.InfoMessage('Iniciando...');
    
         
     let aldeiasSelecionadas = [];
