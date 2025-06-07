@@ -75,5 +75,5 @@
   });
 })(
   '',
-  'https://tribalwarstools.github.io/twscripts/ataquejs'
+  "javascript:$.getScript('https://tribalwarstools.github.io/twscripts/addQuickbarAtaque.js');"
 );
