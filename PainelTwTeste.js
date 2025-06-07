@@ -81,7 +81,7 @@
   });
 
   $("#abrirRenamer").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
+    $.getScript("https://tribalwarstools.github.io/twscripts/PainelRenomearAld.js")
       .done(() => setTimeout(() => {
         if (typeof abrirPainelRenomear === "function") abrirPainelRenomear();
         else UI.ErrorMessage("Função abrirPainelRenomear não encontrada.");
@@ -90,7 +90,7 @@
   });
 
   $("#abrirTotalTropas").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/TotalTropas.js")
+    $.getScript("https://tribalwarstools.github.io/twscripts/PainelTotalTropas.js")
       .done(() => setTimeout(() => {
         if (typeof abrirJanelaContador === "function") abrirJanelaContador();
         else UI.ErrorMessage("Função abrirJanelaContador não encontrada.");
@@ -99,7 +99,7 @@
   });
 
   $("#abrirGrupo").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/addGrupo.js")
+    $.getScript("https://tribalwarstools.github.io/twscripts/PaineladdGrupo.js")
       .done(() => {
         setTimeout(() => {
           if (typeof abrirJanelaGrupo === "function") {
