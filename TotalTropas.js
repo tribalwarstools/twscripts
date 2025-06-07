@@ -1,8 +1,9 @@
 (function () {
   function abrirJanelaContador() {
-      UI.InfoMessage('Iniciando ... "');
-      abrirJanelaContador();
-    }
+    UI.InfoMessage('Iniciando...');
+  }
+
+  abrirJanelaContador(); // <- chama a função uma vez
 
     if (!window.contadorTropas) window.contadorTropas = {};
     const lang = [
