@@ -10,10 +10,7 @@
     const [id, , x, y] = line.split(",");
     coordToId[`${x}|${y}`] = id;
   });
-
- UI.InfoMessage('Iniciando...');
-
-  // Função para criar a barra de progresso verde
+   // Função para criar a barra de progresso verde
   function criarBarraProgresso(pontos) {
     const max = 13000;
     const perc = Math.min(pontos / max, 1) * 100;
