@@ -1,5 +1,5 @@
 (function () {
-    UI.InfoMessage('Iniciando teste...');
+    UI.InfoMessage('Iniciando teste 123...');
 
     function gerarTabelaTropas() {
         const unidades = [
@@ -40,7 +40,7 @@
         return tropas;
     }
 
-    function importarTropas() {
+    function importarCoordenadas() {
         const coordsRaw = document.getElementById("campoCoordenadas").value;
         const coords = coordsRaw.match(/\d{3}\|\d{3}/g) || [];
         if (coords.length === 0) {
@@ -48,7 +48,10 @@
             return;
         }
 
-        UI.SuccessMessage(`Importado ${coords.length} coordenadas com tropas.`);
+        // Salva só as coordenadas no localStorage
+        localStorage.setItem("coordsSalvas", coordsRaw);
+
+        UI.SuccessMessage(`Coordenadas importadas e salvas.`);
     }
 
     function salvarDadosManualmente() {
@@ -242,7 +245,7 @@
         });
 
         document.getElementById("btnColar").onclick = colarCoordenadas;
-        document.getElementById("btnImportar").onclick = importarTropas;
+        document.getElementById("btnImportar").onclick = importarCoordenadas;
         document.getElementById("btnSalvar").onclick = salvarDadosManualmente;
         document.getElementById("btnLimpar").onclick = limparCampos;
         document.getElementById("btnPreview").onclick = mostrarPreview;
@@ -251,4 +254,5 @@
     }
 
     abrirJanelaCompleta();
+
 })();
