@@ -4,6 +4,21 @@ function abrirJanelaTropas() {
         "light", "marcher", "heavy", "ram", "catapult",
         "knight", "snob"
     ];
+    UI.InfoMessage('Iniciando...');
+    const nomesUnidades = {
+        spear: "Lanceiro",
+        sword: "Espadachim",
+        axe: "Machado",
+        archer: "Arqueiro",
+        spy: "Espião",
+        light: "Cav. Leve",
+        marcher: "Arq. Cavalo",
+        heavy: "Cav. Pesada",
+        ram: "Ariete",
+        catapult: "Catapulta",
+        knight: "Paladino",
+        snob: "Nobre"
+    };
 
     let tropasSalvas = JSON.parse(localStorage.getItem("tropas_padrao")) || {};
 
@@ -52,6 +67,10 @@ function abrirJanelaTropas() {
             <button class="btn btn-confirm-yes" onclick="importarTropas()">Importar</button>
             <button class="btn" onclick="limparTropas()">Limpar</button>
         </center>
+
+        <div id="previewTropas" style="margin-top:10px; font-size:13px; color:#555;">
+            ${gerarPreview(tropasSalvas)}
+        </div>
     </div>`;
 
     Dialog.show("janelaTropas", htmlTropas);
@@ -62,6 +81,7 @@ function abrirJanelaTropas() {
             tropas[unidade] = parseInt(document.getElementById(unidade).value) || 0;
         });
         localStorage.setItem("tropas_padrao", JSON.stringify(tropas));
+        document.getElementById("previewTropas").innerHTML = gerarPreview(tropas);
         UI.SuccessMessage("Tropas salvas com sucesso!");
         console.log("Tropas salvas:", tropas);
     };
@@ -70,8 +90,16 @@ function abrirJanelaTropas() {
         unidades.forEach(unidade => {
             document.getElementById(unidade).value = 0;
         });
+        document.getElementById("previewTropas").innerHTML = gerarPreview({});
         UI.SuccessMessage("Campos zerados.");
     };
+
+    function gerarPreview(tropas) {
+        const ativos = Object.entries(tropas)
+            .filter(([_, qtd]) => qtd > 0)
+            .map(([unit, qtd]) => `● ${nomesUnidades[unit]}: ${qtd}`);
+        return ativos.length ? `<b>Visualização das tropas salvas:</b><br>${ativos.join(" | ")}` : `<i>Nenhuma tropa salva ainda.</i>`;
+    }
 }
 
 window.abrirJanelaTropas = abrirJanelaTropas;
