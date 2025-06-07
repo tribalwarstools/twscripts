@@ -8,24 +8,20 @@ function abrirJanelaGrupo() {
     let gruposManuais = [];
     let listaAldeias = [];
 
-    // Obter IDs dos grupos manuais
     $.get("/game.php?&screen=groups&mode=overview&ajax=load_group_menu&", function (data) {
         data.result.forEach(elemento => {
             if (elemento.group_id != 0 && elemento.type != "group_dynamic" && elemento.type != "separator") {
                 gruposManuais.push({ "group_id": elemento.group_id, "group_name": elemento.name });
-                console.log(elemento);
             }
         });
     });
 
-    // Carregar dados das aldeias
     let tempoAtual = Date.parse(new Date());
     let dadosAldeias;
 
     if (localStorage.getItem("barbmapVillageTime") != null) {
         let tempoSalvo = localStorage.getItem("barbmapVillageTime");
         if (tempoAtual >= parseInt(tempoSalvo) + 60 * 60 * 24 * 1000) {
-            console.log("Tempo expirado, coletando novamente os dados das aldeias");
             $.get("map/village.txt", function (data) {
                 dadosAldeias = data;
                 localStorage.setItem("barbmapVillageTime", Date.parse(new Date()));
@@ -34,12 +30,10 @@ function abrirJanelaGrupo() {
                 processarDados(dadosAldeias);
             });
         } else {
-            console.log("Ainda dentro do prazo, usando dados antigos");
             let dados = localStorage.getItem("barbmapVillageTxt");
             processarDados(dados);
         }
     } else {
-        console.log("Coletando village.txt pela primeira vez");
         $.get("map/village.txt", function (data) {
             dadosAldeias = data;
             localStorage.setItem("barbmapVillageTime", Date.parse(new Date()));
@@ -49,10 +43,9 @@ function abrirJanelaGrupo() {
         });
     }
 
-    // Criar interface para inserção de coordenadas
     let htmlCoordenadas = `<div class="vis">
         <table class="vis">
-            <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui"></textarea>
+            <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui versao 1"></textarea>
             <center><button type="button" class="btn btn-confirm-yes" onclick="importarCoordenadas()">Importar</button></center>
         </table>
     </div>`;
@@ -60,7 +53,6 @@ function abrirJanelaGrupo() {
 
     function importarCoordenadas() {
         let coordenadasTexto = $("#campoCoordenadas")[0].value.match(/\d+\|\d+/g);
-        console.log(coordenadasTexto);
         let coordenadasSeparadas = [];
 
         coordenadasTexto?.forEach(coord => {
@@ -73,8 +65,6 @@ function abrirJanelaGrupo() {
                 if (aldeia[2] == coord.x && aldeia[3] == coord.y) {
                     if (aldeia[4] == game_data.player.id) {
                         aldeiasSelecionadas.push({ "id": aldeia[0], "name": aldeia[1] });
-                    } else {
-                        console.log("Não somos donos desta aldeia");
                     }
                 }
             });
@@ -82,7 +72,6 @@ function abrirJanelaGrupo() {
 
         aldeiasSelecionadas = removerDuplicados(aldeiasSelecionadas, 'id');
 
-        // Criar formulário para enviar aldeias ao grupo
         let formulario = `<form action="/game.php?village=${game_data.village.id}&screen=overview_villages&action=bulk_edit_villages&mode=groups&type=static&partial" method="post">
             <table class="vis overview_table" width="100%" id="group_assign_table">`;
 
@@ -101,10 +90,40 @@ function abrirJanelaGrupo() {
         formulario += `</select><br><br>
             <input class="btn" type="submit" name="add_to_group" value="Adicionar ao grupo">
             <input class="btn" type="submit" name="remove_from_group" value="Remover do grupo">
+            <button class="btn" type="button" onclick="moverParaGrupo(this.form)">Mover para o grupo</button>
             <input type="hidden" name="h" value="${csrf_token}">
         </form>`;
 
         Dialog.show("formularioGrupo", formulario);
+    }
+
+    function moverParaGrupo(formulario) {
+        const grupoSelecionado = formulario.querySelector('select[name="selected_group"]').value;
+        const csrf = formulario.querySelector('input[name="h"]').value;
+
+        const checkboxes = Array.from(formulario.querySelectorAll('input[type="checkbox"][name="village_ids[]"]:checked'));
+        const idsAldeias = checkboxes.map(c => c.value);
+
+        if (idsAldeias.length === 0) {
+            UI.InfoMessage("Selecione pelo menos uma aldeia para mover ao grupo.", 3000, "error");
+            return;
+        }
+
+        $.post("/game.php?village=" + game_data.village.id + "&screen=overview_villages&action=bulk_edit_villages&mode=groups&type=static&partial", {
+            "h": csrf,
+            "remove_from_group": "1",
+            "village_ids[]": idsAldeias
+        }, function () {
+            $.post("/game.php?village=" + game_data.village.id + "&screen=overview_villages&action=bulk_edit_villages&mode=groups&type=static&partial", {
+                "h": csrf,
+                "add_to_group": "1",
+                "selected_group": grupoSelecionado,
+                "village_ids[]": idsAldeias
+            }, function () {
+                UI.SuccessMessage("Aldeias movidas para o grupo com sucesso!", 3000);
+                Dialog.close();
+            });
+        });
     }
 
     function processarDados(lista) {
@@ -113,12 +132,9 @@ function abrirJanelaGrupo() {
 
     function CSVParaArray(strData, delimitador) {
         delimitador = (delimitador || ",");
-        let padrao = new RegExp(
-            ("(\\" + delimitador + "|\\r?\\n|\\r|^)" +
-                "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
-                "([^\"\\" + delimitador + "\\r\\n]*))"),
-            "gi"
-        );
+        let padrao = new RegExp(("(\\" + delimitador + "|\\r?\\n|\\r|^)" +
+            "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
+            "([^\"\\" + delimitador + "\\r\\n]*))"), "gi");
         let arrDados = [[]];
         let resultado = null;
         while (resultado = padrao.exec(strData)) {
@@ -136,9 +152,7 @@ function abrirJanelaGrupo() {
         return [...new Map(array.map(item => [item[chave], item])).values()];
     }
 
-    // Expor a função de importação
     window.importarCoordenadas = importarCoordenadas;
 }
 
-// Tornar a função principal disponível globalmente (opcional, se chamada via botão ou script externo)
 window.abrirJanelaGrupo = abrirJanelaGrupo;
