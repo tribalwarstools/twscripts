@@ -1,5 +1,5 @@
 (function () {
-    UI.InfoMessage('Iniciando versão1.0...');
+    UI.InfoMessage('Iniciando versão 1.1...');
 
     function gerarTabelaTropas() {
         const unidades = [
