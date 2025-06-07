@@ -6,7 +6,7 @@
                 <h3>Enviar Tropas para Coordenadas</h3>
                 <p>Insira as coordenadas no formato <b>000|000</b>, separadas por espaço ou nova linha:</p>
                 <textarea id="campoCoordenadas" style="width: 98%; height: 60px;"></textarea>
-                <br>
+                <br><br>
                 <button class="btn" onclick="colarCoordenadas()">Colar</button>
                 <hr>
                 <p><b>Quantidade de tropas:</b></p>
@@ -15,7 +15,7 @@
                 </table>
                 <br>
                 <button class="btn" onclick="importarTropas()">Importar</button>
-                <button class="btn" onclick="salvarTropas()">Salvar</button>
+                <button class="btn" onclick="salvarDadosManualmente()">Salvar</button>
                 <button class="btn" onclick="limparCampos()">Limpar</button>
                 <button class="btn" onclick="mostrarPreview()">Mostrar Resultado</button>
                 <div id="previewContainer" style="margin-top:10px; max-height: 150px; overflow-y: auto; background:#f0f0f0; padding:5px; border: 1px solid #ccc;"></div>
@@ -25,7 +25,7 @@
         Dialog.show("janela_tropas", html);
         carregarDados();
     }
-
+    UI.InfoMessage('Gerenciador de Envio de Tropas - Versão: 1.0');
     function gerarTabelaTropas() {
         const unidades = [
             ["spear", "Lanceiro"], ["sword", "Espadachim"],
@@ -55,15 +55,14 @@
         return html;
     }
 
-    function colarCoordenadas() {
-        navigator.clipboard.readText().then(texto => {
-            const campo = document.getElementById("campoCoordenadas");
-            campo.value += (campo.value.trim() ? "\n" : "") + texto.trim();
-            mostrarPreview();
-        }).catch(err => {
-            UI.ErrorMessage("Falha ao colar do clipboard.");
-            console.error("Erro ao colar coordenadas:", err);
+    function coletarTropas() {
+        const ids = ["spear", "sword", "axe", "archer", "light", "marcher", "heavy", "spy", "ram", "catapult", "knight", "snob"];
+        const tropas = {};
+        ids.forEach(id => {
+            const elem = document.getElementById(id);
+            tropas[id] = elem ? +elem.value || 0 : 0;
         });
+        return tropas;
     }
 
     function importarTropas() {
@@ -73,32 +72,25 @@
             UI.ErrorMessage("Nenhuma coordenada válida encontrada.");
             return;
         }
-        UI.SuccessMessage(`Importado ${coords.length} coordenadas.`);
-        mostrarPreview();
+
+        UI.SuccessMessage(`Importado ${coords.length} coordenadas com tropas.`);
     }
 
-    function salvarTropas() {
+    function salvarDadosManualmente() {
         const coordsRaw = document.getElementById("campoCoordenadas").value;
-        const coords = coordsRaw.match(/\d{3}\|\d{3}/g) || [];
-        if (coords.length === 0) {
-            UI.ErrorMessage("Nenhuma coordenada válida encontrada.");
-            return;
-        }
-
         const tropas = coletarTropas();
-        salvarDados(coordsRaw, tropas);
-        UI.SuccessMessage(`Dados salvos com sucesso!`);
-        mostrarPreview();
+        localStorage.setItem("coordsSalvas", coordsRaw);
+        localStorage.setItem("tropasSalvas", JSON.stringify(tropas));
+        UI.SuccessMessage("Dados salvos com sucesso.");
     }
 
-    function coletarTropas() {
-        const ids = ["spear", "sword", "axe", "archer", "light", "marcher", "heavy", "spy", "ram", "catapult", "knight", "snob"];
-        const tropas = {};
-        ids.forEach(id => {
-            const elem = document.getElementById(id);
-            tropas[id] = elem ? +elem.value || 0 : 0;
+    function colarCoordenadas() {
+        navigator.clipboard.readText().then(texto => {
+            document.getElementById("campoCoordenadas").value = texto;
+            UI.SuccessMessage("Coordenadas coladas.");
+        }).catch(() => {
+            UI.ErrorMessage("Falha ao acessar a área de transferência.");
         });
-        return tropas;
     }
 
     function limparCampos() {
@@ -113,17 +105,11 @@
         localStorage.removeItem("coordsSalvas");
     }
 
-    function salvarDados(coordsText, tropasObj) {
-        localStorage.setItem("coordsSalvas", coordsText);
-        localStorage.setItem("tropasSalvas", JSON.stringify(tropasObj));
-    }
-
     function carregarDados() {
         const coordsSalvas = localStorage.getItem("coordsSalvas");
         const tropasSalvas = localStorage.getItem("tropasSalvas");
 
         if (coordsSalvas) document.getElementById("campoCoordenadas").value = coordsSalvas;
-
         if (tropasSalvas) {
             const tropas = JSON.parse(tropasSalvas);
             Object.keys(tropas).forEach(unidade => {
@@ -131,8 +117,6 @@
                 if (elem) elem.value = tropas[unidade];
             });
         }
-
-        if (coordsSalvas && tropasSalvas) mostrarPreview();
     }
 
     function mostrarPreview() {
@@ -172,13 +156,13 @@
         document.getElementById("previewContainer").innerHTML = html;
     }
 
-    // Exporta para janela
+    // Exporta funções
     window.abrirJanelaTropas = abrirJanelaTropas;
     window.importarTropas = importarTropas;
-    window.salvarTropas = salvarTropas;
+    window.salvarDadosManualmente = salvarDadosManualmente;
+    window.colarCoordenadas = colarCoordenadas;
     window.limparCampos = limparCampos;
     window.mostrarPreview = mostrarPreview;
-    window.colarCoordenadas = colarCoordenadas;
 
     abrirJanelaTropas();
 })();
