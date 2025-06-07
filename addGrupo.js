@@ -1,10 +1,7 @@
-function abrirJanelaGrupo() {
-    
+function abrirJanelaGrupo() {    
         UI.InfoMessage('Iniciando ... "');
-        abrirJanelaGrupo();
-        
-    }
-
+         }
+     abrirJanelaGrupo();
     let aldeiasSelecionadas = [];
     let gruposManuais = [];
     let listaAldeias = [];
