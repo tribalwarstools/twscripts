@@ -1,53 +1,20 @@
 (function () {
     function abrirJanelaTropas() {
-        const tropas = [
-            ["spear", "Lanceiro"],
-            ["sword", "Espadachim"],
-            ["axe", "Machado"],
-            ["archer", "Arqueiro"],
-            ["light", "Cav. Leve"],
-            ["marcher", "Arq. Cavalo"],
-            ["heavy", "Cav. Pesada"],
-            ["knight", "Paladino"],
-            ["spy", "Espião"],
-            ["ram", "Ariete"],
-            ["catapult", "Catapulta"],
-            ["snob", "Nobre"]
-        ];
-
-        const makeRow = (units) => `
-            <tr>
-                ${units.map(([id, title]) =>
-                    `<th><img src="/graphic/unit/unit_${id}.png" title="${title}"/></th>`
-                ).join("")}
-            </tr>
-            <tr>
-                ${units.map(([id]) =>
-                    `<td><input type="number" id="${id}" min="0" value="0" style="width: 50px;"></td>`
-                ).join("")}
-            </tr>`;
-
         const html = `
-            <div class="vis" style="max-width:800px">
-                <h3>Enviar Tropas para Coordenadas (1.2)</h3>
-                <p>Insira coordenadas no formato <b>000|000</b>, separadas por espaço ou nova linha:</p>
-                <textarea id="campoCoordenadas" style="width: 100%; height: 80px;"></textarea>
+            <div class="vis" style="padding:10px;">
+                <h3>Enviar Tropas para Coordenadas (1.1)</h3>
+                <p>Insira as coordenadas no formato <b>000|000</b>, separadas por espaço ou nova linha:</p>
+                <textarea id="campoCoordenadas" style="width: 98%; height: 60px;"></textarea>
                 <hr>
-                <p><b>Quantidade de Tropas:</b></p>
-                <table class="vis" style="width:100%; text-align:center; margin-bottom:10px;">
-                    ${makeRow(tropas.slice(0, 4))}     <!-- Infantaria -->
-                    ${makeRow(tropas.slice(4, 8))}     <!-- Cavalaria -->
-                    ${makeRow(tropas.slice(8, 12))}    <!-- Suporte/Esp -->
+                <p><b>Quantidade de tropas:</b></p>
+                <table class="vis" style="width: 100%; text-align: left;">
+                    ${gerarTabelaTropas()}
                 </table>
-
-                <div style="display:flex; justify-content:space-between; flex-wrap: wrap; gap: 5px; margin-bottom: 10px;">
-                    <button class="btn btn-confirm-yes" onclick="importarTropas()">✅ Importar e Salvar</button>
-                    <button class="btn" onclick="limparCampos()">🧹 Limpar</button>
-                    <button class="btn" onclick="mostrarPreview()">👁️ Mostrar Preview</button>
-                    <button class="btn" onclick="Dialog.close()">❌ Fechar</button>
-                </div>
-
-                <div id="previewContainer" style="margin-top:10px; max-height:150px; overflow-y:auto; background:#f9f9f9; padding:10px; border:1px solid #ccc;"></div>
+                <br>
+                <button class="btn btn-confirm-yes" onclick="importarTropas()">Importar e Salvar</button>
+                <button class="btn" onclick="limparCampos()">Limpar</button>
+                <button class="btn" onclick="mostrarPreview()">Mostrar Resultado</button>
+                <div id="previewContainer" style="margin-top:10px; max-height: 150px; overflow-y: auto; background:#f0f0f0; padding:5px; border: 1px solid #ccc;"></div>
             </div>
         `;
 
@@ -55,11 +22,33 @@
         carregarDados();
     }
 
-    function coletarTropas() {
-        const ids = ["spear", "sword", "axe", "archer", "light", "marcher", "heavy", "knight", "spy", "ram", "catapult", "snob"];
-        const tropas = {};
-        ids.forEach(id => tropas[id] = +document.getElementById(id).value || 0);
-        return tropas;
+    function gerarTabelaTropas() {
+        const unidades = [
+            ["spear", "Lanceiro"], ["sword", "Espadachim"],
+            ["axe", "Machado"], ["archer", "Arqueiro"],
+            ["light", "Cav. Leve"], ["marcher", "Arq. Cav."],
+            ["heavy", "Cav. Pesada"], ["spy", "Espião"],
+            ["ram", "Ariete"], ["catapult", "Catapulta"],
+            ["knight", "Paladino"], ["snob", "Nobre"]
+        ];
+
+        let html = "";
+        for (let i = 0; i < unidades.length; i += 2) {
+            html += "<tr>";
+            for (let j = 0; j < 2; j++) {
+                const [id, nome] = unidades[i + j] || [];
+                if (id) {
+                    html += `
+                        <td><img src="/graphic/unit/unit_${id}.png" title="${nome}" /> ${nome}</td>
+                        <td><input type="number" id="${id}" min="0" value="0" style="width: 60px;"></td>
+                    `;
+                } else {
+                    html += "<td></td><td></td>";
+                }
+            }
+            html += "</tr>";
+        }
+        return html;
     }
 
     function importarTropas() {
@@ -76,10 +65,22 @@
         mostrarPreview();
     }
 
+    function coletarTropas() {
+        const ids = ["spear", "sword", "axe", "archer", "light", "marcher", "heavy", "spy", "ram", "catapult", "knight", "snob"];
+        const tropas = {};
+        ids.forEach(id => {
+            const elem = document.getElementById(id);
+            tropas[id] = elem ? +elem.value || 0 : 0;
+        });
+        return tropas;
+    }
+
     function limparCampos() {
         document.getElementById("campoCoordenadas").value = "";
-        Object.keys(coletarTropas()).forEach(id => {
-            document.getElementById(id).value = "0";
+        const ids = ["spear", "sword", "axe", "archer", "light", "marcher", "heavy", "spy", "ram", "catapult", "knight", "snob"];
+        ids.forEach(id => {
+            const elem = document.getElementById(id);
+            if (elem) elem.value = "0";
         });
         document.getElementById("previewContainer").innerHTML = "";
         localStorage.removeItem("tropasSalvas");
@@ -99,9 +100,9 @@
 
         if (tropasSalvas) {
             const tropas = JSON.parse(tropasSalvas);
-            Object.keys(tropas).forEach(id => {
-                const input = document.getElementById(id);
-                if (input) input.value = tropas[id];
+            Object.keys(tropas).forEach(unidade => {
+                const elem = document.getElementById(unidade);
+                if (elem) elem.value = tropas[unidade];
             });
         }
 
@@ -110,8 +111,8 @@
 
     function mostrarPreview() {
         const coordsText = document.getElementById("campoCoordenadas").value;
-        const tropas = coletarTropas();
         const coords = coordsText.match(/\d{3}\|\d{3}/g) || [];
+        const tropas = coletarTropas();
 
         if (coords.length === 0) {
             document.getElementById("previewContainer").innerHTML = "<i>Nenhuma coordenada válida para mostrar.</i>";
@@ -119,18 +120,18 @@
         }
 
         let html = `<b>Preview:</b><br>`;
-        html += `<span style="color:#666;">${coords.length} coordenadas:</span><br>`;
+        html += `Coordenadas (${coords.length}):<br>`;
         html += coords.join(", ") + "<br><br>";
-        html += `<span style="color:#666;">Tropas:</span><br>`;
+        html += "Tropas:<br>";
         html += Object.entries(tropas)
             .filter(([_, qtd]) => qtd > 0)
-            .map(([uni, qtd]) => `${uni}: <b>${qtd}</b>`)
+            .map(([uni, qtd]) => `${uni}: ${qtd}`)
             .join(", ");
 
         document.getElementById("previewContainer").innerHTML = html;
     }
 
-    // Expor funções e abrir janela
+    // Exporta para janela
     window.abrirJanelaTropas = abrirJanelaTropas;
     window.importarTropas = importarTropas;
     window.limparCampos = limparCampos;
