@@ -8,13 +8,13 @@
                 <textarea id="campoCoordenadas" style="width: 98%; height: 60px;"></textarea>
                 <br><br>
                 <button class="btn" onclick="colarCoordenadas()">Colar</button>
+                <button class="btn" onclick="importarTropas()">Importar</button>
                 <hr>
                 <p><b>Quantidade de tropas:</b></p>
                 <table class="vis" style="width: 100%; text-align: left;">
                     ${gerarTabelaTropas()}
                 </table>
                 <br>
-                <button class="btn" onclick="importarTropas()">Importar</button>
                 <button class="btn" onclick="salvarDadosManualmente()">Salvar</button>
                 <button class="btn" onclick="limparCampos()">Limpar</button>
                 <button class="btn" onclick="mostrarPreview()">Mostrar Resultado</button>
