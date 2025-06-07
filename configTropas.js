@@ -6,13 +6,16 @@
                 <h3>Enviar Tropas para Coordenadas</h3>
                 <p>Insira as coordenadas no formato <b>000|000</b>, separadas por espaço ou nova linha:</p>
                 <textarea id="campoCoordenadas" style="width: 98%; height: 60px;"></textarea>
+                <br>
+                <button class="btn" onclick="colarCoordenadas()">Colar</button>
                 <hr>
                 <p><b>Quantidade de tropas:</b></p>
                 <table class="vis" style="width: 100%; text-align: left;">
                     ${gerarTabelaTropas()}
                 </table>
                 <br>
-                <button class="btn btn-confirm-yes" onclick="importarTropas()">Importar e Salvar</button>
+                <button class="btn" onclick="importarTropas()">Importar</button>
+                <button class="btn" onclick="salvarTropas()">Salvar</button>
                 <button class="btn" onclick="limparCampos()">Limpar</button>
                 <button class="btn" onclick="mostrarPreview()">Mostrar Resultado</button>
                 <div id="previewContainer" style="margin-top:10px; max-height: 150px; overflow-y: auto; background:#f0f0f0; padding:5px; border: 1px solid #ccc;"></div>
@@ -52,7 +55,29 @@
         return html;
     }
 
+    function colarCoordenadas() {
+        navigator.clipboard.readText().then(texto => {
+            const campo = document.getElementById("campoCoordenadas");
+            campo.value += (campo.value.trim() ? "\n" : "") + texto.trim();
+            mostrarPreview();
+        }).catch(err => {
+            UI.ErrorMessage("Falha ao colar do clipboard.");
+            console.error("Erro ao colar coordenadas:", err);
+        });
+    }
+
     function importarTropas() {
+        const coordsRaw = document.getElementById("campoCoordenadas").value;
+        const coords = coordsRaw.match(/\d{3}\|\d{3}/g) || [];
+        if (coords.length === 0) {
+            UI.ErrorMessage("Nenhuma coordenada válida encontrada.");
+            return;
+        }
+        UI.SuccessMessage(`Importado ${coords.length} coordenadas.`);
+        mostrarPreview();
+    }
+
+    function salvarTropas() {
         const coordsRaw = document.getElementById("campoCoordenadas").value;
         const coords = coordsRaw.match(/\d{3}\|\d{3}/g) || [];
         if (coords.length === 0) {
@@ -62,7 +87,7 @@
 
         const tropas = coletarTropas();
         salvarDados(coordsRaw, tropas);
-        UI.SuccessMessage(`Importado e salvo ${coords.length} coordenadas com tropas.`);
+        UI.SuccessMessage(`Dados salvos com sucesso!`);
         mostrarPreview();
     }
 
@@ -150,8 +175,10 @@
     // Exporta para janela
     window.abrirJanelaTropas = abrirJanelaTropas;
     window.importarTropas = importarTropas;
+    window.salvarTropas = salvarTropas;
     window.limparCampos = limparCampos;
     window.mostrarPreview = mostrarPreview;
+    window.colarCoordenadas = colarCoordenadas;
 
     abrirJanelaTropas();
 })();
