@@ -59,10 +59,10 @@ function abrirJanelaGrupo() {
             </tr>
             <tr>
                 <td style="text-align: center;">
-                    <button type="button" class="btn btn-confirm-yes" onclick="importarCoordenadas()">Importar</button>
+                    <button type="button" class="btn" onclick="colarCoordenadas()">Colar</button>
                 </td>
-                <td style="text-align: center;">
-                    <button type="button" class="btn btn-confirm-yes" onclick="colarCoordenadas()">Colar</button>
+                <td style="text-align: center;">                    
+                    <button type="button" class="btn" onclick="importarCoordenadas()">Importar</button>
                 </td>
             </tr>
         </table>
