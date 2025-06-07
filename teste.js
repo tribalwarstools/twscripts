@@ -11,6 +11,8 @@
     coordToId[`${x}|${y}`] = id;
   });
 
+ UI.InfoMessage('Iniciando...');
+
   // Função para criar a barra de progresso verde
   function criarBarraProgresso(pontos) {
     const max = 13000;
