@@ -2,7 +2,6 @@
     function abrirJanelaTropas() {
         const html = `
             <div class="vis" style="padding:10px;">
-                <h2>Gerenciador de Envio de Tropas</h2>
                 <h3>Enviar Tropas para Coordenadas</h3>
                 <p>Insira as coordenadas no formato <b>000|000</b>, separadas por espaço ou nova linha:</p>
                 <textarea id="campoCoordenadas" style="width: 98%; height: 60px;"></textarea>
@@ -15,7 +14,6 @@
                 <button class="btn btn-confirm-yes" onclick="importarTropas()">Importar e Salvar</button>
                 <button class="btn" onclick="limparCampos()">Limpar</button>
                 <button class="btn" onclick="mostrarPreview()">Mostrar Resultado</button>
-                <button class="btn" onclick="colarCoordenadas()">Colar</button>
                 <div id="previewContainer" style="margin-top:10px; max-height: 150px; overflow-y: auto; background:#f0f0f0; padding:5px; border: 1px solid #ccc;"></div>
             </div>
         `;
@@ -89,17 +87,6 @@
         localStorage.removeItem("coordsSalvas");
     }
 
-    function colarCoordenadas() {
-        navigator.clipboard.readText().then(texto => {
-            const campo = document.getElementById("campoCoordenadas");
-            campo.value = texto;
-            mostrarPreview();
-            UI.SuccessMessage("Coordenadas coladas com sucesso!");
-        }).catch(() => {
-            UI.ErrorMessage("Erro ao acessar a área de transferência.");
-        });
-    }
-
     function salvarDados(coordsText, tropasObj) {
         localStorage.setItem("coordsSalvas", coordsText);
         localStorage.setItem("tropasSalvas", JSON.stringify(tropasObj));
@@ -132,13 +119,28 @@
             return;
         }
 
+        const nomesUnidades = {
+            spear: "Lanceiro",
+            sword: "Espadachim",
+            axe: "Machado",
+            archer: "Arqueiro",
+            light: "Cav. Leve",
+            marcher: "Arq. Cav.",
+            heavy: "Cav. Pesada",
+            spy: "Espião",
+            ram: "Ariete",
+            catapult: "Catapulta",
+            knight: "Paladino",
+            snob: "Nobre"
+        };
+
         let html = `<b>Pré-visualização:</b><br>`;
         html += `Coordenadas (${coords.length}):<br>`;
         html += coords.join(", ") + "<br><br>";
-        html += "Tropas:<br>";
+        html += "Tropas configuradas:<br>";
         html += Object.entries(tropas)
             .filter(([_, qtd]) => qtd > 0)
-            .map(([uni, qtd]) => `${document.querySelector("img[title][src*='unit_" + uni + "']")?.title || uni}: ${qtd}`)
+            .map(([uni, qtd]) => `${nomesUnidades[uni] || uni}: ${qtd}`)
             .join(", ");
 
         document.getElementById("previewContainer").innerHTML = html;
@@ -149,7 +151,6 @@
     window.importarTropas = importarTropas;
     window.limparCampos = limparCampos;
     window.mostrarPreview = mostrarPreview;
-    window.colarCoordenadas = colarCoordenadas;
 
     abrirJanelaTropas();
 })();
