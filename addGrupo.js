@@ -1,7 +1,5 @@
 function abrirJanelaGrupo() {
-    if (!window.location.href.includes('screen=overview_villages')) {
-        UI.InfoMessage('Acesse "overview_villages" para usar o Total de Tropas.');
-        return;
+
     }
         
     let aldeiasSelecionadas = [];
