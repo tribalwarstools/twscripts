@@ -1,6 +1,7 @@
 (function () {
   function abrirJanelaContador() {
       UI.InfoMessage('Iniciando ... "');
+      abrirJanelaContador();
     }
 
     if (!window.contadorTropas) window.contadorTropas = {};
