@@ -1,5 +1,5 @@
 (function () {
-    UI.InfoMessage('Iniciando versão 1.1...');
+    UI.InfoMessage('Iniciando versão 1.3...');
 
     function gerarTabelaTropas() {
         const unidades = [
@@ -51,12 +51,13 @@
         UI.SuccessMessage(`Importado ${coords.length} coordenadas.`);
     }
 
-        function salvarTropas() {
-            const tropas = coletarTropas();
-            localStorage.setItem("tropasSalvas", JSON.stringify(tropas));
-            UI.SuccessMessage("Tropas salvas com sucesso.");
-        }
-
+    function salvarDadosManualmente() {
+        //const coordsRaw = document.getElementById("campoCoordenadas").value;
+        const tropas = coletarTropas();
+        //localStorage.setItem("coordsSalvas", coordsRaw);
+        localStorage.setItem("tropasSalvas", JSON.stringify(tropas));
+        UI.SuccessMessage("Dados salvos com sucesso.");
+    }
 
     function colarCoordenadas() {
         navigator.clipboard.readText().then(texto => {
