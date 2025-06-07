@@ -50,12 +50,12 @@ function abrirJanelaGrupo() {
     }
 
     // Criar interface para inserção de coordenadas
-    let htmlCoordenadas = <div class="vis">
+    let htmlCoordenadas = `<div class="vis">
         <table class="vis">
-            <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui"></textarea>
+            <textarea id="campoCoordenadas" cols="30" rows="6" placeholder="Digite as coordenadas aqui (Ctrl+V)"></textarea>
             <center><button type="button" class="btn btn-confirm-yes" onclick="importarCoordenadas()">Importar</button></center>
         </table>
-    </div>;
+    </div>`;
     Dialog.show("campoCoordenadas", htmlCoordenadas);
 
     function importarCoordenadas() {
@@ -83,26 +83,26 @@ function abrirJanelaGrupo() {
         aldeiasSelecionadas = removerDuplicados(aldeiasSelecionadas, 'id');
 
         // Criar formulário para enviar aldeias ao grupo
-        let formulario = <form action="/game.php?village=${game_data.village.id}&screen=overview_villages&action=bulk_edit_villages&mode=groups&type=static&partial" method="post">
-            <table class="vis overview_table" width="100%" id="group_assign_table">;
+        let formulario = `<form action="/game.php?village=${game_data.village.id}&screen=overview_villages&action=bulk_edit_villages&mode=groups&type=static&partial" method="post">
+            <table class="vis overview_table" width="100%" id="group_assign_table">`;
 
         aldeiasSelecionadas.forEach(aldeia => {
-            formulario += <tr><td><input type="checkbox" name="village_ids[]" value="${aldeia.id}" checked> ${decodeURIComponent(aldeia.name.replaceAll("+", " "))}</td></tr>;
+            formulario += `<tr><td><input type="checkbox" name="village_ids[]" value="${aldeia.id}" checked> ${decodeURIComponent(aldeia.name.replaceAll("+", " "))}</td></tr>`;
         });
 
-        formulario += </table>
+        formulario += `</table>
             <p>Selecionar grupo:</p>
-            <select name="selected_group">;
+            <select name="selected_group">`;
 
         gruposManuais.forEach(grupo => {
-            formulario += <option value="${grupo.group_id}">${grupo.group_name}</option>;
+            formulario += `<option value="${grupo.group_id}">${grupo.group_name}</option>`;
         });
 
-        formulario += </select><br><br>
+        formulario += `</select><br><br>
             <input class="btn" type="submit" name="add_to_group" value="Adicionar ao grupo">
             <input class="btn" type="submit" name="remove_from_group" value="Remover do grupo">
             <input type="hidden" name="h" value="${csrf_token}">
-        </form>;
+        </form>`;
 
         Dialog.show("formularioGrupo", formulario);
     }
