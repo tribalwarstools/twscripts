@@ -52,7 +52,7 @@
     }
 
     function salvarDadosManualmente() {
-        const coordsRaw = document.getElementById("campoCoordenadas").value;
+        //const coordsRaw = document.getElementById("campoCoordenadas").value;
         const tropas = coletarTropas();
         //localStorage.setItem("coordsSalvas", coordsRaw);
         localStorage.setItem("tropasSalvas", JSON.stringify(tropas));
