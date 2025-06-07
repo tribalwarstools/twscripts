@@ -1,7 +1,7 @@
 function abrirJanelaGrupo() {
-    if (!window.location.href.includes('screen=overview_villages')) {
-        UI.InfoMessage('Acesse "overview_villages"');
-        return;
+    
+        UI.InfoMessage('Iniciando ... "');
+        
     }
 
     let aldeiasSelecionadas = [];
