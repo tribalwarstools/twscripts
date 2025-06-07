@@ -1,4 +1,12 @@
 function abrirJanelaTropas() {
+    const unidades = [
+        "spear", "sword", "axe", "archer", "spy",
+        "light", "marcher", "heavy", "ram", "catapult",
+        "knight", "snob"
+    ];
+
+    let tropasSalvas = JSON.parse(localStorage.getItem("tropas_padrao")) || {};
+
     let htmlTropas = `
     <div class="vis">
         <table class="vis" style="width:100%; text-align:center;">
@@ -12,11 +20,7 @@ function abrirJanelaTropas() {
                     <th><img src="/graphic/unit/unit_spy.png" title="Espião" /></th>
                 </tr>
                 <tr>
-                    <td><input type="number" id="spear" min="0" value="0" style="width:50px;"></td>
-                    <td><input type="number" id="sword" min="0" value="0" style="width:50px;"></td>
-                    <td><input type="number" id="axe" min="0" value="0" style="width:50px;"></td>
-                    <td><input type="number" id="archer" min="0" value="0" style="width:50px;"></td>
-                    <td><input type="number" id="spy" min="0" value="0" style="width:50px;"></td>
+                    ${unidades.slice(0, 5).map(u => `<td><input type="number" id="${u}" min="0" value="${tropasSalvas[u] || 0}" style="width:50px;"></td>`).join("")}
                 </tr>
 
                 <tr><th colspan="5">Cavalaria</th></tr>
@@ -28,11 +32,7 @@ function abrirJanelaTropas() {
                     <th><img src="/graphic/unit/unit_catapult.png" title="Catapulta" /></th>
                 </tr>
                 <tr>
-                    <td><input type="number" id="light" min="0" value="0" style="width:50px;"></td>
-                    <td><input type="number" id="marcher" min="0" value="0" style="width:50px;"></td>
-                    <td><input type="number" id="heavy" min="0" value="0" style="width:50px;"></td>
-                    <td><input type="number" id="ram" min="0" value="0" style="width:50px;"></td>
-                    <td><input type="number" id="catapult" min="0" value="0" style="width:50px;"></td>
+                    ${unidades.slice(5, 10).map(u => `<td><input type="number" id="${u}" min="0" value="${tropasSalvas[u] || 0}" style="width:50px;"></td>`).join("")}
                 </tr>
 
                 <tr><th colspan="5">Especiais</th></tr>
@@ -42,8 +42,7 @@ function abrirJanelaTropas() {
                     <th colspan="3"></th>
                 </tr>
                 <tr>
-                    <td><input type="number" id="knight" min="0" value="0" style="width:50px;"></td>
-                    <td><input type="number" id="snob" min="0" value="0" style="width:50px;"></td>
+                    ${unidades.slice(10).map(u => `<td><input type="number" id="${u}" min="0" value="${tropasSalvas[u] || 0}" style="width:50px;"></td>`).join("")}
                     <td colspan="3"></td>
                 </tr>
             </thead>
@@ -58,18 +57,20 @@ function abrirJanelaTropas() {
     Dialog.show("janelaTropas", htmlTropas);
 
     window.importarTropas = function () {
-        let unidades = ["spear", "sword", "axe", "archer", "spy", "light", "marcher", "heavy", "ram", "catapult", "knight", "snob"];
         let tropas = {};
         unidades.forEach(unidade => {
             tropas[unidade] = parseInt(document.getElementById(unidade).value) || 0;
         });
-        console.log("Tropas importadas:", tropas);
-        UI.SuccessMessage("Tropas importadas com sucesso!");
-        // Aqui você pode continuar com o uso de `tropas` como desejar
+        localStorage.setItem("tropas_padrao", JSON.stringify(tropas));
+        UI.SuccessMessage("Tropas salvas com sucesso!");
+        console.log("Tropas salvas:", tropas);
     };
 
     window.limparTropas = function () {
-        document.querySelectorAll("#janelaTropas input[type='number']").forEach(input => input.value = 0);
+        unidades.forEach(unidade => {
+            document.getElementById(unidade).value = 0;
+        });
+        UI.SuccessMessage("Campos zerados.");
     };
 }
 
