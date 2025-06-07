@@ -51,13 +51,12 @@
         UI.SuccessMessage(`Importado ${coords.length} coordenadas.`);
     }
 
-    function salvarDadosManualmente() {
-        //const coordsRaw = document.getElementById("campoCoordenadas").value;
-        const tropas = coletarTropas();
-        //localStorage.setItem("coordsSalvas", coordsRaw);
-        localStorage.setItem("tropasSalvas", JSON.stringify(tropas));
-        UI.SuccessMessage("Dados salvos com sucesso.");
-    }
+        function salvarTropas() {
+            const tropas = coletarTropas();
+            localStorage.setItem("tropasSalvas", JSON.stringify(tropas));
+            UI.SuccessMessage("Tropas salvas com sucesso.");
+        }
+
 
     function colarCoordenadas() {
         navigator.clipboard.readText().then(texto => {
