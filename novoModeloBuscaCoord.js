@@ -1,63 +1,5 @@
-(async function () {
-    // --- Funções auxiliares ---
-
-    function decodeName(str) {
-        return decodeURIComponent(str.replace(/\+/g, ' '));
-    }
-
-    async function fetchWorldData(type) {
-        const url = `https://${window.location.host}/map/${type}.txt`;
-        const res = await fetch(url);
-        const text = await res.text();
-        return text.trim().split('\n').map(line => line.split(','));
-    }
-
-    function buildDropdown(array, entity) {
-        let html = `
-            <tr>
-                <td><label for="ra${entity}"><b>${entity === 'Players' ? 'Jogador' : 'Tribo'}</b></label></td>
-                <td>
-                    <input type="text" list="list${entity}" id="ra${entity}" style="width: 250px;" placeholder="Digite ou selecione">
-                    <datalist id="list${entity}">
-        `;
-        array.forEach(item => {
-            if (entity === 'Players') html += `<option value="${decodeName(item[1])}">`;
-            if (entity === 'Tribes') html += `<option value="${decodeName(item[2])}">`;
-        });
-        html += `</datalist></td></tr>`;
-        return html;
-    }
-
-    function getVillagesByEntity(villages, players, tribes, name, type) {
-        if (type === 'Players') {
-            const player = players.find(p => decodeName(p[1]) === name);
-            if (!player) return [];
-            const playerId = player[0];
-            return villages.filter(v => v[4] === playerId).map(v => `${v[2]}|${v[3]}`);
-        }
-        if (type === 'Tribes') {
-            const tribe = tribes.find(t => decodeName(t[2]) === name);
-            if (!tribe) return [];
-            const tribeId = tribe[0];
-            const playerIds = players.filter(p => p[2] === tribeId).map(p => p[0]);
-            return villages.filter(v => playerIds.includes(v[4])).map(v => `${v[2]}|${v[3]}`);
-        }
-        return [];
-    }
-
-    function displayCoords(coords) {
-        if (!coords || coords.length === 0) {
-            textareaCoords.value = "";
-            btnCopiar.disabled = true;
-            previewContainer.innerHTML = `<i>Nenhuma coordenada encontrada.</i>`;
-        } else {
-            textareaCoords.value = coords.join(' ');
-            btnCopiar.disabled = false;
-            previewContainer.innerHTML = "";
-        }
-    }
-
-    // --- Gerador da tabela de tropas ---
+(function () {
+    // --- Funções das tropas (igual antes) ---
 
     function gerarTabelaTropas() {
         const unidades = [
@@ -76,7 +18,7 @@
                 const [id, nome] = unidades[i + j] || [];
                 if (id) {
                     html += `
-                        <td><img src="/graphic/unit/unit_${id}.png" title="${nome}" style="vertical-align:middle;"/> ${nome}</td>
+                        <td><img src="/graphic/unit/unit_${id}.png" title="${nome}" /> ${nome}</td>
                         <td><input type="number" id="${id}" min="0" value="0" style="width: 60px;"></td>
                     `;
                 } else {
@@ -98,13 +40,67 @@
         return tropas;
     }
 
+    function importarTropas() {
+        const coordsRaw = document.getElementById("campoCoordenadas").value;
+        const coords = coordsRaw.match(/\d{3}\|\d{3}/g) || [];
+        if (coords.length === 0) {
+            UI.ErrorMessage("Nenhuma coordenada válida encontrada.");
+            return;
+        }
+
+        UI.SuccessMessage(`Importado ${coords.length} coordenadas com tropas.`);
+    }
+
+    function salvarDadosManualmente() {
+        const coordsRaw = document.getElementById("campoCoordenadas").value;
+        const tropas = coletarTropas();
+        localStorage.setItem("coordsSalvas", coordsRaw);
+        localStorage.setItem("tropasSalvas", JSON.stringify(tropas));
+        UI.SuccessMessage("Dados salvos com sucesso.");
+    }
+
+    function colarCoordenadas() {
+        navigator.clipboard.readText().then(texto => {
+            document.getElementById("campoCoordenadas").value = texto;
+            UI.SuccessMessage("Coordenadas coladas.");
+        }).catch(() => {
+            UI.ErrorMessage("Falha ao acessar a área de transferência.");
+        });
+    }
+
+    function limparCampos() {
+        document.getElementById("campoCoordenadas").value = "";
+        const ids = ["spear", "sword", "axe", "archer", "light", "marcher", "heavy", "spy", "ram", "catapult", "knight", "snob"];
+        ids.forEach(id => {
+            const elem = document.getElementById(id);
+            if (elem) elem.value = "0";
+        });
+        document.getElementById("previewContainer").innerHTML = "";
+        localStorage.removeItem("tropasSalvas");
+        localStorage.removeItem("coordsSalvas");
+    }
+
+    function carregarDados() {
+        const coordsSalvas = localStorage.getItem("coordsSalvas");
+        const tropasSalvas = localStorage.getItem("tropasSalvas");
+
+        if (coordsSalvas) document.getElementById("campoCoordenadas").value = coordsSalvas;
+        if (tropasSalvas) {
+            const tropas = JSON.parse(tropasSalvas);
+            Object.keys(tropas).forEach(unidade => {
+                const elem = document.getElementById(unidade);
+                if (elem) elem.value = tropas[unidade];
+            });
+        }
+    }
+
     function mostrarPreview() {
-        const coordsText = textareaCoords.value;
+        const coordsText = document.getElementById("campoCoordenadas").value;
         const coords = coordsText.match(/\d{3}\|\d{3}/g) || [];
         const tropas = coletarTropas();
 
         if (coords.length === 0) {
-            previewContainer.innerHTML = "<i>Nenhuma coordenada válida para mostrar.</i>";
+            document.getElementById("previewContainer").innerHTML = "<i>Nenhuma coordenada válida para mostrar.</i>";
             return;
         }
 
@@ -132,194 +128,138 @@
             .map(([uni, qtd]) => `${nomesUnidades[uni] || uni}: ${qtd}`)
             .join(", ");
 
-        previewContainer.innerHTML = html;
+        document.getElementById("previewContainer").innerHTML = html;
     }
 
-    function salvarDadosManualmente() {
-        const coordsRaw = textareaCoords.value;
-        const tropas = coletarTropas();
-        localStorage.setItem("coordsSalvas", coordsRaw);
-        localStorage.setItem("tropasSalvas", JSON.stringify(tropas));
-        alert("Dados salvos com sucesso.");
+    // --- Painel coordenadas por jogador/tribo ---
+
+    function decodeName(str) {
+        return decodeURIComponent(str.replace(/\+/g, ' '));
     }
 
-    function limparCampos() {
-        textareaCoords.value = "";
-        const ids = ["spear", "sword", "axe", "archer", "light", "marcher", "heavy", "spy", "ram", "catapult", "knight", "snob"];
-        ids.forEach(id => {
-            const elem = document.getElementById(id);
-            if (elem) elem.value = "0";
-        });
-        previewContainer.innerHTML = "";
-        localStorage.removeItem("tropasSalvas");
-        localStorage.removeItem("coordsSalvas");
-        btnCopiar.disabled = true;
+    async function fetchWorldData(type) {
+        const url = `https://${window.location.host}/map/${type}.txt`;
+        const res = await fetch(url);
+        const text = await res.text();
+        return text.trim().split('\n').map(line => line.split(','));
     }
 
-    function colarCoordenadas() {
-        navigator.clipboard.readText().then(texto => {
-            textareaCoords.value = texto;
-            alert("Coordenadas coladas.");
-            btnCopiar.disabled = textareaCoords.value.trim().length === 0;
-        }).catch(() => {
-            alert("Falha ao acessar a área de transferência.");
-        });
-    }
-
-    function copiarCoordenadas() {
-        if (textareaCoords.value.trim().length === 0) {
-            alert("Nenhuma coordenada para copiar.");
-            return;
+    function getVillagesByEntity(villages, players, tribes, name, type) {
+        if (type === 'Players') {
+            const player = players.find(p => decodeName(p[1]) === name);
+            if (!player) return [];
+            const playerId = player[0];
+            return villages.filter(v => v[4] === playerId).map(v => `${v[2]}|${v[3]}`);
         }
-        navigator.clipboard.writeText(textareaCoords.value).then(() => {
-            alert("Coordenadas copiadas para a área de transferência.");
-        });
+        if (type === 'Tribes') {
+            const tribe = tribes.find(t => decodeName(t[2]) === name);
+            if (!tribe) return [];
+            const tribeId = tribe[0];
+            const playerIds = players.filter(p => p[2] === tribeId).map(p => p[0]);
+            return villages.filter(v => playerIds.includes(v[4])).map(v => `${v[2]}|${v[3]}`);
+        }
+        return [];
     }
 
-    // --- Layout do painel com estilo TW ---
-    const style = `
-        <style>
-            #twCoordPanel {
-                position: fixed;
-                top: 50px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: #f4e4bc;
-                border: 2px solid #804000;
-                padding: 10px;
-                z-index: 9999;
-                font-size: 12px;
-                min-width: 520px;
-                max-width: 700px;
-                box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-                font-family: Tahoma, Geneva, Verdana, sans-serif;
-            }
-            #twCoordPanel table {
-                width: 100%;
-                border-spacing: 5px;
-                margin-bottom: 10px;
-            }
-            #twCoordPanel h3 {
-                margin-top: 0;
-                color: #804000;
-                text-align: center;
-            }
-            #twCoordPanel .btn {
-                padding: 4px 8px;
-                background: #d2b48c;
-                border: 1px solid #804000;
-                cursor: pointer;
-                margin-right: 5px;
-                font-size: 12px;
-            }
-            #twCoordPanel textarea {
-                font-size: 11px;
-                font-family: monospace;
-                width: 100%;
-                height: 70px;
-                resize: vertical;
-                margin-bottom: 5px;
-            }
-            #twCoordPanel #previewContainer {
-                margin-top: 10px;
-                max-height: 150px;
-                overflow-y: auto;
-                background: #f0f0f0;
-                padding: 5px;
-                border: 1px solid #ccc;
-                font-size: 11px;
-            }
-            #twCoordPanel label {
-                font-weight: bold;
-            }
-        </style>
-    `;
+    // --- Montar a janela ---
 
-    document.head.insertAdjacentHTML('beforeend', style);
+    async function abrirJanelaCompleta() {
+        const villages = await fetchWorldData('village');
+        const players = await fetchWorldData('player');
+        const tribes = await fetchWorldData('ally');
 
-    // --- Criação do painel ---
-    const panel = document.createElement('div');
-    panel.id = 'twCoordPanel';
+        const html = `
+        <div class="vis" style="padding:10px; max-width: 700px;">
+            <h2>Gerenciador de Envio de Tropas</h2>
 
-    panel.innerHTML = `
-        <h3>Gerenciador de Coordenadas e Tropas</h3>
-        <table id="coordTable"></table>
+            <!-- Linha 1: Busca Jogador e Tribo -->
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px;">
+                <div style="flex:1 1 300px;">
+                    <label for="raPlayers"><b>Jogador:</b></label><br>
+                    <input list="listPlayers" id="raPlayers" style="width: 100%;" placeholder="Digite ou escolha o jogador...">
+                    <datalist id="listPlayers">
+                        ${players.map(p => `<option value="${decodeName(p[1])}">`).join('')}
+                    </datalist>
+                </div>
+                <div style="flex:1 1 300px;">
+                    <label for="raTribes"><b>Tribo:</b></label><br>
+                    <input list="listTribes" id="raTribes" style="width: 100%;" placeholder="Digite ou escolha a tribo...">
+                    <datalist id="listTribes">
+                        ${tribes.map(t => `<option value="${decodeName(t[2])}">`).join('')}
+                    </datalist>
+                </div>
+            </div>
 
-        <label for="textareaCoords">Coordenadas:</label>
-        <textarea id="textareaCoords" placeholder="Selecione jogador/tribo ou cole coordenadas manualmente"></textarea>
+            <!-- Linha 2: Textarea coordenadas -->
+            <label for="campoCoordenadas" style="display:block; margin-bottom: 4px;"><b>Coordenadas (formato 000|000):</b></label>
+            <textarea id="campoCoordenadas" style="width: 100%; height: 80px; resize: vertical;" placeholder="Cole ou selecione coordenadas aqui"></textarea>
 
-        <button class="btn" id="btnColar">Colar Coordenadas</button>
-        <button class="btn" id="btnCopiar" disabled>📋 Copiar Coordenadas</button>
-        <button class="btn" id="btnSalvar">Salvar Dados</button>
-        <button class="btn" id="btnLimpar">Limpar Campos</button>
-        <button class="btn" id="btnPreview">Mostrar Preview</button>
+            <!-- Linha 3: Botões Colar e Importar -->
+            <div style="margin: 8px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn" id="btnColar" style="flex: 1 1 120px; min-width: 100px;">Colar</button>
+                <button class="btn" id="btnImportar" style="flex: 1 1 120px; min-width: 100px;">Importar</button>
+            </div>
 
-        <hr>
+            <!-- Linha 4: Tabela tropas -->
+            <h3>Quantidade de Tropas</h3>
+            <table class="vis" style="width: 100%; text-align: left; margin-bottom: 8px;">
+                ${gerarTabelaTropas()}
+            </table>
 
-        <h3>Configurar Tropas para Envio</h3>
-        <table id="tropasTable" class="vis"></table>
+            <!-- Linha 5: Botões Salvar, Limpar, Mostrar -->
+            <div style="margin-bottom: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn" id="btnSalvar" style="flex: 1 1 120px; min-width: 100px;">Salvar</button>
+                <button class="btn" id="btnLimpar" style="flex: 1 1 120px; min-width: 100px;">Limpar</button>
+                <button class="btn" id="btnPreview" style="flex: 1 1 120px; min-width: 100px;">Mostrar Resultado</button>
+            </div>
 
-        <div id="previewContainer"></div>
-    `;
+            <!-- Linha 6: Preview -->
+            <div id="previewContainer" style="max-height: 140px; overflow-y: auto; background:#f0f0f0; padding:5px; border: 1px solid #ccc;"></div>
+        </div>
+        `;
 
-    document.body.appendChild(panel);
+        Dialog.show("janela_tropas", html);
 
-    // --- Elementos ---
-    const coordTable = document.getElementById('coordTable');
-    const textareaCoords = document.getElementById('textareaCoords');
-    const btnColar = document.getElementById('btnColar');
-    const btnCopiar = document.getElementById('btnCopiar');
-    const btnSalvar = document.getElementById('btnSalvar');
-    const btnLimpar = document.getElementById('btnLimpar');
-    const btnPreview = document.getElementById('btnPreview');
-    const previewContainer = document.getElementById('previewContainer');
-    const tropasTable = document.getElementById('tropasTable');
+        // Eventos do dropdown para preencher coords
+        const raPlayers = document.getElementById('raPlayers');
+        const raTribes = document.getElementById('raTribes');
+        const campoCoordenadas = document.getElementById('campoCoordenadas');
 
-    // --- Monta dropdowns de jogador e tribo ---
-    const villages = await fetchWorldData('village');
-    const players = await fetchWorldData('player');
-    const tribes = await fetchWorldData('ally');
-
-    coordTable.innerHTML =
-        buildDropdown(players, 'Players') +
-        buildDropdown(tribes, 'Tribes');
-
-    // --- Preenche tabela de tropas ---
-    tropasTable.innerHTML = gerarTabelaTropas();
-
-    // --- Eventos ---
-    document.getElementById('raPlayers').addEventListener('change', function () {
-        const name = this.value.trim();
-        const coords = getVillagesByEntity(villages, players, tribes, name, 'Players');
-        displayCoords(coords);
-    });
-
-    document.getElementById('raTribes').addEventListener('change', function () {
-        const name = this.value.trim();
-        const coords = getVillagesByEntity(villages, players, tribes, name, 'Tribes');
-        displayCoords(coords);
-    });
-
-    btnColar.addEventListener('click', colarCoordenadas);
-    btnCopiar.addEventListener('click', copiarCoordenadas);
-    btnSalvar.addEventListener('click', salvarDadosManualmente);
-    btnLimpar.addEventListener('click', limparCampos);
-    btnPreview.addEventListener('click', mostrarPreview);
-
-    // --- Carrega dados salvos ao iniciar ---
-    (function carregarDados() {
-        const coordsSalvas = localStorage.getItem("coordsSalvas");
-        const tropasSalvas = localStorage.getItem("tropasSalvas");
-
-        if (coordsSalvas) textareaCoords.value = coordsSalvas;
-        if (tropasSalvas) {
-            const tropasObj = JSON.parse(tropasSalvas);
-            for (const [id, val] of Object.entries(tropasObj)) {
-                const input = document.getElementById(id);
-                if (input) input.value = val;
-            }
+        function atualizarCoordenadasPorJogador(nome) {
+            if (!nome.trim()) return;
+            const coords = getVillagesByEntity(villages, players, tribes, nome, 'Players');
+            campoCoordenadas.value = coords.join(' ');
         }
-        btnCopiar.disabled = textareaCoords.value.trim().length === 0;
-    })();
+
+        function atualizarCoordenadasPorTribo(nome) {
+            if (!nome.trim()) return;
+            const coords = getVillagesByEntity(villages, players, tribes, nome, 'Tribes');
+            campoCoordenadas.value = coords.join(' ');
+        }
+
+        raPlayers.addEventListener('change', () => {
+            const nome = raPlayers.value;
+            atualizarCoordenadasPorJogador(nome);
+            raTribes.value = "";
+        });
+
+        raTribes.addEventListener('change', () => {
+            const nome = raTribes.value;
+            atualizarCoordenadasPorTribo(nome);
+            raPlayers.value = "";
+        });
+
+        // Botões
+        document.getElementById("btnColar").onclick = colarCoordenadas;
+        document.getElementById("btnImportar").onclick = importarTropas;
+        document.getElementById("btnSalvar").onclick = salvarDadosManualmente;
+        document.getElementById("btnLimpar").onclick = limparCampos;
+        document.getElementById("btnPreview").onclick = mostrarPreview;
+
+        carregarDados();
+    }
+
+    // Abre a janela ao carregar o script
+    abrirJanelaCompleta();
 
 })();
