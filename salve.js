@@ -20,7 +20,6 @@ function abrirJanelaTropas() {
     snob: "Nobre"
   };
 
-  // Cria a tabela com inputs para cada unidade
   let html = `<div class="vis"><table class="vis"><tbody>`;
 
   unidades.forEach(unidade => {
@@ -34,16 +33,14 @@ function abrirJanelaTropas() {
 
   html += `</tbody></table>
     <center>
-      <button class="btn btn-confirm-yes" onclick="salvarTropas()">Salvar</button>
-      <button class="btn" onclick="previewTropas()">Visualizar</button>
+      <button class="btn btn-confirm-yes" id="btnSalvar">Salvar</button>
+      <button class="btn" id="btnPreview">Visualizar</button>
     </center>
   </div>`;
 
-  // Mostrar diálogo (substitua Dialog.show pelo método correto do seu ambiente)
   Dialog.show("janelaTropas", html);
 
-  // Função para salvar os valores no localStorage
-  window.salvarTropas = function() {
+  document.getElementById("btnSalvar").addEventListener("click", () => {
     let dados = {};
     unidades.forEach(unidade => {
       let valor = parseInt(document.getElementById(`input_${unidade}`).value) || 0;
@@ -51,10 +48,9 @@ function abrirJanelaTropas() {
     });
     localStorage.setItem("tropasSalvas", JSON.stringify(dados));
     UI.InfoMessage("Tropas salvas com sucesso!");
-  };
+  });
 
-  // Função para mostrar preview dos dados salvos
-  window.previewTropas = function() {
+  document.getElementById("btnPreview").addEventListener("click", () => {
     let dados = localStorage.getItem("tropasSalvas");
     if (!dados) {
       UI.InfoMessage("Nenhum dado salvo.");
@@ -66,5 +62,5 @@ function abrirJanelaTropas() {
       texto += `${nomesUnidades[unidade]}: ${tropas[unidade]}\n`;
     }
     alert(texto);
-  };
+  });
 }
