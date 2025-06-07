@@ -56,7 +56,7 @@
         const tropas = coletarTropas();
         //localStorage.setItem("coordsSalvas", coordsRaw);
         localStorage.setItem("tropasSalvas", JSON.stringify(tropas));
-        UI.SuccessMessage("Dados salvos com sucesso.");
+        UI.SuccessMessage("Tropas salvos com sucesso.");
     }
 
     function colarCoordenadas() {
