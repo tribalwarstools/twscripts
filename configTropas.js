@@ -25,7 +25,11 @@
         Dialog.show("janela_tropas", html);
         carregarDados();
     }
-    UI.InfoMessage('Gerenciador de Envio de Tropas - Versão: 1.0');
+
+    //MENSAGEM INICIAL
+    UI.InfoMessage('Gerenciador de Envio de Tropas - Versão: 1.1');
+    //MENSAGEM INICIAL
+    
     function gerarTabelaTropas() {
         const unidades = [
             ["spear", "Lanceiro"], ["sword", "Espadachim"],
