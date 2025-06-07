@@ -192,8 +192,8 @@
             <textarea id="campoCoordenadas" style="width: 98%; height: 80px; resize: vertical;" placeholder="Cole as coordenadas aqui"></textarea>
 
             <div style="margin: 8px 0; display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn" id="btnColar" style="flex: 1 1 120px; min-width: 100px;">Colar coordenadas</button>
-                <button class="btn" id="btnImportar" style="flex: 1 1 120px; min-width: 100px;">Importar coordenadas</button>
+                <button class="btn" id="btnColar" style="flex: 1 1 120px; min-width: 100px;">Colar</button>
+                <button class="btn" id="btnImportar" style="flex: 1 1 120px; min-width: 100px;">Importar</button>
             </div>
 
             <h3>Quantidade de Tropas</h3>
@@ -202,8 +202,8 @@
             </table>
 
             <div style="margin-bottom: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn" id="btnSalvar" style="flex: 1 1 120px; min-width: 100px;">Salvar configurações</button>
-                <button class="btn" id="btnLimpar" style="flex: 1 1 120px; min-width: 100px;">Limpar tudo</button>
+                <button class="btn" id="btnSalvar" style="flex: 1 1 120px; min-width: 100px;">Salvar</button>
+                <button class="btn" id="btnLimpar" style="flex: 1 1 120px; min-width: 100px;">Limpar</button>
                 <button class="btn" id="btnPreview" style="flex: 1 1 120px; min-width: 100px;">Mostrar resultado</button>
             </div>
 
