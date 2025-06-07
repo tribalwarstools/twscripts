@@ -4,6 +4,8 @@
   const coordToPoints = {};
   const STORAGE_KEY = "tw_last_selected_group";
 
+ UI.InfoMessage('Iniciando...');
+
   // Mapeia coordenadas para ID
   const mapData = await $.get("map/village.txt");
   mapData.trim().split("\n").forEach(line => {
