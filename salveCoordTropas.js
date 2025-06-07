@@ -4,7 +4,7 @@ function abrirJanelaTropas() {
         "light", "marcher", "heavy", "ram", "catapult",
         "knight", "snob"
     ];
-    UI.InfoMessage('Iniciando...');
+
     const nomesUnidades = {
         spear: "Lanceiro",
         sword: "Espadachim",
@@ -20,86 +20,99 @@ function abrirJanelaTropas() {
         snob: "Nobre"
     };
 
-    let tropasSalvas = JSON.parse(localStorage.getItem("tropas_padrao")) || {};
+    // Tenta carregar do cache
+    let tropasSalvas = {};
+    try {
+        const dataCache = localStorage.getItem('tropasCache');
+        if (dataCache) tropasSalvas = JSON.parse(dataCache);
+    } catch {
+        tropasSalvas = {};
+    }
 
-    let htmlTropas = `
-    <div class="vis">
-        <table class="vis" style="width:100%; text-align:center;">
-            <thead>
-                <tr><th colspan="5">Infantaria</th></tr>
-                <tr>
-                    <th><img src="/graphic/unit/unit_spear.png" title="Lanceiro" /></th>
-                    <th><img src="/graphic/unit/unit_sword.png" title="Espadachim" /></th>
-                    <th><img src="/graphic/unit/unit_axe.png" title="Machado" /></th>
-                    <th><img src="/graphic/unit/unit_archer.png" title="Arqueiro" /></th>
-                    <th><img src="/graphic/unit/unit_spy.png" title="Espião" /></th>
-                </tr>
-                <tr>
-                    ${unidades.slice(0, 5).map(u => `<td><input type="number" id="${u}" min="0" value="${tropasSalvas[u] || 0}" style="width:50px;"></td>`).join("")}
-                </tr>
+    // Monta o HTML do formulário
+    let html = `<div class="vis"><table class="vis" style="width:100%">`;
+    unidades.forEach(unidade => {
+        const valor = tropasSalvas[unidade] ?? '';
+        html += `
+            <tr>
+                <td style="width:150px">${nomesUnidades[unidade]}</td>
+                <td><input type="number" min="0" id="input_${unidade}" value="${valor}" style="width:100px"></td>
+            </tr>
+        `;
+    });
+    html += `</table>`;
 
-                <tr><th colspan="5">Cavalaria</th></tr>
-                <tr>
-                    <th><img src="/graphic/unit/unit_light.png" title="Cav. Leve" /></th>
-                    <th><img src="/graphic/unit/unit_marcher.png" title="Arqueiro a Cavalo" /></th>
-                    <th><img src="/graphic/unit/unit_heavy.png" title="Cav. Pesada" /></th>
-                    <th><img src="/graphic/unit/unit_ram.png" title="Ariete" /></th>
-                    <th><img src="/graphic/unit/unit_catapult.png" title="Catapulta" /></th>
-                </tr>
-                <tr>
-                    ${unidades.slice(5, 10).map(u => `<td><input type="number" id="${u}" min="0" value="${tropasSalvas[u] || 0}" style="width:50px;"></td>`).join("")}
-                </tr>
-
-                <tr><th colspan="5">Especiais</th></tr>
-                <tr>
-                    <th><img src="/graphic/unit/unit_knight.png" title="Paladino" /></th>
-                    <th><img src="/graphic/unit/unit_snob.png" title="Nobre" /></th>
-                    <th colspan="3"></th>
-                </tr>
-                <tr>
-                    ${unidades.slice(10).map(u => `<td><input type="number" id="${u}" min="0" value="${tropasSalvas[u] || 0}" style="width:50px;"></td>`).join("")}
-                    <td colspan="3"></td>
-                </tr>
-            </thead>
-        </table>
-
-        <center style="margin-top:10px;">
-            <button class="btn btn-confirm-yes" onclick="importarTropas()">Importar</button>
-            <button class="btn" onclick="limparTropas()">Limpar</button>
+    // Botões: salvar, limpar, preview
+    html += `
+        <br>
+        <center>
+            <button class="btn btn-confirm-yes" id="btnSalvar">Salvar</button>
+            <button class="btn" id="btnLimpar">Limpar</button>
+            <button class="btn" id="btnPreview">Preview</button>
         </center>
-
-        <div id="previewTropas" style="margin-top:10px; font-size:13px; color:#555;">
-            ${gerarPreview(tropasSalvas)}
-        </div>
+        <br>
+        <div id="previewArea" style="max-height:200px; overflow:auto; border:1px solid #ccc; padding:5px; display:none;"></div>
     </div>`;
 
-    Dialog.show("janelaTropas", htmlTropas);
+    // Abre o dialog do Tribal Wars
+    Dialog.show('JanelaTropas', html);
 
-    window.importarTropas = function () {
-        let tropas = {};
+    // Função salvar
+    function salvar() {
+        let dados = {};
+        let valido = false;
         unidades.forEach(unidade => {
-            tropas[unidade] = parseInt(document.getElementById(unidade).value) || 0;
+            let val = parseInt(document.getElementById(`input_${unidade}`).value) || 0;
+            dados[unidade] = val;
+            if (val > 0) valido = true;
         });
-        localStorage.setItem("tropas_padrao", JSON.stringify(tropas));
-        document.getElementById("previewTropas").innerHTML = gerarPreview(tropas);
-        UI.SuccessMessage("Tropas salvas com sucesso!");
-        console.log("Tropas salvas:", tropas);
-    };
+        if (!valido) {
+            UI.InfoMessage("Insira ao menos um valor maior que zero.", 3000, "error");
+            return;
+        }
+        localStorage.setItem('tropasCache', JSON.stringify(dados));
+        UI.InfoMessage("Tropas salvas com sucesso!", 3000, "success");
+        mostrarPreview();
+    }
 
-    window.limparTropas = function () {
+    // Função limpar
+    function limpar() {
         unidades.forEach(unidade => {
-            document.getElementById(unidade).value = 0;
+            document.getElementById(`input_${unidade}`).value = '';
         });
-        document.getElementById("previewTropas").innerHTML = gerarPreview({});
-        UI.SuccessMessage("Campos zerados.");
-    };
+        localStorage.removeItem('tropasCache');
+        document.getElementById('previewArea').style.display = 'none';
+        UI.InfoMessage("Campos limpos e cache removido.", 3000, "success");
+    }
 
-    function gerarPreview(tropas) {
-        const ativos = Object.entries(tropas)
-            .filter(([_, qtd]) => qtd > 0)
-            .map(([unit, qtd]) => `● ${nomesUnidades[unit]}: ${qtd}`);
-        return ativos.length ? `<b>Visualização das tropas salvas:</b><br>${ativos.join(" | ")}` : `<i>Nenhuma tropa salva ainda.</i>`;
+    // Função mostrar preview
+    function mostrarPreview() {
+        let dados = localStorage.getItem('tropasCache');
+        if (!dados) {
+            UI.InfoMessage("Nenhum dado salvo para mostrar.", 3000, "warning");
+            return;
+        }
+        dados = JSON.parse(dados);
+        let texto = '<b>Preview das tropas salvas:</b><br><ul>';
+        for (const [unidade, qtd] of Object.entries(dados)) {
+            if (qtd > 0) texto += `<li>${nomesUnidades[unidade]}: ${qtd}</li>`;
+        }
+        texto += '</ul>';
+        const previewArea = document.getElementById('previewArea');
+        previewArea.innerHTML = texto;
+        previewArea.style.display = 'block';
+    }
+
+    // Eventos dos botões
+    document.getElementById('btnSalvar').addEventListener('click', salvar);
+    document.getElementById('btnLimpar').addEventListener('click', limpar);
+    document.getElementById('btnPreview').addEventListener('click', mostrarPreview);
+
+    // Mostrar preview automático ao abrir se já tiver dados
+    if (Object.keys(tropasSalvas).length > 0) {
+        mostrarPreview();
     }
 }
 
+// Para expor a função globalmente, se quiser chamar direto pelo console ou botão
 window.abrirJanelaTropas = abrirJanelaTropas;
