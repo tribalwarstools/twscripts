@@ -1,6 +1,5 @@
 function abrirJanelaGrupo() {
-
-    }
+   
         
     let aldeiasSelecionadas = [];
     let gruposManuais = [];
