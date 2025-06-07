@@ -119,13 +119,28 @@
             return;
         }
 
-        let html = `<b>Preview:</b><br>`;
+        const nomesUnidades = {
+            spear: "Lanceiro",
+            sword: "Espadachim",
+            axe: "Machado",
+            archer: "Arqueiro",
+            light: "Cav. Leve",
+            marcher: "Arq. Cav.",
+            heavy: "Cav. Pesada",
+            spy: "Espião",
+            ram: "Ariete",
+            catapult: "Catapulta",
+            knight: "Paladino",
+            snob: "Nobre"
+        };
+
+        let html = `<b>Pré-visualização:</b><br>`;
         html += `Coordenadas (${coords.length}):<br>`;
         html += coords.join(", ") + "<br><br>";
-        html += "Tropas:<br>";
+        html += "Tropas configuradas:<br>";
         html += Object.entries(tropas)
             .filter(([_, qtd]) => qtd > 0)
-            .map(([uni, qtd]) => `${uni}: ${qtd}`)
+            .map(([uni, qtd]) => `${nomesUnidades[uni] || uni}: ${qtd}`)
             .join(", ");
 
         document.getElementById("previewContainer").innerHTML = html;
