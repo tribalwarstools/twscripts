@@ -1,4 +1,5 @@
 (function () {
+    UI.InfoMessage('Iniciando...');
     // --- Funções das tropas (igual antes) ---
 
     function gerarTabelaTropas() {
