@@ -1,3 +1,4 @@
+
 ---
 
 # Gerenciador de Envio de Tropas - Versão 2.0
@@ -47,5 +48,4 @@ Este projeto consiste em um script para o jogo **Tribal Wars** que facilita o ge
 * Foi testado no navegador Chrome e Firefox nas versões recentes.
 
 ---
-
 
