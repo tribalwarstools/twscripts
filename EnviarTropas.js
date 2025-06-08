@@ -206,7 +206,7 @@
         }
       })(
         'Script de Ataque',
-        "javascript:$.getScript('https://tribalwarstools.github.io/twscripts/ataque.js');"
+        "javascript:$.getScript('https://tribalwarstools.github.io/twscripts/ScriptAtaque.js');"
       );
     };
 
