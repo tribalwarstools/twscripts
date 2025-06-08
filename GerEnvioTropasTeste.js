@@ -1,5 +1,5 @@
 (function () {
-    UI.InfoMessage('Iniciando versão 1.5...');
+    UI.InfoMessage('Iniciando versão 1.6...');
 
     const unidades = [
         ["spear", "Lanceiro"], ["sword", "Espadachim"],
@@ -148,6 +148,7 @@
                 <button class="btn" id="btnSalvar" style="flex:1 1 120px;">Salvar</button>
                 <button class="btn" id="btnLimpar" style="flex:1 1 120px;">Limpar</button>
                 <button class="btn" id="btnPreview" style="flex:1 1 120px;">Mostrar resultado</button>
+                <button class="btn" id="btnAtalho" style="flex:1 1 120px;">Criar Atalho</button>
             </div>
 
             <h3>Quantidade de Tropas</h3>
@@ -177,6 +178,17 @@
         document.getElementById("btnSalvar").onclick = salvarDados;
         document.getElementById("btnLimpar").onclick = limparCampos;
         document.getElementById("btnPreview").onclick = mostrarPreview;
+
+        document.getElementById("btnAtalho").onclick = async () => {
+            const atalho = `javascript:(${abrirPainel.toString()})();`;
+            try {
+                await navigator.clipboard.writeText(atalho);
+                UI.SuccessMessage("Atalho 'Ataque' copiado para a área de transferência. Adicione manualmente aos favoritos.");
+            } catch (err) {
+                UI.ErrorMessage("Não foi possível copiar o atalho. Veja o console para copiar manualmente.");
+                console.log("Atalho:", atalho);
+            }
+        };
 
         carregarDados();
     }
