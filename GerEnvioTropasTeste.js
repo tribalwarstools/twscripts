@@ -1,5 +1,5 @@
 (function () {
-    UI.InfoMessage('Iniciando versão 1.6...');
+    UI.InfoMessage('Iniciando versão 1.8...');
 
     const unidades = [
         ["spear", "Lanceiro"], ["sword", "Espadachim"],
@@ -179,15 +179,31 @@
         document.getElementById("btnLimpar").onclick = limparCampos;
         document.getElementById("btnPreview").onclick = mostrarPreview;
 
-        document.getElementById("btnAtalho").onclick = async () => {
-            const atalho = `javascript:(${abrirPainel.toString()})();`;
-            try {
-                await navigator.clipboard.writeText(atalho);
-                UI.SuccessMessage("Atalho 'Ataque' copiado para a área de transferência. Adicione manualmente aos favoritos.");
-            } catch (err) {
-                UI.ErrorMessage("Não foi possível copiar o atalho. Veja o console para copiar manualmente.");
-                console.log("Atalho:", atalho);
-            }
+        document.getElementById("btnAtalho").onclick = () => {
+            (async function adicionarAtalhoQuickbar(nome, href) {
+                try {
+                    const token = window.csrf_token || (typeof twSDK !== 'undefined' && await twSDK.getCSRFToken()) || null;
+                    if (!token) {
+                        UI.ErrorMessage('Token CSRF não encontrado.');
+                        return;
+                    }
+
+                    const data = `hotkey=&name=${encodeURIComponent(nome)}&href=${encodeURIComponent(href)}&h=${token}`;
+                    await $.ajax({
+                        url: '/game.php?screen=settings&mode=quickbar_edit&action=quickbar_edit&',
+                        method: 'POST',
+                        data,
+                    });
+
+                    UI.SuccessMessage(`Atalho '${nome}' adicionado com sucesso!`);
+                    location.reload();
+                } catch (e) {
+                    UI.ErrorMessage('Erro ao adicionar atalho: ' + e.message);
+                }
+            })(
+                'Ataque',
+                "javascript:$.getScript('https://tribalwarstools.github.io/twscripts/ataque.js');"
+            );
         };
 
         carregarDados();
