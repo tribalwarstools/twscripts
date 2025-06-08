@@ -205,7 +205,7 @@
           UI.ErrorMessage('Erro ao adicionar atalho: ' + e.message);
         }
       })(
-        'Ataque',
+        'Script de Ataque',
         "javascript:$.getScript('https://tribalwarstools.github.io/twscripts/ataque.js');"
       );
     };
