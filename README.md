@@ -31,7 +31,7 @@ Este projeto consiste em um script para o jogo **Tribal Wars** que facilita o ge
 2. Adicione o link do script no campo URL, e após configurar tudo salvar e executar.
 3. Escolha jogador ou tribo para preencher as coordenadas automaticamente, ou cole/insira manualmente.
 4. Configure a quantidade de tropas para envio.
-5. Use os botões para salvar, limpar, mostrar preview ou criar atalho.
+5. Use os botões para salvar, limpar, mostrar resultado ou criar atalho.
 6. O atalho criado fica disponível na Quickbar do jogo para execução rápida do script de ataque.
 
 ## Benefícios
