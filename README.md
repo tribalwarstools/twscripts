@@ -27,8 +27,8 @@ Este projeto consiste em um script para o jogo **Tribal Wars** que facilita o ge
 
 ## Como Usar
 
-1. Execute o script no console do navegador ou instale como userscript.
-2. O painel de gerenciamento será exibido automaticamente.
+1. Acesse a Barra de acesso rápido do jogo (Configurações / Barra de acesso rápido)
+2. Adicione o link do script no campo URL, e após configurar tudo salvar e executar.
 3. Escolha jogador ou tribo para preencher as coordenadas automaticamente, ou cole/insira manualmente.
 4. Configure a quantidade de tropas para envio.
 5. Use os botões para salvar, limpar, mostrar preview ou criar atalho.
