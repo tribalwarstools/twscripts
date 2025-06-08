@@ -81,7 +81,7 @@
   });
 
   $("#abrirRenamer").on("click", () => {
-    $.getScript("https://tribalwarstools.github.io/twscripts/RenomearAld.js")
+    $.getScript("https://tribalwarstools.github.io/twscripts/PainelRenomearAld.js")
       .done(() => setTimeout(() => {
         if (typeof abrirPainelRenomear === "function") abrirPainelRenomear();
         else UI.ErrorMessage("Função abrirPainelRenomear não encontrada.");
