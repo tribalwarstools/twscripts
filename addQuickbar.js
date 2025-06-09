@@ -27,14 +27,14 @@
         <tr>
           <td>Nome do atalho:</td>
           <td>
-            <input id="inputName" type="text" maxlength="30" style="width:50%;" placeholder="Nome do atalho">
+            <input id="inputName" type="text" maxlength="30" style="width:50%;" placeholder="Nome do atalho" value="${defaultName}">
           </td>
         </tr>
         <tr>
-          <td>Link do script:</td>
+          <td>Nome do script:</td>
           <td style="display:flex; gap:4px;">
-            <input id="inputHref" type="text" maxlength="200" style="width:50%;" value="${defaultHref}" readonly>
-            <button id="btnCopyUrl" class="btn" style="white-space: nowrap;">Copiar URL</button>
+            <input id="inputHref" type="text" maxlength="200" style="width:50%;" placeholder="ex: teste">
+            <button id="btnGenerateCopyUrl" class="btn" style="white-space: nowrap;">Gerar URL</button>
           </td>
         </tr>
         <tr>
@@ -48,32 +48,57 @@
 
   Dialog.show('add_quickbar', $html);
 
-  $('#btnCopyUrl').on('click', () => {
-    const url = $('#inputHref').val();
-    if (!url) {
-      UI.ErrorMessage('Campo URL está vazio.');
+  function atualizarHrefCompleto() {
+    let valor = $('#inputHref').val().trim();
+    if (!valor) {
+      $('#inputHref').data('hrefCompleto', '');
       return;
     }
-    navigator.clipboard.writeText(url)
-      .then(() => UI.SuccessMessage('URL copiada para a área de transferência!'))
-      .catch(() => UI.ErrorMessage('Falha ao copiar a URL.'));
+
+    // Remove ".js" se o usuário digitar
+    valor = valor.replace(/\.js$/i, '');
+
+    const hrefCompleto = `javascript:$.getScript('https://tribalwarstools.github.io/twscripts/${valor}.js');`;
+    $('#inputHref').data('hrefCompleto', hrefCompleto);
+  }
+
+  $('#inputHref').on('input', atualizarHrefCompleto);
+
+  $('#btnGenerateCopyUrl').on('click', () => {
+    const href = $('#inputHref').data('hrefCompleto') || '';
+    const buttonText = $('#btnGenerateCopyUrl').text();
+
+    if (buttonText === 'Gerar URL') {
+      // Gerar o link completo
+      if (!href) {
+        UI.ErrorMessage('Digite o nome do script.');
+        return;
+      }
+
+      // Preenche o campo com a URL gerada
+      $('#inputHref').val(href);
+      $('#btnGenerateCopyUrl').text('Copiar URL');
+    } else {
+      // Copiar URL para a área de transferência
+      navigator.clipboard.writeText(href)
+        .then(() => UI.SuccessMessage('URL copiada para a área de transferência!'))
+        .catch(() => UI.ErrorMessage('Falha ao copiar a URL.'));
+      
+      $('#btnGenerateCopyUrl').text('Gerar URL'); // Volta para "Gerar URL"
+    }
   });
 
   $('#btnAdd').on('click', async () => {
     const name = $('#inputName').val().trim();
-    const href = $('#inputHref').val().trim();
+    const href = $('#inputHref').data('hrefCompleto') || '';
 
     if (!name || !href) {
-      UI.ErrorMessage('Preencha nome e link do atalho.');
+      UI.ErrorMessage('Preencha nome e nome do script.');
       return;
     }
 
     await adicionarAtalho(name, href);
-
     Dialog.close();
-    location.reload();  // Atualiza a página para refletir o novo atalho
+    location.reload();
   });
-})(
-  '',
-  "javascript:$.getScript('https://tribalwarstools.github.io/twscripts/NomedoScript.js');"
-);
+})();
