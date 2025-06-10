@@ -9,15 +9,32 @@
 
   function abrirPainelRenomear() {
     const url = window.location.href;
-    const urlBase = '/game.php?screen=overview_villages&mode=combined';
+    const urlBase = '/game.php?screen=overview_villages&mode=combined&group=0';
 
     if (!url.includes('screen=overview_villages') || !url.includes('mode=combined')) {
-      UI.InfoMessage('Redirecionando para página de aldeias');
-      window.location.href = urlBase;
+      const dialogHtml = `
+        <div style="font-size:14px; padding:10px;">
+          <p>Você não está na página de aldeias combinadas.<br>Deseja ser redirecionado agora?</p>
+          <div style="text-align:center; margin-top:15px;">
+            <button id="btnSim" class="btn">Sim</button>
+            <button id="btnNao" class="btn">Não</button>
+          </div>
+        </div>
+      `;
+      Dialog.show('redirecionar', dialogHtml);
+
+      $('#btnSim').on('click', () => {
+        Dialog.close();
+        window.location.href = urlBase;
+      });
+
+      $('#btnNao').on('click', () => {
+        Dialog.close();
+        UI.ErrorMessage('Renomeador cancelado. Navegue manualmente até a tela "Visão Geral - Combinada".');
+      });
       return;
     }
 
-    
     const contadorAtual = parseInt(localStorage.getItem('renamer_counter') || '1', 10);
 
     const $html = `
@@ -167,6 +184,5 @@
     });
   }
 
-  // ✅ CHAMAR a função aqui:
   abrirPainelRenomear();
 })();
