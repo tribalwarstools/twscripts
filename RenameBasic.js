@@ -12,11 +12,12 @@
     const urlBase = '/game.php?screen=overview_villages&mode=combined';
 
     if (!url.includes('screen=overview_villages') || !url.includes('mode=combined')) {
+      UI.InfoMessage('Redirecionando para página de aldeias');
       window.location.href = urlBase;
       return;
     }
 
-    UI.InfoMessage('Iniciando...');
+    
     const contadorAtual = parseInt(localStorage.getItem('renamer_counter') || '1', 10);
 
     const $html = `
