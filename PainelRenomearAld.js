@@ -12,6 +12,7 @@
     const urlBase = '/game.php?screen=overview_villages&mode=combined';
 
     if (!url.includes('screen=overview_villages') || !url.includes('mode=combined')) {
+      UI.InfoMessage('Redirecionado a lista de aldeias');
       window.location.href = urlBase;
       return;
     }
