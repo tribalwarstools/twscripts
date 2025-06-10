@@ -1,4 +1,5 @@
 (function () {
+  // --- Função para obter grupo ativo ---
   function getGrupoAtivoViaMenu() {
     const ativo = document.querySelector('strong.group-menu-item');
     if (!ativo) return { id: 0, name: "Nenhum" };
@@ -7,31 +8,129 @@
     return { id, name: texto };
   }
 
+  // --- Função para montar o nome da aldeia ---
+  function montarNome(contador, digitos, prefixo, textoBase, usarNumeracao, usarPrefixo, usarTexto) {
+    return [
+      usarNumeracao ? String(contador).padStart(digitos, '0') : '',
+      usarPrefixo ? prefixo : '',
+      usarTexto ? textoBase : ''
+    ].filter(Boolean).join(' ').trim();
+  }
+
+  // --- Função para carregar configuração do localStorage ---
+  function carregarConfig() {
+    return JSON.parse(localStorage.getItem('renamer_config') || '{}');
+  }
+
+  // --- Função para salvar configuração no localStorage ---
+  function salvarConfig(config) {
+    localStorage.setItem('renamer_config', JSON.stringify(config));
+    UI.SuccessMessage('Configurações salvas.');
+  }
+
+  // --- Função para limpar configurações e contador ---
+  function resetarConfiguracoes() {
+    localStorage.removeItem('renamer_counter');
+    localStorage.removeItem('renamer_config');
+    $('#firstbox').prop('checked', false);
+    $('#end').val('2');
+    $('#prefixcheck').prop('checked', false);
+    $('#prefixbox').val('');
+    $('#secondbox').prop('checked', false);
+    $('#textname').val('');
+    $('#setCounter').val('');
+    $('#contadorAtual').text('1');
+    $('#previewList').html('');
+    UI.SuccessMessage('Tudo resetado e limpo.');
+  }
+
+  // --- Função para mostrar preview da renomeação ---
+  function mostrarPreview(contadorAtual) {
+    const grupoAtivo = getGrupoAtivoViaMenu();
+    const grupoNome = grupoAtivo.name;
+
+    const usarNumeracao = $('#firstbox').prop('checked');
+    const digitos = parseInt($('#end').val()) || 2;
+    const usarPrefixo = $('#prefixcheck').prop('checked');
+    const prefixo = $('#prefixbox').val().trim();
+    const usarTexto = $('#secondbox').prop('checked');
+    const textoBase = $('#textname').val() || '';
+    const novoInicio = parseInt($('#setCounter').val());
+    let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
+
+    const $aldeias = $('.rename-icon');
+    const total = $aldeias.length;
+
+    let htmlPreview = `<b>Prévia de renomeação (${total}) - Grupo: <span style="color:blue;">${grupoNome}</span></b><br>`;
+
+    for (let i = 0; i < total; i++) {
+      const nome = montarNome(contador++, digitos, prefixo, textoBase, usarNumeracao, usarPrefixo, usarTexto);
+      htmlPreview += `• ${nome}<br>`;
+    }
+
+    $('#previewList').html(htmlPreview);
+  }
+
+  // --- Função para executar a renomeação ---
+  function executarRenomeacao(contadorAtual) {
+    const usarNumeracao = $('#firstbox').prop('checked');
+    const digitos = parseInt($('#end').val()) || 2;
+    const usarPrefixo = $('#prefixcheck').prop('checked');
+    const prefixo = $('#prefixbox').val().trim();
+    const usarTexto = $('#secondbox').prop('checked');
+    const textoBase = $('#textname').val() || '';
+    const novoInicio = parseInt($('#setCounter').val());
+
+    let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
+    if (!isNaN(novoInicio)) {
+      localStorage.setItem('renamer_counter', contador.toString());
+    }
+
+    Dialog.close();
+
+    const $aldeias = $('.rename-icon');
+    const total = $aldeias.length;
+
+    $aldeias.each(function (i) {
+      const $btn = this;
+      setTimeout(() => {
+        $($btn).click();
+        const novoNome = montarNome(contador++, digitos, prefixo, textoBase, usarNumeracao, usarPrefixo, usarTexto);
+        $('.vis input[type="text"]').val(novoNome);
+        $('input[type="button"]').click();
+        UI.SuccessMessage(`Renomeada: ${i + 1}/${total}`);
+        if (i + 1 === total) {
+          localStorage.setItem('renamer_counter', String(contador));
+        }
+      }, i * 300);
+    });
+  }
+
+  // --- Função principal que abre o painel ---
   function abrirPainelRenomear() {
     const url = window.location.href;
     const urlBase = '/game.php?screen=overview_villages&mode=combined&group=0';
 
     if (!url.includes('screen=overview_villages') || !url.includes('mode=combined')) {
-      const dialogHtml = `
-        <div style="font-size:14px; padding:10px;">
-          <p>Você não está na página de aldeias combinadas.<br>Deseja ser redirecionado agora?</p>
-          <div style="text-align:center; margin-top:15px;">
-            <button id="btnSim" class="btn">Sim</button>
-            <button id="btnNao" class="btn">Não</button>
+      // Mostrar diálogo perguntando se usuário quer ser redirecionado
+      Dialog.show('redirDialog', `
+        <div style="font-size:12px; text-align:center;">
+          <p>Você não está na página de aldeias combinadas. Deseja ser redirecionado?</p>
+          <div style="margin-top:10px;">
+            <button id="redirSim" class="btn">Sim</button>
+            <button id="redirNao" class="btn">Não</button>
           </div>
         </div>
-      `;
-      Dialog.show('redirecionar', dialogHtml);
+      `);
 
-      $('#btnSim').on('click', () => {
-        Dialog.close();
+      $('#redirSim').on('click', () => {
         window.location.href = urlBase;
       });
 
-      $('#btnNao').on('click', () => {
+      $('#redirNao').on('click', () => {
         Dialog.close();
-        UI.ErrorMessage('Renomeador cancelado. Navegue manualmente até a tela "Visão Geral - Combinada".');
       });
+
       return;
     }
 
@@ -78,7 +177,7 @@
 
     Dialog.show('rename', $html);
 
-    let config = JSON.parse(localStorage.getItem('renamer_config') || '{}');
+    let config = carregarConfig();
     $('#firstbox').prop('checked', config.firstbox || false);
     $('#end').val(config.end || 2);
     $('#prefixcheck').prop('checked', config.prefixcheck || false);
@@ -95,94 +194,24 @@
         secondbox: $('#secondbox').prop('checked'),
         textname: $('#textname').val()
       };
-      localStorage.setItem('renamer_config', JSON.stringify(config));
-      UI.SuccessMessage('Configurações salvas.');
+      salvarConfig(config);
     });
 
     $('#resetCounter').on('click', () => {
-      localStorage.removeItem('renamer_counter');
-      localStorage.removeItem('renamer_config');
-      $('#firstbox').prop('checked', false);
-      $('#end').val('2');
-      $('#prefixcheck').prop('checked', false);
-      $('#prefixbox').val('');
-      $('#secondbox').prop('checked', false);
-      $('#textname').val('');
-      $('#setCounter').val('');
-      $('#contadorAtual').text('1');
-      $('#previewList').html('');
-      UI.SuccessMessage('Tudo resetado e limpo.');
+      resetarConfiguracoes();
     });
 
-    $('#preview').on('click', async () => {
-      const grupoAtivo = getGrupoAtivoViaMenu();
-      const grupoNome = grupoAtivo.name;
-
-      const usarNumeracao = $('#firstbox').prop('checked');
-      const digitos = parseInt($('#end').val()) || 2;
-      const usarPrefixo = $('#prefixcheck').prop('checked');
-      const prefixo = $('#prefixbox').val().trim();
-      const usarTexto = $('#secondbox').prop('checked');
-      const textoBase = $('#textname').val() || '';
-      const novoInicio = parseInt($('#setCounter').val());
-      let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
-
-      const $aldeias = $('.rename-icon');
-      const total = $aldeias.length;
-
-      let htmlPreview = `<b>Prévia de renomeação (${total}) - Grupo: <span style="color:blue;">${grupoNome}</span></b><br>`;
-      for (let i = 0; i < total; i++) {
-        const nome = [
-          usarNumeracao ? String(contador++).padStart(digitos, '0') : '',
-          usarPrefixo ? prefixo : '',
-          usarTexto ? textoBase : ''
-        ].filter(Boolean).join(' ').trim();
-        htmlPreview += `• ${nome}<br>`;
-      }
-
-      $('#previewList').html(htmlPreview);
+    $('#preview').on('click', () => {
+      mostrarPreview(contadorAtual);
     });
 
-    $('#rename').on('click', function (e) {
+    $('#rename').on('click', (e) => {
       e.preventDefault();
-
-      const usarNumeracao = $('#firstbox').prop('checked');
-      const digitos = parseInt($('#end').val()) || 2;
-      const usarPrefixo = $('#prefixcheck').prop('checked');
-      const prefixo = $('#prefixbox').val().trim();
-      const usarTexto = $('#secondbox').prop('checked');
-      const textoBase = $('#textname').val() || '';
-      const novoInicio = parseInt($('#setCounter').val());
-
-      let contador = !isNaN(novoInicio) ? novoInicio : parseInt(localStorage.getItem('renamer_counter') || '1', 10);
-      if (!isNaN(novoInicio)) {
-        localStorage.setItem('renamer_counter', contador.toString());
-      }
-
-      Dialog.close();
-
-      const $aldeias = $('.rename-icon');
-      const total = $aldeias.length;
-
-      $aldeias.each(function (i) {
-        const $btn = this;
-        setTimeout(() => {
-          $($btn).click();
-          const novoNome = [
-            usarNumeracao ? String(contador++).padStart(digitos, '0') : '',
-            usarPrefixo ? prefixo : '',
-            usarTexto ? textoBase : ''
-          ].filter(Boolean).join(' ').trim();
-          $('.vis input[type="text"]').val(novoNome);
-          $('input[type="button"]').click();
-          UI.SuccessMessage(`Renomeada: ${i + 1}/${total}`);
-          if (i + 1 === total) {
-            localStorage.setItem('renamer_counter', String(contador));
-          }
-        }, i * 300);
-      });
+      executarRenomeacao(contadorAtual);
     });
   }
 
+  // Executa ao carregar
   abrirPainelRenomear();
+
 })();
