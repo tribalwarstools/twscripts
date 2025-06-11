@@ -1,5 +1,6 @@
 (function () {
-  // --- Função para obter grupo ativo ---
+  let interromper = false; // Novo flag para controle de parada
+
   function getGrupoAtivoViaMenu() {
     const ativo = document.querySelector('strong.group-menu-item');
     if (!ativo) return { id: 0, name: "Nenhum" };
@@ -8,7 +9,6 @@
     return { id, name: texto };
   }
 
-  // --- Função para montar o nome da aldeia ---
   function montarNome(contador, digitos, prefixo, textoBase, usarNumeracao, usarPrefixo, usarTexto) {
     return [
       usarNumeracao ? String(contador).padStart(digitos, '0') : '',
@@ -17,18 +17,15 @@
     ].filter(Boolean).join(' ').trim();
   }
 
-  // --- Função para carregar configuração do localStorage ---
   function carregarConfig() {
     return JSON.parse(localStorage.getItem('renamer_config') || '{}');
   }
 
-  // --- Função para salvar configuração no localStorage ---
   function salvarConfig(config) {
     localStorage.setItem('renamer_config', JSON.stringify(config));
     UI.SuccessMessage('Configurações salvas.');
   }
 
-  // --- Função para limpar configurações e contador ---
   function resetarConfiguracoes() {
     localStorage.removeItem('renamer_counter');
     localStorage.removeItem('renamer_config');
@@ -44,7 +41,6 @@
     UI.SuccessMessage('Tudo resetado e limpo.');
   }
 
-  // --- Função para mostrar preview da renomeação ---
   function mostrarPreview(contadorAtual) {
     const grupoAtivo = getGrupoAtivoViaMenu();
     const grupoNome = grupoAtivo.name;
@@ -71,8 +67,9 @@
     $('#previewList').html(htmlPreview);
   }
 
-  // --- Função para executar a renomeação ---
   function executarRenomeacao(contadorAtual) {
+    interromper = false;
+
     const usarNumeracao = $('#firstbox').prop('checked');
     const digitos = parseInt($('#end').val()) || 2;
     const usarPrefixo = $('#prefixcheck').prop('checked');
@@ -88,12 +85,30 @@
 
     Dialog.close();
 
+    Dialog.show('stopDialog', `
+      <div style="text-align:center; font-size:12px;">
+        <p>Renomeando aldeias...</p>
+        <button id="botaoParar" class="btn" style="margin-top:10px;">Encerrar renomeação</button>
+      </div>
+    `);
+
+    $('#botaoParar').on('click', () => {
+      interromper = true;
+      Dialog.close();
+      UI.InfoMessage('Renomeação será encerrada em instantes...');
+    });
+
     const $aldeias = $('.rename-icon');
     const total = $aldeias.length;
 
     $aldeias.each(function (i) {
       const $btn = this;
       setTimeout(() => {
+        if (interromper) {
+          UI.ErrorMessage('Renomeação interrompida pelo usuário.');
+          return;
+        }
+
         $($btn).click();
         const novoNome = montarNome(contador++, digitos, prefixo, textoBase, usarNumeracao, usarPrefixo, usarTexto);
         $('.vis input[type="text"]').val(novoNome);
@@ -101,18 +116,17 @@
         UI.SuccessMessage(`Renomeada: ${i + 1}/${total}`);
         if (i + 1 === total) {
           localStorage.setItem('renamer_counter', String(contador));
+          Dialog.close(); // Fecha o Dialog automaticamente ao final
         }
       }, i * 300);
     });
   }
 
-  // --- Função principal que abre o painel ---
   function abrirPainelRenomear() {
     const url = window.location.href;
     const urlBase = '/game.php?screen=overview_villages&mode=combined&group=0';
 
     if (!url.includes('screen=overview_villages') || !url.includes('mode=combined')) {
-      // Mostrar diálogo perguntando se usuário quer ser redirecionado
       Dialog.show('redirDialog', `
         <div style="font-size:12px; text-align:center;">
           <p>Você não está na página de aldeias combinadas. Deseja ser redirecionado?</p>
@@ -211,7 +225,5 @@
     });
   }
 
-  // Executa ao carregar
   abrirPainelRenomear();
-
 })();
