@@ -1,5 +1,5 @@
 (function () {
-  let interromper = false; // Novo flag para controle de parada
+  let interromper = false;
 
   function getGrupoAtivoViaMenu() {
     const ativo = document.querySelector('strong.group-menu-item');
@@ -15,6 +15,26 @@
       usarPrefixo ? prefixo : '',
       usarTexto ? textoBase : ''
     ].filter(Boolean).join(' ').trim();
+  }
+
+  function mostrarPreviewMini(contadorAtual) {
+    const usarNumeracao = $('#firstbox').prop('checked');
+    const digitos = parseInt($('#end').val()) || 2;
+    const usarPrefixo = $('#prefixcheck').prop('checked');
+    const prefixo = $('#prefixbox').val().trim();
+    const usarTexto = $('#secondbox').prop('checked');
+    const textoBase = $('#textname').val() || '';
+    const novoInicio = parseInt($('#setCounter').val());
+
+    let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
+
+    const nomeExemplo = montarNome(contador, digitos, prefixo, textoBase, usarNumeracao, usarPrefixo, usarTexto);
+
+    if (nomeExemplo) {
+      $('#previewMini').html(`Exemplo: <b>${nomeExemplo}</b>`);
+    } else {
+      $('#previewMini').html('');
+    }
   }
 
   function carregarConfig() {
@@ -37,34 +57,8 @@
     $('#textname').val('');
     $('#setCounter').val('');
     $('#contadorAtual').text('1');
-    $('#previewList').html('');
+    $('#previewMini').html('');
     UI.SuccessMessage('Tudo resetado e limpo.');
-  }
-
-  function mostrarPreview(contadorAtual) {
-    const grupoAtivo = getGrupoAtivoViaMenu();
-    const grupoNome = grupoAtivo.name;
-
-    const usarNumeracao = $('#firstbox').prop('checked');
-    const digitos = parseInt($('#end').val()) || 2;
-    const usarPrefixo = $('#prefixcheck').prop('checked');
-    const prefixo = $('#prefixbox').val().trim();
-    const usarTexto = $('#secondbox').prop('checked');
-    const textoBase = $('#textname').val() || '';
-    const novoInicio = parseInt($('#setCounter').val());
-    let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
-
-    const $aldeias = $('.rename-icon');
-    const total = $aldeias.length;
-
-    let htmlPreview = `<b>Prévia de renomeação (${total}) - Grupo: <span style="color:blue;">${grupoNome}</span></b><br>`;
-
-    for (let i = 0; i < total; i++) {
-      const nome = montarNome(contador++, digitos, prefixo, textoBase, usarNumeracao, usarPrefixo, usarTexto);
-      htmlPreview += `• ${nome}<br>`;
-    }
-
-    $('#previewList').html(htmlPreview);
   }
 
   function executarRenomeacao(contadorAtual) {
@@ -116,7 +110,7 @@
         UI.SuccessMessage(`Renomeada: ${i + 1}/${total}`);
         if (i + 1 === total) {
           localStorage.setItem('renamer_counter', String(contador));
-          Dialog.close(); // Fecha o Dialog automaticamente ao final
+          Dialog.close();
         }
       }, i * 300);
     });
@@ -176,14 +170,13 @@
           </tr>
           <tr>
             <td colspan="2" style="text-align:center; padding-top:4px;">
-              <input id="preview" type="button" class="btn" value="Visualizar">
               <input id="rename" type="button" class="btn" value="Renomear">
               <input id="resetCounter" type="button" class="btn" value="Limpar">
               <input id="save" type="button" class="btn" value="Salvar">
             </td>
           </tr>
         </table>
-        <div id="previewList" style="max-height:150px; overflow:auto; border:1px solid #ccc; margin-top:6px; padding:4px; font-size:10px;"></div>
+        <div id="previewMini" style="text-align:center; font-size:10px; margin-top:4px; color:#555;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
           <strong>Versão: <span style="color:red;">2.0</span></strong>
         </div>
@@ -215,14 +208,17 @@
       resetarConfiguracoes();
     });
 
-    $('#preview').on('click', () => {
-      mostrarPreview(contadorAtual);
-    });
-
     $('#rename').on('click', (e) => {
       e.preventDefault();
       executarRenomeacao(contadorAtual);
     });
+
+    // Preview dinâmico ao alterar campos
+    const atualizar = () => mostrarPreviewMini(parseInt($('#contadorAtual').text()) || 1);
+    ['#firstbox', '#end', '#prefixcheck', '#prefixbox', '#secondbox', '#textname', '#setCounter']
+      .forEach(id => $(document).on('input change', id, atualizar));
+
+    mostrarPreviewMini(contadorAtual);
   }
 
   abrirPainelRenomear();
