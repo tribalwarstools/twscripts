@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Auto Etiquetador Tribal Wars - Incomings (com reload inteligente)
+// @name         Auto Etiquetador Tribal Wars
 // @namespace    https://tribalwarstools.github.io/
 // @version      1.2
 // @description  Auto etiqueta ataques e recarrega página somente se não houver etiquetas pendentes, com contador no painel TW-style
@@ -16,7 +16,7 @@
     // --- Estilo do painel ---
     const style = document.createElement('style');
     style.textContent = `
-    #twAutoLabelPanel {
+    #PainelEtiqueta {
         position: fixed;
         bottom: 40px;
         left: 20px;
@@ -28,18 +28,18 @@
         font-size: 14px;
         color: #f0e6d2;
         box-shadow: 0 0 8px rgba(0,0,0,0.8);
-        z-index: 99999;
+        z-index: 500;
         width: 180px;
         user-select: none;
         cursor: move;
     }
-    #twAutoLabelPanel h4 {
+    #PainelEtiqueta h4 {
         margin: 0 0 8px 0;
         font-weight: bold;
         color: #d4b35d;
         text-align: center;
     }
-    #twAutoLabelPanel button {
+    #PainelEtiqueta button {
         background: #b79755;
         border: none;
         padding: 6px 12px;
@@ -50,10 +50,10 @@
         width: 100%;
         transition: background 0.3s ease;
     }
-    #twAutoLabelPanel button:hover {
+    #PainelEtiqueta button:hover {
         background: #d4b35d;
     }
-    #twAutoLabelPanel .status {
+    #PainelEtiqueta .status {
         margin-top: 6px;
         text-align: center;
         font-weight: bold;
@@ -69,7 +69,7 @@
 
     // --- Painel ---
     const panel = document.createElement('div');
-    panel.id = 'twAutoLabelPanel';
+    panel.id = 'PainelEtiqueta';
     panel.innerHTML = `
         <h4>Auto Etiquetador</h4>
         <button id="twToggleAutoLabel">Carregando...</button>
