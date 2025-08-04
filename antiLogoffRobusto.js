@@ -17,11 +17,11 @@
   // Estilo CSS
   const style = document.createElement('style');
   style.textContent = `
-    #twAutoLabelPanel {
-      position: fixed;
-      bottom: 40px;
-      left: 20px;
-      right: auto;
+    #twPainelAntiLogoff {
+
+  position: fixed;
+  top: 50px;
+  left: 20px;
       background: #2e2e2e;
       border: 2px solid #b79755;
       border-radius: 6px;
@@ -30,20 +30,20 @@
       font-size: 14px;
       color: #f0e6d2;
       box-shadow: 0 0 8px rgba(0,0,0,0.8);
-      z-index: 999999;
+      z-index: 1000;
       width: 180px;
       user-select: none;
       text-align: center;
       cursor: default;
     }
-    #twAutoLabelPanel h4 {
+    #twPainelAntiLogoff h4 {
       margin: 0 0 8px 0;
       font-weight: bold;
       color: #d4b35d;
       cursor: move;
       user-select: none;
     }
-    #twAutoLabelPanel button {
+    #twPainelAntiLogoff button {
       background: #b79755;
       border: none;
       padding: 6px 12px;
@@ -54,14 +54,14 @@
       width: 100%;
       transition: background 0.3s ease;
     }
-    #twAutoLabelPanel button:hover:not(:disabled) {
+    #twPainelAntiLogoff button:hover:not(:disabled) {
       background: #d4b35d;
     }
-    #twAutoLabelPanel button:disabled {
+    #twPainelAntiLogoff button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
-    #twAutoLabelPanel .status {
+    #twPainelAntiLogoff .status {
       margin-top: 6px;
       font-weight: bold;
     }
@@ -79,7 +79,7 @@
 
   // Cria painel flutuante
   const painel = document.createElement('div');
-  painel.id = 'twAutoLabelPanel';
+  painel.id = 'twPainelAntiLogoff';
 
   painel.innerHTML = `
     <h4 id="painelTitulo">Anti-Logoff Robusto</h4>
