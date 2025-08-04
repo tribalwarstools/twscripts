@@ -4,14 +4,14 @@
 // @version      1.2
 // @description  Auto etiqueta ataques e recarrega página somente se não houver etiquetas pendentes, com contador no painel TW-style
 // @author       Você
-// @match        https://*.tribalwars.com.br/game.php*screen=overview_villages&mode=incomings*
+// @match        https://*.tribalwars.com.br/game.php*screen=overview_villages&*mode=incomings*
 // @grant        none
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    const RELOAD_INTERVAL = 20; // segundos
+    const RELOAD_INTERVAL = 60; // segundos
 
     // --- Estilo do painel ---
     const style = document.createElement('style');
