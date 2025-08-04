@@ -17,9 +17,14 @@
     const style = document.createElement('style');
     style.textContent = `
     #twAutoLabelPanel {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
+
+
+    position: fixed;
+    bottom: 40px;
+    left: 20px;
+    right: auto;
+
+
         background: #2e2e2e;
         border: 2px solid #b79755;
         border-radius: 6px;
