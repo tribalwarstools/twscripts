@@ -89,7 +89,17 @@
 
 
     const scripts = [
-  {
+	
+	{
+      nome: 'Construir Edifícios',
+      func: () => {
+        $.getScript('https://tribalwarstools.github.io/ConstruirEdificios/construir.js')
+          .done(() => UI.InfoMessage('✅ Script Construir Edifícios carregado com sucesso!', 3000, 'success'))
+          .fail(() => UI.InfoMessage('❌ Erro ao carregar o script Construir Edifícios.', 5000, 'error'));
+      },
+    },
+	
+	{
     nome: 'Configurar Tropas',
     func: () => {
       $.getScript('https://tribalwarstools.github.io/ConfigTropas/ConfigTropas.js')
@@ -121,7 +131,21 @@
         .fail(() => UI.InfoMessage('❌ Erro ao carregar script Renomear Aldeias.', 5000, 'error'));
     },
   },
+  
+  
+    {
+    nome: 'Anti logoff Robusto',
+    func: () => {
+      $.getScript('https://tribalwarstools.github.io/ConstruirEdificios/antiLogoffRobusto.js')
+        .done(() => UI.InfoMessage('✅ Script Anti logoff Robusto carregado!', 3000, 'success'))
+        .fail(() => UI.InfoMessage('❌ Erro ao carregar script Anti logoff Robusto.', 5000, 'error'));
+    },
+  },
+  
+  
 ];
+
+
 
 
 
