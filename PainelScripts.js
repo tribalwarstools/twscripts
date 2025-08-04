@@ -86,28 +86,44 @@
   const lista = painel.querySelector('#listaScripts');
   const header = painel.querySelector('#headerPainel');
 
-  const scripts = [
-    {
-      nome: 'Construir Edifícios',
-      func: () => {
-        $.getScript('https://tribalwarstools.github.io/ConstruirEdificios/construir.js')
-          .done(() => UI.InfoMessage('✅ Script Construir Edifícios carregado com sucesso!', 3000, 'success'))
-          .fail(() => UI.InfoMessage('❌ Erro ao carregar o script Construir Edifícios.', 5000, 'error'));
-      },
+
+
+    const scripts = [
+  {
+    nome: 'Configurar Tropas',
+    func: () => {
+      $.getScript('https://tribalwarstools.github.io/ConfigTropas/ConfigTropas.js')
+        .done(() => UI.InfoMessage('✅ Script Configurar Tropas carregado!', 3000, 'success'))
+        .fail(() => UI.InfoMessage('❌ Erro ao carregar script Configurar Tropas.', 5000, 'error'));
     },
-    {
-      nome: 'Renomear Aldeias',
-      func: () => {
-        $.getScript('https://tribalwarstools.github.io/RenomearAvancado/renomearAldAvan.js')
-          .done(() => UI.InfoMessage('✅ Script Renomear Aldeias carregado!', 3000, 'success'))
-          .fail(() => UI.InfoMessage('❌ Erro ao carregar script de renomear.', 5000, 'error'));
-      },
+  },
+  {
+    nome: 'Buscar Bárbaras',
+    func: () => {
+      $.getScript('https://tribalwarstools.github.io/BuscarBarbaras/buscarBarbaras.js')
+        .done(() => UI.InfoMessage('✅ Script Buscar Bárbaras carregado!', 3000, 'success'))
+        .fail(() => UI.InfoMessage('❌ Erro ao carregar script Buscar Bárbaras.', 5000, 'error'));
     },
-    {
-      nome: 'Outro Exemplo',
-      func: () => alert('⚙️ Aqui você pode adicionar mais scripts!'),
+  },
+  {
+    nome: 'Agendar Ataque/Apoio',
+    func: () => {
+      $.getScript('https://tribalwarstools.github.io/agendadorEnvio/agendadorEnvio.js')
+        .done(() => UI.InfoMessage('✅ Script Agendar Ataque/Apoio carregado!', 3000, 'success'))
+        .fail(() => UI.InfoMessage('❌ Erro ao carregar script Agendar Ataque/Apoio.', 5000, 'error'));
     },
-  ];
+  },
+  {
+    nome: 'Renomear Aldeias',
+    func: () => {
+      $.getScript('https://tribalwarstools.github.io/RenomearAldeias/renomearAld.js')
+        .done(() => UI.InfoMessage('✅ Script Renomear Aldeias carregado!', 3000, 'success'))
+        .fail(() => UI.InfoMessage('❌ Erro ao carregar script Renomear Aldeias.', 5000, 'error'));
+    },
+  },
+];
+
+
 
   function criarBotaoScript(script) {
     const btn = document.createElement('button');
