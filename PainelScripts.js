@@ -1,10 +1,21 @@
-(() => {
+// ==UserScript==
+// @name         Painel de Scripts Tribal Wars
+// @namespace    https://tribalwarstools.github.io/
+// @version      1.0
+// @description  Painel flutuante com atalhos para scripts do Tribal Wars
+// @author       Giovani
+// @match        https://*.tribalwars.com.br/game.php*
+// @icon         https://dsm01pap001files.storage.live.com/y4m9-4-icontribalwars.png
+// @grant        none
+// @run-at       document-end
+// ==/UserScript==
+
+(function () {
   if (document.getElementById('painelScriptsTribal')) {
     document.getElementById('painelScriptsTribal').style.display = 'block';
     return;
   }
 
-  // Injetar fonte Belgrano (fonte usada no Tribal Wars)
   if (!document.getElementById('font-belgrano')) {
     const link = document.createElement('link');
     link.id = 'font-belgrano';
@@ -19,8 +30,8 @@
   painel.style.bottom = '60px';
   painel.style.right = '15px';
   painel.style.width = '200px';
-  painel.style.backgroundColor = '#121212'; // fundo escuro TW
-  painel.style.color = '#d0b973'; // dourado TW texto
+  painel.style.backgroundColor = '#121212';
+  painel.style.color = '#d0b973';
   painel.style.fontFamily = "'Belgrano', serif";
   painel.style.border = '1px solid #d0b973';
   painel.style.borderRadius = '6px';
@@ -80,19 +91,21 @@
       nome: 'Construir Edifícios',
       func: () => {
         $.getScript('https://tribalwarstools.github.io/ConstruirEdificios/construir.js')
-		.done(() => UI.InfoMessage('✅ Script Construir Edifícios carregado com sucesso!', 3000, 'success'))
-		.fail(() => UI.InfoMessage('❌ Erro ao carregar o script Construir Edifícios.', 5000, 'error'));
-
+          .done(() => UI.InfoMessage('✅ Script Construir Edifícios carregado com sucesso!', 3000, 'success'))
+          .fail(() => UI.InfoMessage('❌ Erro ao carregar o script Construir Edifícios.', 5000, 'error'));
       },
     },
-    // Você pode adicionar mais scripts aqui no mesmo formato
     {
-      nome: 'Script 2',
-      url: 'https://seusite.com/seuscript2.js',
+      nome: 'Renomear Aldeias',
+      func: () => {
+        $.getScript('https://tribalwarstools.github.io/RenomearAvancado/renomearAldAvan.js')
+          .done(() => UI.InfoMessage('✅ Script Renomear Aldeias carregado!', 3000, 'success'))
+          .fail(() => UI.InfoMessage('❌ Erro ao carregar script de renomear.', 5000, 'error'));
+      },
     },
     {
-      nome: 'Script 3',
-      func: () => alert('Outro script aqui'),
+      nome: 'Outro Exemplo',
+      func: () => alert('⚙️ Aqui você pode adicionar mais scripts!'),
     },
   ];
 
@@ -119,18 +132,11 @@
     };
 
     btn.onclick = () => {
-      if (script.func) {
-        try {
-          script.func();
-        } catch (e) {
-          alert('Erro ao executar script:\n' + e.message);
-        }
-      } else if (script.url) {
-        const s = document.createElement('script');
-        s.src = script.url;
-        s.onload = () => alert('Script externo carregado!');
-        s.onerror = () => alert('Erro ao carregar script!');
-        document.body.appendChild(s);
+      try {
+        script.func();
+      } catch (e) {
+        UI.InfoMessage('⚠️ Erro ao executar o script.', 4000, 'error');
+        console.error(e);
       }
     };
 
