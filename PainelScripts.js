@@ -5,7 +5,7 @@
 // @description  Painel flutuante com atalhos para scripts do Tribal Wars
 // @author       Giovani
 // @match        https://*.tribalwars.com.br/game.php*
-// @icon         https://dsm01pap001files.storage.live.com/y4m9-4-icontribalwars.png
+// @icon         https://dsbr.innogamescdn.com/asset/d2c9c906/graphic/buildings/garage.webp
 // @grant        none
 // @run-at       document-end
 // ==/UserScript==
