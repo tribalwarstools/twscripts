@@ -17,14 +17,9 @@
     const style = document.createElement('style');
     style.textContent = `
     #twAutoLabelPanel {
-
-
-    position: fixed;
-    bottom: 40px;
-    left: 20px;
-    right: auto;
-
-
+        position: fixed;
+        bottom: 40px;
+        left: 20px;
         background: #2e2e2e;
         border: 2px solid #b79755;
         border-radius: 6px;
@@ -36,6 +31,7 @@
         z-index: 99999;
         width: 180px;
         user-select: none;
+        cursor: move;
     }
     #twAutoLabelPanel h4 {
         margin: 0 0 8px 0;
@@ -81,6 +77,38 @@
         <div id="twCountdown">Recarregando em ${RELOAD_INTERVAL}s</div>
     `;
     document.body.appendChild(panel);
+
+    // --- Tornar arrastável ---
+    (function makeDraggable(el) {
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        el.onmousedown = dragMouseDown;
+
+        function dragMouseDown(e) {
+            e = e || window.event;
+            e.preventDefault();
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
+        }
+
+        function elementDrag(e) {
+            e = e || window.event;
+            e.preventDefault();
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            el.style.top = (el.offsetTop - pos2) + "px";
+            el.style.left = (el.offsetLeft - pos1) + "px";
+            el.style.bottom = "auto";
+        }
+
+        function closeDragElement() {
+            document.onmouseup = null;
+            document.onmousemove = null;
+        }
+    })(panel);
 
     const STORAGE_KEY = 'twAutoLabelEnabled';
     let enabled = localStorage.getItem(STORAGE_KEY) === 'true';
