@@ -1,0 +1,190 @@
+// ==UserScript==
+// @name         Auto Etiquetador Tribal Wars - Incomings (com reload inteligente)
+// @namespace    https://tribalwarstools.github.io/
+// @version      1.2
+// @description  Auto etiqueta ataques e recarrega página somente se não houver etiquetas pendentes, com contador no painel TW-style
+// @author       Você
+// @match        https://*.tribalwars.com.br/game.php*screen=overview_villages&mode=incomings*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const RELOAD_INTERVAL = 20; // segundos
+
+    // --- Estilo do painel ---
+    const style = document.createElement('style');
+    style.textContent = `
+    #twAutoLabelPanel {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #2e2e2e;
+        border: 2px solid #b79755;
+        border-radius: 6px;
+        padding: 10px 15px;
+        font-family: "Tahoma", sans-serif;
+        font-size: 14px;
+        color: #f0e6d2;
+        box-shadow: 0 0 8px rgba(0,0,0,0.8);
+        z-index: 99999;
+        width: 180px;
+        user-select: none;
+    }
+    #twAutoLabelPanel h4 {
+        margin: 0 0 8px 0;
+        font-weight: bold;
+        color: #d4b35d;
+        text-align: center;
+    }
+    #twAutoLabelPanel button {
+        background: #b79755;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #2e2e2e;
+        font-weight: bold;
+        width: 100%;
+        transition: background 0.3s ease;
+    }
+    #twAutoLabelPanel button:hover {
+        background: #d4b35d;
+    }
+    #twAutoLabelPanel .status {
+        margin-top: 6px;
+        text-align: center;
+        font-weight: bold;
+    }
+    #twCountdown {
+        margin-top: 4px;
+        text-align: center;
+        font-size: 12px;
+        color: #aaa;
+    }
+    `;
+    document.head.appendChild(style);
+
+    // --- Painel ---
+    const panel = document.createElement('div');
+    panel.id = 'twAutoLabelPanel';
+    panel.innerHTML = `
+        <h4>Auto Etiquetador</h4>
+        <button id="twToggleAutoLabel">Carregando...</button>
+        <div class="status" id="twStatus">Status: -</div>
+        <div id="twCountdown">Recarregando em ${RELOAD_INTERVAL}s</div>
+    `;
+    document.body.appendChild(panel);
+
+    const STORAGE_KEY = 'twAutoLabelEnabled';
+    let enabled = localStorage.getItem(STORAGE_KEY) === 'true';
+
+    const btn = document.getElementById('twToggleAutoLabel');
+    const statusEl = document.getElementById('twStatus');
+    const countdownEl = document.getElementById('twCountdown');
+
+    let recarregarPermitido = true;
+
+    function updateUI() {
+        if (enabled) {
+            btn.textContent = 'Desligar';
+            statusEl.textContent = 'Status: Ativo';
+            statusEl.style.color = '#a1d490';
+        } else {
+            btn.textContent = 'Ligar';
+            statusEl.textContent = 'Status: Pausado';
+            statusEl.style.color = '#d49090';
+        }
+    }
+
+    btn.addEventListener('click', () => {
+        enabled = !enabled;
+        localStorage.setItem(STORAGE_KEY, enabled);
+        updateUI();
+        if (enabled) {
+            runAutoLabel();
+            startCountdown();
+        } else {
+            clearInterval(labelInterval);
+            clearInterval(countdownInterval);
+        }
+    });
+
+    updateUI();
+
+    // --- Etiquetar ataques ---
+    function autoEtiqueta() {
+        if (!enabled) return;
+
+        let encontrou = false;
+        const linhas = Array.from(document.querySelectorAll('tr'));
+
+        linhas.forEach(linha => {
+            const nomeEl = linha.querySelector('span.quickedit-label');
+            if (!nomeEl) return;
+            const nome = nomeEl.textContent.trim();
+            if (nome === "Ataque") {
+                const checkbox = linha.querySelector('input[type="checkbox"][name^="id_"]:not(:disabled)');
+                if (checkbox && !checkbox.checked) {
+                    checkbox.checked = true;
+                    encontrou = true;
+                }
+            }
+        });
+
+        if (encontrou) {
+            recarregarPermitido = false;
+            setTimeout(() => {
+                const btnEtiqueta = document.querySelector('input.btn[type="submit"][name="label"]');
+                if (btnEtiqueta) {
+                    btnEtiqueta.click();
+                    console.log('Auto Etiquetador: Etiquetas aplicadas.');
+                }
+            }, 500);
+        } else {
+            recarregarPermitido = true;
+        }
+    }
+
+    // --- Loop de etiquetagem ---
+    let labelInterval;
+    function runAutoLabel() {
+        autoEtiqueta();
+        clearInterval(labelInterval);
+        labelInterval = setInterval(() => {
+            if (enabled) autoEtiqueta();
+        }, 20000);
+    }
+
+    // --- Contador e reload ---
+    let countdown = RELOAD_INTERVAL;
+    let countdownInterval;
+
+    function startCountdown() {
+        countdown = RELOAD_INTERVAL;
+        countdownEl.textContent = `Recarregando em ${countdown}s`;
+        clearInterval(countdownInterval);
+        countdownInterval = setInterval(() => {
+            countdown--;
+            countdownEl.textContent = `Recarregando em ${countdown}s`;
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                if (recarregarPermitido) {
+                    console.log('[Reload] Nenhuma etiqueta pendente. Recarregando...');
+                    location.reload();
+                } else {
+                    console.log('[Reload Cancelado] Havia etiquetas aplicadas.');
+                    startCountdown(); // recomeça contagem
+                }
+            }
+        }, 1000);
+    }
+
+    // --- Inicialização se ativo ---
+    if (enabled) {
+        runAutoLabel();
+        startCountdown();
+    }
+
+})();
