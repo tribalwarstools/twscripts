@@ -54,9 +54,9 @@
       cursor: pointer;
       user-select: none;
       font-weight: bold;
-      font-size: 16px;
+      font-size: 12px;
     ">
-      <span>SCRIPTS</span>
+      <span>SCRIPTS TRIBAL WARS</span>
       <button id="btnToggle" style="
         background: transparent;
         border: none;
@@ -89,7 +89,7 @@
 
 
     const scripts = [
-	
+
 	{
       nome: 'Construir Edifícios',
       func: () => {
@@ -98,7 +98,7 @@
           .fail(() => UI.InfoMessage('❌ Erro ao carregar o script Construir Edifícios.', 5000, 'error'));
       },
     },
-	
+
 	{
     nome: 'Configurar Tropas',
     func: () => {
@@ -131,8 +131,8 @@
         .fail(() => UI.InfoMessage('❌ Erro ao carregar script Renomear Aldeias.', 5000, 'error'));
     },
   },
-  
-  
+
+
     {
     nome: 'Anti logoff Robusto',
     func: () => {
@@ -141,8 +141,8 @@
         .fail(() => UI.InfoMessage('❌ Erro ao carregar script Anti logoff Robusto.', 5000, 'error'));
     },
   },
-  
-  
+
+
 ];
 
 
