@@ -1,14 +1,3 @@
-// ==UserScript==
-// @name         💰 Cunhagem Automática
-// @namespace    https://tribalwars.com.br/
-// @version      1.8.6
-// @description  Cunha moedas com botão único de iniciar/parar, painel TW arrastável. Funciona na visão geral e aldeia, sem parar se faltar recursos.
-// @author       Giovani
-// @match        *://*.tribalwars.com.br/game.php?*screen=snob*
-// @icon         https://dsen.innogamescdn.com/asset/28ad7792/graphic/buildings/snob.png
-// @grant        none
-// ==/UserScript==
-
 (function () {
     if (!location.href.includes('screen=snob')) {
         UI.InfoMessage("Abra a tela de cunhagem (snob) para usar o script.", 3000, "error");
@@ -271,3 +260,4 @@
         $('#toggleCunhagem').trigger('click');
     }
 })();
+
