@@ -133,14 +133,7 @@
   },
 
 
-    {
-    nome: 'Anti logoff Robusto',
-    func: () => {
-      $.getScript('https://tribalwarstools.github.io/twscripts/antiLogoffRobusto.js')
-        .done(() => UI.InfoMessage('✅ Script Anti logoff Robusto carregado!', 3000, 'success'))
-        .fail(() => UI.InfoMessage('❌ Erro ao carregar script Anti logoff Robusto.', 5000, 'error'));
-    },
-  },
+
 
 
 ];
