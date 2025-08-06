@@ -153,11 +153,11 @@
       },
     },
     {
-      nome: 'Agendar Ataque/Apoio',
+      nome: 'Agendador de Envio',
       func: () => {
         $.getScript('https://tribalwarstools.github.io/agendadorEnvio/agendadorEnvio.js')
-          .done(() => UI.InfoMessage('✅ Script Agendar Ataque/Apoio carregado!', 3000, 'success'))
-          .fail(() => UI.InfoMessage('❌ Erro ao carregar script Agendar Ataque/Apoio.', 5000, 'error'));
+          .done(() => UI.InfoMessage('✅ Script Agendador de Envio carregado!', 3000, 'success'))
+          .fail(() => UI.InfoMessage('❌ Erro ao carregar script Agendador de Envio.', 5000, 'error'));
       },
     },
     {
@@ -202,4 +202,5 @@
 
   header.onclick = toggle;
 })();
+
 
