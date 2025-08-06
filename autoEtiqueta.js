@@ -17,21 +17,21 @@
     const style = document.createElement('style');
     style.textContent = `
     #PainelEtiqueta {
-        position: fixed;
-        bottom: 40px;
-        left: 20px;
-        background: #2e2e2e;
-        border: 2px solid #b79755;
-        border-radius: 6px;
-        padding: 10px 15px;
-        font-family: "Tahoma", sans-serif;
-        font-size: 14px;
-        color: #f0e6d2;
-        box-shadow: 0 0 8px rgba(0,0,0,0.8);
-        z-index: 500;
-        width: 180px;
-        user-select: none;
-        cursor: move;
+    position: fixed;
+    top: 100px;
+    left: 20px;
+    background: #2e2e2e;
+    border: 2px solid #b79755;
+    border-radius: 6px;
+    padding: 10px 15px;
+    font-family: "Tahoma", sans-serif;
+    font-size: 14px;
+    color: #f0e6d2;
+    box-shadow: 0 0 8px rgba(0,0,0,0.8);
+    z-index: 500;
+    width: 180px;
+    user-select: none;
+    cursor: move;
     }
     #PainelEtiqueta h4 {
         margin: 0 0 8px 0;
@@ -126,7 +126,7 @@
             statusEl.style.color = '#a1d490';
         } else {
             btn.textContent = 'Ligar';
-            statusEl.textContent = 'Status: Pausado';
+            statusEl.textContent = 'Status: Inativo';
             statusEl.style.color = '#d49090';
         }
     }
