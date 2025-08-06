@@ -123,7 +123,7 @@
 
   painel.innerHTML = `
     <div class="header" id="headerPainel">
-      <span>SCRIPTS TRIBAL WARS</span>
+      <span>SCRIPTS</span>
       <button id="btnToggle" class="toggleBtn">▼</button>
     </div>
     <div id="listaScripts" class="listaScripts"></div>
@@ -202,3 +202,4 @@
 
   header.onclick = toggle;
 })();
+
