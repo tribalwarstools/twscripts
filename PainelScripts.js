@@ -95,14 +95,7 @@
         .fail(() => UI.InfoMessage('❌ Erro ao carregar script Configurar Tropas.', 5000, 'error'));
     },
   },
-  {
-    nome: 'Buscar Bárbaras',
-    func: () => {
-      $.getScript('https://tribalwarstools.github.io/BuscarBarbaras/buscarBarbaras.js')
-        .done(() => UI.InfoMessage('✅ Script Buscar Bárbaras carregado!', 3000, 'success'))
-        .fail(() => UI.InfoMessage('❌ Erro ao carregar script Buscar Bárbaras.', 5000, 'error'));
-    },
-  },
+
   {
     nome: 'Agendar Ataque/Apoio',
     func: () => {
@@ -111,6 +104,7 @@
         .fail(() => UI.InfoMessage('❌ Erro ao carregar script Agendar Ataque/Apoio.', 5000, 'error'));
     },
   },
+	    
   {
     nome: 'Renomear Aldeias',
     func: () => {
@@ -119,9 +113,6 @@
         .fail(() => UI.InfoMessage('❌ Erro ao carregar script Renomear Aldeias.', 5000, 'error'));
     },
   },
-
-
-
 
 
 ];
@@ -190,4 +181,5 @@
 
   header.onclick = toggle;
 })();
+
 
