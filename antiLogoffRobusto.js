@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Anti-Logoff Robusto
+// @name         Anti-Logoff Robusto (com persistência)
 // @namespace    https://tribalwarstools.github.io/
-// @version      1.0
-// @description  Impede o logoff automático no Tribal Wars com ações simuladas regulares
-// @author       SeuNome
+// @version      1.1
+// @description  Impede o logoff automático no Tribal Wars com ações simuladas regulares e mantém o estado após reload
+// @author       Você
 // @match        *://*.tribalwars.com.br/*
 // @match        *://*.die-staemme.de/*
 // @match        *://*.tribalwars.net/*
@@ -12,16 +12,15 @@
 // @run-at       document-end
 // ==/UserScript==
 
-
 (function() {
-  // Estilo CSS
+  const STORAGE_KEY = 'twAntiLogoffAtivo';
+
   const style = document.createElement('style');
   style.textContent = `
     #twPainelAntiLogoff {
-
-  position: fixed;
-  top: 50px;
-  left: 20px;
+      position: fixed;
+      bottom: 50px;
+      left: 20px;
       background: #2e2e2e;
       border: 2px solid #b79755;
       border-radius: 6px;
@@ -34,14 +33,12 @@
       width: 180px;
       user-select: none;
       text-align: center;
-      cursor: default;
     }
     #twPainelAntiLogoff h4 {
       margin: 0 0 8px 0;
       font-weight: bold;
       color: #d4b35d;
       cursor: move;
-      user-select: none;
     }
     #twPainelAntiLogoff button {
       background: #b79755;
@@ -65,7 +62,6 @@
       margin-top: 6px;
       font-weight: bold;
     }
-    /* Efeito piscante anti-logoff */
     .anti-logoff-blink {
       animation: blinkAnim 0.3s ease;
     }
@@ -77,41 +73,36 @@
   `;
   document.head.appendChild(style);
 
-  // Cria painel flutuante
   const painel = document.createElement('div');
   painel.id = 'twPainelAntiLogoff';
-
   painel.innerHTML = `
     <h4 id="painelTitulo">Anti-Logoff Robusto</h4>
     <button id="btnToggle">Iniciar</button>
     <div id="status" class="status">Inativo 🔴</div>
   `;
-
   document.body.appendChild(painel);
 
-  // Funções do anti-logoff
   function iniciarAntiLogoffRobusto() {
     if (window.antiLogoffRobustoAtivo) return;
     window.antiLogoffRobustoAtivo = true;
-    console.log("🛡️ Anti-logoff robusto ativado.");
+    localStorage.setItem(STORAGE_KEY, 'true');
 
-    const intervalo = 4 * 60 * 1000; // 4 minutos
+    const intervalo = 4 * 60 * 1000;
     let contador = 0;
 
     const acoes = [
       () => { document.title = document.title; },
       () => { document.body.dispatchEvent(new MouseEvent('mousemove', { bubbles: true })); },
       () => {
-        document.body.classList.toggle('anti-logoff-blink');
+        document.body.classList.add('anti-logoff-blink');
         setTimeout(() => document.body.classList.remove('anti-logoff-blink'), 100);
       },
-      () => { fetch('/game.php').then(() => {}).catch(() => {}); }
+      () => { fetch('/game.php').catch(() => {}); }
     ];
 
     window.antiLogoffIntervalo = setInterval(() => {
-      const acao = acoes[contador % acoes.length];
       try {
-        acao();
+        acoes[contador % acoes.length]();
         console.log(`💤 Mantendo ativo... [Ação ${contador + 1}]`);
       } catch (e) {
         console.warn("⚠️ Erro na ação anti-logoff:", e);
@@ -125,11 +116,11 @@
   function desativarAntiLogoff() {
     clearInterval(window.antiLogoffIntervalo);
     window.antiLogoffRobustoAtivo = false;
+    localStorage.setItem(STORAGE_KEY, 'false');
     console.log("❌ Anti-logoff desativado.");
     atualizarStatus();
   }
 
-  // Atualiza o texto e status
   function atualizarStatus() {
     const statusEl = painel.querySelector('#status');
     const btnToggle = painel.querySelector('#btnToggle');
@@ -147,9 +138,7 @@
     }
   }
 
-  // Evento do botão toggle
-  const btnToggle = painel.querySelector('#btnToggle');
-  btnToggle.addEventListener('click', () => {
+  painel.querySelector('#btnToggle').addEventListener('click', () => {
     if (window.antiLogoffRobustoAtivo) {
       desativarAntiLogoff();
     } else {
@@ -157,7 +146,7 @@
     }
   });
 
-  // Drag para mover o painel pelo título
+  // Drag para mover o painel
   const painelTitulo = painel.querySelector('#painelTitulo');
   let offsetX, offsetY, isDragging = false;
 
@@ -176,13 +165,8 @@
 
     const maxLeft = window.innerWidth - painel.offsetWidth;
     const maxTop = window.innerHeight - painel.offsetHeight;
-    if (left < 0) left = 0;
-    if (top < 0) top = 0;
-    if (left > maxLeft) left = maxLeft;
-    if (top > maxTop) top = maxTop;
-
-    painel.style.left = left + 'px';
-    painel.style.top = top + 'px';
+    painel.style.left = Math.min(Math.max(0, left), maxLeft) + 'px';
+    painel.style.top = Math.min(Math.max(0, top), maxTop) + 'px';
     painel.style.right = 'auto';
     painel.style.bottom = 'auto';
   });
@@ -194,13 +178,16 @@
     }
   });
 
-  // Inicializa status
-  atualizarStatus();
+  // Restaura o estado salvo
+  const estadoSalvo = localStorage.getItem(STORAGE_KEY) === 'true';
+  if (estadoSalvo) {
+    iniciarAntiLogoffRobusto();
+  } else {
+    window.antiLogoffRobustoAtivo = false;
+    atualizarStatus();
+  }
 
-  // Controle global para console
+  // Controle global
   window.iniciarAntiLogoffRobusto = iniciarAntiLogoffRobusto;
   window.desativarAntiLogoff = desativarAntiLogoff;
-
-  // Executa automaticamente ao iniciar
-  iniciarAntiLogoffRobusto();
 })();
