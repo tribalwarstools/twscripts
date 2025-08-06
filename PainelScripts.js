@@ -1,15 +1,3 @@
-// ==UserScript==
-// @name         Painel de Scripts Tribal Wars
-// @namespace    https://tribalwarstools.github.io/
-// @version      1.0
-// @description  Painel flutuante com atalhos para scripts do Tribal Wars
-// @author       Giovani
-// @match        https://*.tribalwars.com.br/game.php*
-// @icon         https://dsbr.innogamescdn.com/asset/d2c9c906/graphic/buildings/garage.webp
-// @grant        none
-// @run-at       document-end
-// ==/UserScript==
-
 (function () {
   if (document.getElementById('painelScriptsTribal')) {
     document.getElementById('painelScriptsTribal').style.display = 'block';
@@ -202,3 +190,4 @@
 
   header.onclick = toggle;
 })();
+
