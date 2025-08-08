@@ -139,7 +139,7 @@
     {
       nome: 'Construir Edifícios',
       func: () => {
-        $.getScript('https://tribalwarstools.github.io/ConstruirEdificios/construir.js')
+        $.getScript('https://tribalwarstools.github.io/ConstruirEdificios/construirEdificios.js')
           .done(() => UI.InfoMessage('✅ Script Construir Edifícios carregado com sucesso!', 3000, 'success'))
           .fail(() => UI.InfoMessage('❌ Erro ao carregar o script Construir Edifícios.', 5000, 'error'));
       },
@@ -202,5 +202,6 @@
 
   header.onclick = toggle;
 })();
+
 
 
