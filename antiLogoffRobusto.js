@@ -67,7 +67,7 @@
     <h4 id="painelTitulo">Anti-Logoff Robusto</h4>
     <button id="btnToggle">Iniciar</button>
     <div id="status" class="status">Inativo 🔴</div>
-    <div id="contador" class="contador">⏳ 00:00</div>
+    <div id="contador" class="contador">Parado 00:00</div>
   `;
   document.body.appendChild(painel);
 
@@ -200,3 +200,4 @@
   window.iniciarAntiLogoffRobusto = iniciarAntiLogoffRobusto;
   window.desativarAntiLogoff = desativarAntiLogoff;
 })();
+
