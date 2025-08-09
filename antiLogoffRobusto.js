@@ -146,7 +146,7 @@
       statusEl.style.color = "#f33";
       btnToggle.textContent = "Ligar";
       btnToggle.style.backgroundColor = "#b79755";
-      painel.querySelector('#contador').textContent = "⏳ 00:00";
+      painel.querySelector('#contador').textContent = "Parado 00:00";
     }
   }
 
@@ -200,4 +200,5 @@
   window.iniciarAntiLogoffRobusto = iniciarAntiLogoffRobusto;
   window.desativarAntiLogoff = desativarAntiLogoff;
 })();
+
 
