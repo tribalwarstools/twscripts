@@ -18,7 +18,7 @@
     function carregarEstado() {
         try {
             const raw = localStorage.getItem("cunhagem_estado");
-            if (!raw) return null;
+            if (!raw) return null; // distingue "nunca iniciado" de "pausado"
             return JSON.parse(raw);
         } catch (e) {
             return null;
@@ -34,6 +34,7 @@
         window.mintScriptRunning = false;
         $('#toggleCunhagem').text('Iniciar');
         $('#contadorTempo').text('Parado');
+        // salva que está pausado (active false)
         salvarEstado({ active: false, nextRun: null });
     }
 
@@ -198,15 +199,6 @@
         segundosRestantes--;
         if (segundosRestantes < 0) {
             clearInterval(contadorId);
-
-            // 🔔 Sinal sonoro
-            try {
-                const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-                audio.play();
-            } catch (e) {
-                console.warn("Falha ao tocar som:", e);
-            }
-
             executarCunhagem();
         }
     }
@@ -258,20 +250,14 @@
             salvarEstado({ active: true, nextRun: nextRun });
             ativarFluxo(nextRun);
         } else {
+            // estava pausado: deixa parado (interface já está no padrão)
             window.mintScriptRunning = false;
             $('#toggleCunhagem').text('Iniciar');
             $('#contadorTempo').text('Parado');
         }
     } else {
+        // nunca houve estado: auto inicia
         $('#toggleCunhagem').trigger('click');
     }
-
-    // 🔄 Reload automático a cada 5 minutos para evitar congelamento
-    const RELOAD_INTERVAL_MIN = 5;
-    setInterval(() => {
-        if (window.mintScriptRunning) {
-            location.reload();
-        }
-    }, RELOAD_INTERVAL_MIN * 60 * 1000);
-
 })();
+
