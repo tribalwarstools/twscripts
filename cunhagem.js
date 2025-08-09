@@ -214,28 +214,24 @@ function atualizarContador() {
             console.warn("Falha ao tocar som:", e);
         }
 
-        // 🔔 Notificação do navegador
-        if ("Notification" in window) {
-            if (Notification.permission === "granted") {
-                new Notification("Cunhagem concluída!", {
-                    body: "O contador chegou ao fim. A cunhagem será executada agora.",
-                    icon: "https://dspt.innogamescdn.com/asset/58bcd4c/graphic/buildings/snob.png"
-                });
-            } else if (Notification.permission !== "denied") {
-                Notification.requestPermission().then(permission => {
-                    if (permission === "granted") {
-                        new Notification("Cunhagem concluída!", {
-                            body: "O contador chegou ao fim. A cunhagem será executada agora.",
-                            icon: "https://dspt.innogamescdn.com/asset/58bcd4c/graphic/buildings/snob.png"
-                        });
-                    }
-                });
-            }
+        // 🔔 Notificação
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("Cunhagem concluída!", {
+                body: "O contador chegou ao fim. Cunhando moedas...",
+                icon: "https://dspt.innogamescdn.com/asset/58bcd4c/graphic/buildings/snob.png"
+            });
         }
 
+        // Executa cunhagem
         executarCunhagem();
+
+        // ⏳ Espera para dar tempo de tocar o som e mostrar notificação
+        setTimeout(() => {
+            if (window.mintScriptRunning) location.reload();
+        }, 3000);
     }
 }
+
 
 
     function formatarTempo(segundos) {
@@ -295,6 +291,7 @@ function atualizarContador() {
         $('#toggleCunhagem').trigger('click');
     }
 })();
+
 
 
 
