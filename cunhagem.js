@@ -194,14 +194,43 @@
         }
     }
 
-    function atualizarContador() {
-        $('#contadorTempo').text(`Próximo em: ${formatarTempo(segundosRestantes)}`);
-        segundosRestantes--;
-        if (segundosRestantes < 0) {
-            clearInterval(contadorId);
-            executarCunhagem();
+function atualizarContador() {
+    $('#contadorTempo').text(`Próximo em: ${formatarTempo(segundosRestantes)}`);
+    segundosRestantes--;
+    if (segundosRestantes < 0) {
+        clearInterval(contadorId);
+
+        // 🔔 Sinal sonoro
+        try {
+            const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+            audio.play();
+        } catch (e) {
+            console.warn("Falha ao tocar som:", e);
         }
+
+        // 🔔 Notificação do navegador
+        if ("Notification" in window) {
+            if (Notification.permission === "granted") {
+                new Notification("Cunhagem concluída!", {
+                    body: "O contador chegou ao fim. A cunhagem será executada agora.",
+                    icon: "https://dspt.innogamescdn.com/asset/58bcd4c/graphic/buildings/snob.png"
+                });
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        new Notification("Cunhagem concluída!", {
+                            body: "O contador chegou ao fim. A cunhagem será executada agora.",
+                            icon: "https://dspt.innogamescdn.com/asset/58bcd4c/graphic/buildings/snob.png"
+                        });
+                    }
+                });
+            }
+        }
+
+        executarCunhagem();
     }
+}
+
 
     function formatarTempo(segundos) {
         const h = Math.floor(segundos / 3600);
