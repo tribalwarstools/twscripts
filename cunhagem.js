@@ -3,6 +3,12 @@
         UI.InfoMessage("Abra a tela de cunhagem (snob) para usar o script.", 3000, "error");
         return;
     }
+// Pedir permissão para notificações ao iniciar
+if ("Notification" in window && Notification.permission !== "granted") {
+    Notification.requestPermission().then(status => {
+        console.log("Permissão para notificações:", status);
+    });
+}
 
     if (window.mintScriptRunning) {
         UI.InfoMessage("O script já está em execução.", 3000, "warning");
@@ -289,5 +295,6 @@ function atualizarContador() {
         $('#toggleCunhagem').trigger('click');
     }
 })();
+
 
 
