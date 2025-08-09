@@ -3,12 +3,6 @@
         UI.InfoMessage("Abra a tela de cunhagem (snob) para usar o script.", 3000, "error");
         return;
     }
-// Pedir permissão para notificações ao iniciar
-if ("Notification" in window && Notification.permission !== "granted") {
-    Notification.requestPermission().then(status => {
-        console.log("Permissão para notificações:", status);
-    });
-}
 
     if (window.mintScriptRunning) {
         UI.InfoMessage("O script já está em execução.", 3000, "warning");
@@ -24,7 +18,7 @@ if ("Notification" in window && Notification.permission !== "granted") {
     function carregarEstado() {
         try {
             const raw = localStorage.getItem("cunhagem_estado");
-            if (!raw) return null; // distingue "nunca iniciado" de "pausado"
+            if (!raw) return null;
             return JSON.parse(raw);
         } catch (e) {
             return null;
@@ -40,7 +34,6 @@ if ("Notification" in window && Notification.permission !== "granted") {
         window.mintScriptRunning = false;
         $('#toggleCunhagem').text('Iniciar');
         $('#contadorTempo').text('Parado');
-        // salva que está pausado (active false)
         salvarEstado({ active: false, nextRun: null });
     }
 
@@ -185,54 +178,38 @@ if ("Notification" in window && Notification.permission !== "granted") {
             setTimeout(() => {
                 const botao = document.querySelector('.mint_multi_button');
                 if (botao && !botao.disabled) botao.click();
-                setTimeout(() => { if (window.mintScriptRunning) setTimeout(() => {     location.reload(); }, 3000); }, 1500);
+                setTimeout(() => { if (window.mintScriptRunning) location.reload(); }, 1500);
             }, 1000);
         } else if (document.querySelector('#coin_mint_fill_max')) {
             document.querySelector('#coin_mint_fill_max').click();
             setTimeout(() => {
                 const botao = document.querySelector('input[type="submit"][value="Cunhar"]');
                 if (botao) botao.click();
-                setTimeout(() => { if (window.mintScriptRunning) setTimeout(() => {     location.reload(); }, 3000); }, 1500);
+                setTimeout(() => { if (window.mintScriptRunning) location.reload(); }, 1500);
             }, 1000);
         } else {
             UI.InfoMessage("⚠️ Página não tem botões de cunhagem. Recarregando...", 3000, "warning");
-            setTimeout(() => { if (window.mintScriptRunning) setTimeout(() => {     location.reload(); }, 3000); }, 1500);
+            setTimeout(() => { if (window.mintScriptRunning) location.reload(); }, 1500);
         }
     }
 
-function atualizarContador() {
-    $('#contadorTempo').text(`Próximo em: ${formatarTempo(segundosRestantes)}`);
-    segundosRestantes--;
-    if (segundosRestantes < 0) {
-        clearInterval(contadorId);
+    function atualizarContador() {
+        $('#contadorTempo').text(`Próximo em: ${formatarTempo(segundosRestantes)}`);
+        segundosRestantes--;
+        if (segundosRestantes < 0) {
+            clearInterval(contadorId);
 
-        // 🔔 Sinal sonoro
-        try {
-            const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-            audio.play();
-        } catch (e) {
-            console.warn("Falha ao tocar som:", e);
+            // 🔔 Sinal sonoro
+            try {
+                const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+                audio.play();
+            } catch (e) {
+                console.warn("Falha ao tocar som:", e);
+            }
+
+            executarCunhagem();
         }
-
-        // 🔔 Notificação
-        if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("Cunhagem concluída!", {
-                body: "O contador chegou ao fim. Cunhando moedas...",
-                icon: "https://dspt.innogamescdn.com/asset/58bcd4c/graphic/buildings/snob.png"
-            });
-        }
-
-        // Executa cunhagem
-        executarCunhagem();
-
-        // ⏳ Espera para dar tempo de tocar o som e mostrar notificação
-        setTimeout(() => {
-            if (window.mintScriptRunning) location.reload();
-        }, 3000);
     }
-}
-
-
 
     function formatarTempo(segundos) {
         const h = Math.floor(segundos / 3600);
@@ -281,17 +258,20 @@ function atualizarContador() {
             salvarEstado({ active: true, nextRun: nextRun });
             ativarFluxo(nextRun);
         } else {
-            // estava pausado: deixa parado (interface já está no padrão)
             window.mintScriptRunning = false;
             $('#toggleCunhagem').text('Iniciar');
             $('#contadorTempo').text('Parado');
         }
     } else {
-        // nunca houve estado: auto inicia
         $('#toggleCunhagem').trigger('click');
     }
+
+    // 🔄 Reload automático a cada 5 minutos para evitar congelamento
+    const RELOAD_INTERVAL_MIN = 5;
+    setInterval(() => {
+        if (window.mintScriptRunning) {
+            location.reload();
+        }
+    }, RELOAD_INTERVAL_MIN * 60 * 1000);
+
 })();
-
-
-
-
