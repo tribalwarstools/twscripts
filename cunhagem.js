@@ -179,18 +179,18 @@
             setTimeout(() => {
                 const botao = document.querySelector('.mint_multi_button');
                 if (botao && !botao.disabled) botao.click();
-                setTimeout(() => { if (window.mintScriptRunning) location.reload(); }, 1500);
+                setTimeout(() => { if (window.mintScriptRunning) setTimeout(() => {     location.reload(); }, 3000); }, 1500);
             }, 1000);
         } else if (document.querySelector('#coin_mint_fill_max')) {
             document.querySelector('#coin_mint_fill_max').click();
             setTimeout(() => {
                 const botao = document.querySelector('input[type="submit"][value="Cunhar"]');
                 if (botao) botao.click();
-                setTimeout(() => { if (window.mintScriptRunning) location.reload(); }, 1500);
+                setTimeout(() => { if (window.mintScriptRunning) setTimeout(() => {     location.reload(); }, 3000); }, 1500);
             }, 1000);
         } else {
             UI.InfoMessage("⚠️ Página não tem botões de cunhagem. Recarregando...", 3000, "warning");
-            setTimeout(() => { if (window.mintScriptRunning) location.reload(); }, 1500);
+            setTimeout(() => { if (window.mintScriptRunning) setTimeout(() => {     location.reload(); }, 3000); }, 1500);
         }
     }
 
@@ -289,4 +289,5 @@ function atualizarContador() {
         $('#toggleCunhagem').trigger('click');
     }
 })();
+
 
