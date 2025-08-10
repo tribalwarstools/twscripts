@@ -4,23 +4,24 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    #twPainelAntiLogoff {
-      position: fixed;
-      bottom: 50px;
-      left: 20px;
-      background: #2e2e2e;
-      border: 2px solid #b79755;
-      border-radius: 6px;
-      padding: 10px 15px;
-      font-family: "Tahoma", sans-serif;
-      font-size: 14px;
-      color: #f0e6d2;
-      box-shadow: 0 0 8px rgba(0,0,0,0.8);
-      z-index: 1000;
-      width: 180px;
-      user-select: none;
-      text-align: center;
-    }
+#twPainelAntiLogoff {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  background: #2e2e2e;
+  border: 2px solid #b79755;
+  border-radius: 6px;
+  padding: 10px 15px;
+  font-family: "Tahoma", sans-serif;
+  font-size: 14px;
+  color: #f0e6d2;
+  box-shadow: 0 0 8px rgba(0,0,0,0.8);
+  z-index: 1000;
+  width: 180px;
+  user-select: none;
+  text-align: center;
+}
+
     #twPainelAntiLogoff h4 {
       margin: 0 0 8px 0;
       font-weight: bold;
@@ -200,5 +201,6 @@
   window.iniciarAntiLogoffRobusto = iniciarAntiLogoffRobusto;
   window.desativarAntiLogoff = desativarAntiLogoff;
 })();
+
 
 
