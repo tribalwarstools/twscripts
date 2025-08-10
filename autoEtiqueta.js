@@ -1,37 +1,27 @@
-// ==UserScript==
-// @name         Auto Etiquetador Tribal Wars
-// @namespace    https://tribalwarstools.github.io/
-// @version      1.2
-// @description  Auto etiqueta ataques e recarrega página somente se não houver etiquetas pendentes, com contador no painel TW-style
-// @author       Você
-// @match        https://*.tribalwars.com.br/game.php*screen=overview_villages&*mode=incomings*
-// @grant        none
-// ==/UserScript==
-
 (function() {
     'use strict';
 
     const RELOAD_INTERVAL = 60; // segundos
 
-    // --- Estilo do painel ---
+    // Estilo do painel (mesmo que antes)
     const style = document.createElement('style');
     style.textContent = `
     #PainelEtiqueta {
-    position: fixed;
-    top: 100px;
-    left: 20px;
-    background: #2e2e2e;
-    border: 2px solid #b79755;
-    border-radius: 6px;
-    padding: 10px 15px;
-    font-family: "Tahoma", sans-serif;
-    font-size: 14px;
-    color: #f0e6d2;
-    box-shadow: 0 0 8px rgba(0,0,0,0.8);
-    z-index: 500;
-    width: 180px;
-    user-select: none;
-    cursor: move;
+        position: fixed;
+        top: 100px;
+        left: 20px;
+        background: #2e2e2e;
+        border: 2px solid #b79755;
+        border-radius: 6px;
+        padding: 10px 15px;
+        font-family: "Tahoma", sans-serif;
+        font-size: 14px;
+        color: #f0e6d2;
+        box-shadow: 0 0 8px rgba(0,0,0,0.8);
+        z-index: 500;
+        width: 180px;
+        user-select: none;
+        cursor: move;
     }
     #PainelEtiqueta h4 {
         margin: 0 0 8px 0;
@@ -67,7 +57,7 @@
     `;
     document.head.appendChild(style);
 
-    // --- Painel ---
+    // Painel
     const panel = document.createElement('div');
     panel.id = 'PainelEtiqueta';
     panel.innerHTML = `
@@ -78,11 +68,10 @@
     `;
     document.body.appendChild(panel);
 
-    // --- Tornar arrastável ---
+    // Drag
     (function makeDraggable(el) {
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         el.onmousedown = dragMouseDown;
-
         function dragMouseDown(e) {
             e = e || window.event;
             e.preventDefault();
@@ -91,7 +80,6 @@
             document.onmouseup = closeDragElement;
             document.onmousemove = elementDrag;
         }
-
         function elementDrag(e) {
             e = e || window.event;
             e.preventDefault();
@@ -103,7 +91,6 @@
             el.style.left = (el.offsetLeft - pos1) + "px";
             el.style.bottom = "auto";
         }
-
         function closeDragElement() {
             document.onmouseup = null;
             document.onmousemove = null;
@@ -111,13 +98,16 @@
     })(panel);
 
     const STORAGE_KEY = 'twAutoLabelEnabled';
-    let enabled = localStorage.getItem(STORAGE_KEY) === 'true';
+    let enabled = sessionStorage.getItem(STORAGE_KEY) === 'true';
 
     const btn = document.getElementById('twToggleAutoLabel');
     const statusEl = document.getElementById('twStatus');
     const countdownEl = document.getElementById('twCountdown');
 
     let recarregarPermitido = true;
+    let monitorInterval = null;
+    let countdownInterval = null;
+    let countdown = RELOAD_INTERVAL;
 
     function updateUI() {
         if (enabled) {
@@ -128,25 +118,26 @@
             btn.textContent = 'Ligar';
             statusEl.textContent = 'Status: Inativo';
             statusEl.style.color = '#d49090';
+            countdownEl.textContent = `Recarregando em ${RELOAD_INTERVAL}s`;
         }
     }
 
     btn.addEventListener('click', () => {
         enabled = !enabled;
-        localStorage.setItem(STORAGE_KEY, enabled);
+        sessionStorage.setItem(STORAGE_KEY, enabled);
         updateUI();
         if (enabled) {
             runAutoLabel();
             startCountdown();
         } else {
-            clearInterval(labelInterval);
+            clearInterval(monitorInterval);
             clearInterval(countdownInterval);
         }
     });
 
     updateUI();
 
-    // --- Etiquetar ataques ---
+    // Função que faz a etiquetagem
     function autoEtiqueta() {
         if (!enabled) return;
 
@@ -170,9 +161,11 @@
             recarregarPermitido = false;
             setTimeout(() => {
                 const btnEtiqueta = document.querySelector('input.btn[type="submit"][name="label"]');
-                if (btnEtiqueta) {
+                if (btnEtiqueta && !btnEtiqueta.disabled && btnEtiqueta.offsetParent !== null) {
                     btnEtiqueta.click();
                     console.log('Auto Etiquetador: Etiquetas aplicadas.');
+                } else {
+                    console.warn('Auto Etiquetador: Botão para aplicar etiquetas não encontrado ou desabilitado.');
                 }
             }, 500);
         } else {
@@ -180,20 +173,42 @@
         }
     }
 
-    // --- Loop de etiquetagem ---
-    let labelInterval;
-    function runAutoLabel() {
-        autoEtiqueta();
-        clearInterval(labelInterval);
-        labelInterval = setInterval(() => {
-            if (enabled) autoEtiqueta();
-        }, 20000);
+    // Verifica ataques pendentes e redireciona se necessário
+    function checkAtaquesERecarregar() {
+        if (!enabled) return;
+
+        const incomingAmountEl = document.getElementById('incomings_amount');
+        const ataquesPendentes = incomingAmountEl ? parseInt(incomingAmountEl.textContent.trim()) : 0;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAtaquesPage = urlParams.get('mode') === 'incomings' && urlParams.get('subtype') === 'attacks';
+
+        if (isAtaquesPage) {
+            autoEtiqueta();
+        } else {
+            if (ataquesPendentes > 0) {
+                console.log(`Detectado ${ataquesPendentes} ataque(s) pendente(s). Redirecionando para página de ataques...`);
+                const village = urlParams.get('village');
+                const baseUrl = window.location.origin + window.location.pathname;
+                const ataquesUrl = `${baseUrl}?village=${village}&screen=overview_villages&mode=incomings&subtype=attacks`;
+                window.location.href = ataquesUrl;
+            }
+        }
     }
 
-    // --- Contador e reload ---
-    let countdown = RELOAD_INTERVAL;
-    let countdownInterval;
+    // Loop principal
+    function runAutoLabel() {
+        clearInterval(monitorInterval);
+        checkAtaquesERecarregar();
 
+        monitorInterval = setInterval(() => {
+            if (enabled) {
+                checkAtaquesERecarregar();
+            }
+        }, 15000); // 15s
+    }
+
+    // Contador regressivo para reload na página normal
     function startCountdown() {
         countdown = RELOAD_INTERVAL;
         countdownEl.textContent = `Recarregando em ${countdown}s`;
@@ -203,18 +218,21 @@
             countdownEl.textContent = `Recarregando em ${countdown}s`;
             if (countdown <= 0) {
                 clearInterval(countdownInterval);
+                const urlParams = new URLSearchParams(window.location.search);
+                const isAtaquesPage = urlParams.get('mode') === 'incomings' && urlParams.get('subtype') === 'attacks';
+
                 if (recarregarPermitido) {
                     console.log('[Reload] Nenhuma etiqueta pendente. Recarregando...');
                     location.reload();
                 } else {
-                    console.log('[Reload Cancelado] Havia etiquetas aplicadas.');
-                    startCountdown(); // recomeça contagem
+                    startCountdown();
                 }
+
             }
         }, 1000);
     }
 
-    // --- Inicialização se ativo ---
+    // Inicialização
     if (enabled) {
         runAutoLabel();
         startCountdown();
