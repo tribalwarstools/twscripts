@@ -17,7 +17,7 @@
         border-radius: 6px;
         padding: 0;
         font-family: Verdana, sans-serif;
-        font-size: 9px;
+        font-size: 12px;
         color: #f5deb3;
         z-index: 99999;
         box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
@@ -30,12 +30,12 @@
 
       .twPainelScripts h3 {
         margin: 0 0 10px;
-        font-size: 9px;
+        font-size: 12px;
         color: #f0e2b6;
       }
 
       .twPainelScripts select, .twPainelScripts input[type="number"], .twPainelScripts button {
-        font-size: 9px;
+        font-size: 12px;
         padding: 3px 6px;
         margin: 4px 0;
         border-radius: 4px;
@@ -54,7 +54,7 @@
       }
 
       .twPainelScripts .contador {
-        font-size: 9px;
+        font-size: 12px;
         font-weight: bold;
         margin-left: 6px;
         color: #ffd700;
@@ -70,7 +70,7 @@
         cursor: pointer;
         user-select: none;
         font-weight: bold;
-        font-size: 9px;
+        font-size: 12px;
       }
 
       .twPainelScripts .toggleBtn {
@@ -78,7 +78,7 @@
         border: none;
         color: #f5deb3;
         font-weight: bold;
-        font-size: 9px;
+        font-size: 12px;
         line-height: 20px;
         cursor: pointer;
         user-select: none;
@@ -96,7 +96,7 @@
 
       .twPainelScripts .scriptBtn {
         font-family: Verdana, sans-serif;
-        font-size: 9px;
+        font-size: 12px;
         color: #f5deb3;
         background: linear-gradient(180deg, #3c2f0f 0%, #261e07 100%);
         border: 1px solid #b79755;
@@ -202,6 +202,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
