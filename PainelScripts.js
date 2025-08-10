@@ -10,8 +10,8 @@
       .twPainelScripts {
         position: fixed;
         bottom: 60px;
-        right: 15px;
-        width: 200px;
+        right: 0px;
+        width: 180px;
         background: #2e2e2e;
         border: 2px solid #b79755;
         border-radius: 6px;
@@ -202,6 +202,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
