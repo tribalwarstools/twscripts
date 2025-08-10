@@ -96,7 +96,7 @@
 
       .twPainelScripts .scriptBtn {
         font-family: Verdana, sans-serif;
-        font-size: 14px;
+        font-size: 9px;
         color: #f5deb3;
         background: linear-gradient(180deg, #3c2f0f 0%, #261e07 100%);
         border: 1px solid #b79755;
@@ -202,6 +202,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
