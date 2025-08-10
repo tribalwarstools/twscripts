@@ -78,7 +78,7 @@
         border: none;
         color: #f5deb3;
         font-weight: bold;
-        font-size: 20px;
+        font-size: 9px;
         line-height: 20px;
         cursor: pointer;
         user-select: none;
@@ -202,6 +202,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
