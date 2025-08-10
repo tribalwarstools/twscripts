@@ -7,7 +7,7 @@
 style.textContent = `
     #twPainelAntiLogoff {
       position: fixed;
-      bottom: auto;
+      bottom: 0px;
       left: 0px;
       background: #2e2e2e;
       border: 2px solid #b79755;
@@ -202,6 +202,7 @@ style.textContent = `
   window.iniciarAntiLogoffRobusto = iniciarAntiLogoffRobusto;
   window.desativarAntiLogoff = desativarAntiLogoff;
 })();
+
 
 
 
