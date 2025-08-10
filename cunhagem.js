@@ -141,23 +141,48 @@
     $('body').append(html);
     $('#intervaloCunhagem').val(intervaloSalvo);
 
-    // Painel arrastável
-    const painel = document.getElementById("PainelCunhar");
-    let offsetX = 0, offsetY = 0, isDragging = false;
-    painel.addEventListener("mousedown", function (e) {
-        isDragging = true;
-        offsetX = e.clientX - painel.offsetLeft;
-        offsetY = e.clientY - painel.offsetTop;
-    });
-    document.addEventListener("mouseup", function () {
+// Painel arrastável (versão mais refinada)
+const painel = document.getElementById("PainelCunhar");
+const painelTitulo = painel.querySelector('h4'); // usa o H4 como título arrastável
+let offsetX, offsetY, isDragging = false;
+
+painelTitulo.style.cursor = "move"; // indica que pode arrastar
+
+painelTitulo.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    const rect = painel.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    painel.style.transition = 'none';
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    let left = e.clientX - offsetX;
+    let top = e.clientY - offsetY;
+    const maxLeft = window.innerWidth - painel.offsetWidth;
+    const maxTop = window.innerHeight - painel.offsetHeight;
+    painel.style.left = Math.min(Math.max(0, left), maxLeft) + 'px';
+    painel.style.top = Math.min(Math.max(0, top), maxTop) + 'px';
+    painel.style.right = 'auto';
+    painel.style.bottom = 'auto';
+});
+
+document.addEventListener('mouseup', () => {
+    if (isDragging) {
         isDragging = false;
-    });
-    document.addEventListener("mousemove", function (e) {
-        if (isDragging) {
-            painel.style.left = e.clientX - offsetX + "px";
-            painel.style.top = e.clientY - offsetY + "px";
-        }
-    });
+        painel.style.transition = '';
+    }
+});
+
+
+document.addEventListener('mouseup', () => {
+    if (isDragging) {
+        isDragging = false;
+        painel.style.transition = '';
+    }
+});
+
 
     $(document).on('change', '#intervaloCunhagem', function () {
         const novoValor = $(this).val();
@@ -260,6 +285,7 @@
         $('#toggleCunhagem').trigger('click');
     }
 })();
+
 
 
 
