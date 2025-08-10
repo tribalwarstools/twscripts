@@ -30,7 +30,7 @@
 
       .twPainelScripts h3 {
         margin: 0 0 10px;
-        font-size: 15px;
+        font-size: 9px;
         color: #f0e2b6;
       }
 
@@ -202,6 +202,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
