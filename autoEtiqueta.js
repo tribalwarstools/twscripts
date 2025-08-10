@@ -8,7 +8,7 @@
     style.textContent = `
     #PainelEtiqueta {
       position: fixed;
-      bottom: 100px;
+      bottom: 150px;
       left: 0px;
       background: #2e2e2e;
       border: 2px solid #b79755;
