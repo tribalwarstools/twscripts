@@ -45,7 +45,7 @@
     style.textContent = `
     #PainelCunhar {
         position: fixed;
-        bottom: 300px;
+        bottom: 280px;
         left: 0px;
         background: #2e2e2e;
         border: 2px solid #b79755;
@@ -260,5 +260,6 @@
         $('#toggleCunhagem').trigger('click');
     }
 })();
+
 
 
