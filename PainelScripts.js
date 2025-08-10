@@ -17,7 +17,7 @@
         border-radius: 6px;
         padding: 0;
         font-family: Verdana, sans-serif;
-        font-size: 12px;
+        font-size: 9px;
         color: #f5deb3;
         z-index: 99999;
         box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
@@ -35,7 +35,7 @@
       }
 
       .twPainelScripts select, .twPainelScripts input[type="number"], .twPainelScripts button {
-        font-size: 12px;
+        font-size: 9px;
         padding: 3px 6px;
         margin: 4px 0;
         border-radius: 4px;
@@ -70,7 +70,7 @@
         cursor: pointer;
         user-select: none;
         font-weight: bold;
-        font-size: 12px;
+        font-size: 9px;
       }
 
       .twPainelScripts .toggleBtn {
@@ -202,6 +202,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
