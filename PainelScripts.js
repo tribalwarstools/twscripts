@@ -54,7 +54,7 @@
       }
 
       .twPainelScripts .contador {
-        font-size: 14px;
+        font-size: 9px;
         font-weight: bold;
         margin-left: 6px;
         color: #ffd700;
@@ -202,6 +202,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
