@@ -108,7 +108,7 @@
         text-align: center;
         font-weight: normal;
     }
-    #twCountdown {
+    #tw_Countdown {
         margin-top: 4px;
         text-align: center;
         font-size: 12px;
@@ -135,7 +135,7 @@
     <option value="28800">8 horas</option>
   </select>
   <div class="status" id="contadorTempo">Parado</div>
-  <div id="twCountdown"></div>
+  <div id="tw_Countdown"></div>
 </div>
 `;
     $('body').append(html);
@@ -285,6 +285,7 @@ document.addEventListener('mouseup', () => {
         $('#toggleCunhagem').trigger('click');
     }
 })();
+
 
 
 
