@@ -70,7 +70,7 @@
     const painel = document.createElement("div");
     painel.className = "twPainelAgendador";
     painel.innerHTML = `
-        <h3 id="painel_header">⚔️ Envio</h3>
+        <h3 id="painel_header">⚔️ Agendador de Envio</h3>
         <label>📅 Data:<input id="ag_data" type="date"></label>
         <label>⏰ Hora:<input id="ag_hora" type="time" step="1"></label>
         <label>⚙️ Ajuste (ms):<input id="ajuste_fino" type="number" value="0" step="10"></label>
