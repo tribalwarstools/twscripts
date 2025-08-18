@@ -155,14 +155,6 @@
         const tempoViagem = duracaoParaMs(duracaoTexto);
         let horarioEnvio = (modo === "chegada") ? new Date(target.getTime() - tempoViagem) : target;
 
-        const millis = horarioEnvio - horaServidor() + ajuste;
-
-        if (millis <= 0) {
-            status.textContent = "⛔ Já passou!";
-            salvarConfig(false);
-            return;
-        }
-
         const btn = document.getElementById("troop_confirm_submit");
         if (!btn) {
             status.textContent = "❌ Botão não encontrado!";
@@ -170,22 +162,17 @@
             return;
         }
 
-        status.textContent = "⏳ Aguardando...";
-        btnToggle.textContent = "Cancelar";
         atualizarCamposBloqueio(true);
+        btnToggle.textContent = "Cancelar";
 
-        const inicio = horaServidor().getTime();
-
-        agendamentoAtivo = setTimeout(() => {
-            btn.click();
-            status.textContent = `✔️ Enviado (${ajuste}ms)`;
-            fim();
-        }, millis);
-
-        intervaloCountdown = setInterval(() => {
-            const restante = millis - (horaServidor().getTime() - inicio);
+        // Função para atualizar o countdown usando hora do servidor
+        function atualizarCountdown() {
+            const restante = horarioEnvio - horaServidor() + ajuste;
             if (restante <= 0) {
                 clearInterval(intervaloCountdown);
+                btn.click();
+                status.textContent = `✔️ Enviado (${ajuste}ms)`;
+                fim();
                 return;
             }
             const seg = Math.floor(restante / 1000);
@@ -193,11 +180,13 @@
             const m = Math.floor((seg % 3600) / 60);
             const s = seg % 60;
             status.textContent = `⏳ ${h}h ${m}m ${s}s`;
-        }, 250);
+        }
+
+        atualizarCountdown(); // atualiza imediatamente
+        intervaloCountdown = setInterval(atualizarCountdown, 250);
     }
 
     function cancelar() {
-        clearTimeout(agendamentoAtivo);
         clearInterval(intervaloCountdown);
         fim();
         status.textContent = "❌ Cancelado.";
@@ -205,13 +194,13 @@
     }
 
     function fim() {
-        agendamentoAtivo = null;
+        intervaloCountdown = null;
         btnToggle.textContent = "Iniciar";
         atualizarCamposBloqueio(false);
     }
 
     btnToggle.addEventListener("click", () => {
-        if (agendamentoAtivo) {
+        if (intervaloCountdown) {
             cancelar();
         } else {
             agendar();
@@ -248,7 +237,7 @@
             if (arrastando) {
                 arrastando = false;
                 document.body.style.userSelect = "auto";
-                salvarConfig(!!agendamentoAtivo);
+                salvarConfig(!!intervaloCountdown);
             }
         });
     })();
