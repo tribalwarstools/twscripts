@@ -71,7 +71,7 @@
           <label><input type="radio" name="modo" value="saida" checked> 🚀 Saída</label>
           <label><input type="radio" name="modo" value="chegada"> 🎯 Chegada</label>
         </div>
-        <button id="btn_toggle">▶️ Iniciar</button>
+        <button id="btn_toggle">Iniciar</button>
         <div id="ag_status" class="contador"></div>
     `;
     document.body.appendChild(painel);
