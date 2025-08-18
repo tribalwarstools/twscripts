@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW Agendador de Envio (Unificado + Arrastável por Aldeia)
+// @name         TW Agendador de Envio (Unificado + Arrastável + Bloqueio)
 // @namespace    giovanni.agendador
-// @version      1.2
-// @description  Agendador com botão único Iniciar/Cancelar + salvamento por aldeia + painel arrastável
+// @version      1.3
+// @description  Agendador com botão único Iniciar/Cancelar + salvamento por aldeia + painel arrastável + bloqueio campos
 // @match        *://*/game.php*screen=place*
 // @grant        none
 // ==/UserScript==
@@ -13,7 +13,7 @@
         return;
     }
 
-    const villageId = game_data.village.id; // ✅ ID único da aldeia atual
+    const villageId = game_data.village.id;
 
     function aplicarEstiloTWPadrao() {
         const style = document.createElement('style');
@@ -95,7 +95,7 @@
             ajuste: document.getElementById("ajuste_fino").value,
             modo: document.querySelector('input[name="modo"]:checked').value,
             ativo: ativo,
-            pos: { top: painel.style.top, left: painel.style.left } 
+            pos: { top: painel.style.top, left: painel.style.left }
         };
         localStorage.setItem(`tw_agendamento_${villageId}`, JSON.stringify(cfg));
     }
@@ -113,6 +113,15 @@
         }
         return cfg;
     }
+
+function atualizarCamposBloqueio(bloqueado) {
+    document.getElementById("ag_data").disabled = bloqueado;
+    document.getElementById("ag_hora").disabled = bloqueado;
+    document.getElementById("ajuste_fino").disabled = bloqueado;
+    // Bloqueia os radios
+    document.querySelectorAll('input[name="modo"]').forEach(radio => radio.disabled = bloqueado);
+}
+
 
     function duracaoParaMs(str) {
         const [h, m, s] = str.split(":").map(Number);
@@ -164,6 +173,7 @@
 
         status.textContent = "⏳ Aguardando...";
         btnToggle.textContent = "Cancelar";
+        atualizarCamposBloqueio(true); // ✅ Bloqueia campos ao iniciar
 
         agendamentoAtivo = setTimeout(() => {
             btn.click();
@@ -197,6 +207,7 @@
     function fim() {
         agendamentoAtivo = null;
         btnToggle.textContent = "Iniciar";
+        atualizarCamposBloqueio(false); // ✅ Libera campos ao finalizar
     }
 
     btnToggle.addEventListener("click", () => {
