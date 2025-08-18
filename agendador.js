@@ -156,7 +156,7 @@
 
         // ✅ Bloqueio caso horário já passou
         if (horarioEnvio - horaServidor() <= 0) {
-            status.textContent = "⏹ Horário já passou, agendamento cancelado.";
+            status.textContent = "Horário já passou.";
             salvarConfig(false);
             return;
         }
