@@ -43,11 +43,18 @@
                 border: 1px solid #b79755; background-color: #1c1c1c; color: #f5deb3;
             }
             .twPainelAgendador button {
-                font-size: 12px; padding: 4px; border-radius: 4px;
-                border: 1px solid #b79755; background-color: #1c1c1c; color: #f5deb3;
-                width: 100%;
+        background: #b79755;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #2e2e2e;
+        font-weight: bold;
+        width: 100%;
+        transition: background 0.3s ease;
+        margin-bottom: 8px;
             }
-            .twPainelAgendador button:hover { background-color: #3a3a3a; cursor: pointer; }
+            .twPainelAgendador button:hover { background-color: #d4b35d; cursor: pointer; }
             .twPainelAgendador .radioGroup { display: flex; flex-direction: row; justify-content: space-between; gap: 6px; }
             .twPainelAgendador .radioGroup label { display: flex; align-items: center; gap: 4px; font-size: 12px; }
             .twPainelAgendador .contador { font-size: 13px; font-weight: bold; text-align: center; color: #ffd700; margin-top: 4px; }
