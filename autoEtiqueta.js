@@ -3,7 +3,7 @@
 
     const RELOAD_INTERVAL = 60; // segundos
 
-    // Estilo do painel (mesmo que antes)
+    // Estilo do painel
     const style = document.createElement('style');
     style.textContent = `
     #PainelEtiqueta {
@@ -174,26 +174,15 @@
         }
     }
 
-    // Verifica ataques pendentes e redireciona se necessário
+    // Verifica ataques pendentes SOMENTE se estiver na tela de ataques
     function checkAtaquesERecarregar() {
         if (!enabled) return;
-
-        const incomingAmountEl = document.getElementById('incomings_amount');
-        const ataquesPendentes = incomingAmountEl ? parseInt(incomingAmountEl.textContent.trim()) : 0;
 
         const urlParams = new URLSearchParams(window.location.search);
         const isAtaquesPage = urlParams.get('mode') === 'incomings' && urlParams.get('subtype') === 'attacks';
 
         if (isAtaquesPage) {
             autoEtiqueta();
-        } else {
-            if (ataquesPendentes > 0) {
-                console.log(`Detectado ${ataquesPendentes} ataque(s) pendente(s). Redirecionando para página de ataques...`);
-                const village = urlParams.get('village');
-                const baseUrl = window.location.origin + window.location.pathname;
-                const ataquesUrl = `${baseUrl}?village=${village}&screen=overview_villages&mode=incomings&subtype=attacks`;
-                window.location.href = ataquesUrl;
-            }
         }
     }
 
@@ -219,16 +208,12 @@
             countdownEl.textContent = `Recarregando em ${countdown}s`;
             if (countdown <= 0) {
                 clearInterval(countdownInterval);
-                const urlParams = new URLSearchParams(window.location.search);
-                const isAtaquesPage = urlParams.get('mode') === 'incomings' && urlParams.get('subtype') === 'attacks';
-
                 if (recarregarPermitido) {
                     console.log('[Reload] Nenhuma etiqueta pendente. Recarregando...');
                     location.reload();
                 } else {
                     startCountdown();
                 }
-
             }
         }, 1000);
     }
