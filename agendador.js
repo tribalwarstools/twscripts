@@ -1,12 +1,3 @@
-// ==UserScript==
-// @name         TW Agendador de Envio (Unificado + Arrastável + Bloqueio)
-// @namespace    giovanni.agendador
-// @version      1.3
-// @description  Agendador com botão único Iniciar/Cancelar + salvamento por aldeia + painel arrastável + bloqueio campos
-// @match        *://*/game.php*screen=place*
-// @grant        none
-// ==/UserScript==
-
 (function () {
     if (!window.TribalWars) {
         alert("Este script deve ser executado dentro do Tribal Wars.");
