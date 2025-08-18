@@ -161,7 +161,7 @@
         }
 
         status.textContent = "⏳ Aguardando...";
-        btnToggle.textContent = "🛑 Cancelar";
+        btnToggle.textContent = "Cancelar";
 
         agendamentoAtivo = setTimeout(() => {
             btn.click();
@@ -194,7 +194,7 @@
 
     function fim() {
         agendamentoAtivo = null;
-        btnToggle.textContent = "▶️ Iniciar";
+        btnToggle.textContent = "Iniciar";
     }
 
     btnToggle.addEventListener("click", () => {
