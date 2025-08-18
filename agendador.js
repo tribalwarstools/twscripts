@@ -14,7 +14,7 @@
     }
 
     const villageId = game_data.village.id;
-
+    
     function aplicarEstiloTWPadrao() {
         const style = document.createElement('style');
         style.textContent = `
