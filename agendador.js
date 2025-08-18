@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW Agendador de Envio (Unificado + Arrastável)
+// @name         TW Agendador de Envio (Unificado + Arrastável por Aldeia)
 // @namespace    giovanni.agendador
-// @version      1.1
-// @description  Botão único Iniciar/Cancelar + salvamento + painel arrastável
+// @version      1.2
+// @description  Agendador com botão único Iniciar/Cancelar + salvamento por aldeia + painel arrastável
 // @match        *://*/game.php*screen=place*
 // @grant        none
 // ==/UserScript==
@@ -12,6 +12,8 @@
         alert("Este script deve ser executado dentro do Tribal Wars.");
         return;
     }
+
+    const villageId = game_data.village.id; // ✅ ID único da aldeia atual
 
     function aplicarEstiloTWPadrao() {
         const style = document.createElement('style');
@@ -40,7 +42,7 @@
                 font-size: 13px;
                 color: #f0e2b6;
                 text-align: center;
-                cursor: move;  /* 👈 mostra que pode arrastar */
+                cursor: move;
             }
             .twPainelAgendador label { display: flex; flex-direction: column; gap: 2px; }
             .twPainelAgendador input[type="date"],
@@ -93,13 +95,13 @@
             ajuste: document.getElementById("ajuste_fino").value,
             modo: document.querySelector('input[name="modo"]:checked').value,
             ativo: ativo,
-            pos: { top: painel.style.top, left: painel.style.left } // salva posição
+            pos: { top: painel.style.top, left: painel.style.left } 
         };
-        localStorage.setItem("tw_agendamento", JSON.stringify(cfg));
+        localStorage.setItem(`tw_agendamento_${villageId}`, JSON.stringify(cfg));
     }
 
     function carregarConfig() {
-        const cfg = JSON.parse(localStorage.getItem("tw_agendamento") || "{}");
+        const cfg = JSON.parse(localStorage.getItem(`tw_agendamento_${villageId}`) || "{}");
         if (cfg.data) document.getElementById("ag_data").value = cfg.data;
         if (cfg.hora) document.getElementById("ag_hora").value = cfg.hora;
         if (cfg.ajuste) document.getElementById("ajuste_fino").value = cfg.ajuste;
@@ -107,7 +109,7 @@
         if (cfg.pos) {
             painel.style.top = cfg.pos.top || "60%";
             painel.style.left = cfg.pos.left || "20px";
-            painel.style.transform = "translateY(0)"; // remove centralização
+            painel.style.transform = "translateY(0)";
         }
         return cfg;
     }
@@ -205,7 +207,7 @@
         }
     });
 
-    // 🔄 Restaura
+    // 🔄 Restaura configuração da aldeia
     const cfg = carregarConfig();
     if (cfg.ativo) {
         agendar();
@@ -222,7 +224,7 @@
             arrastando = true;
             offsetX = e.clientX - painel.offsetLeft;
             offsetY = e.clientY - painel.offsetTop;
-            document.body.style.userSelect = "none"; // evita selecionar texto
+            document.body.style.userSelect = "none";
         });
 
         document.addEventListener("mousemove", (e) => {
@@ -236,7 +238,7 @@
             if (arrastando) {
                 arrastando = false;
                 document.body.style.userSelect = "auto";
-                salvarConfig(!!agendamentoAtivo); // salva posição nova
+                salvarConfig(!!agendamentoAtivo);
             }
         });
     })();
