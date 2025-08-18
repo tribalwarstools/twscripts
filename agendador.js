@@ -5,7 +5,7 @@
     }
 
     const villageId = game_data.village.id;
-    
+
     function aplicarEstiloTWPadrao() {
         const style = document.createElement('style');
         style.textContent = `
@@ -117,7 +117,6 @@
         return ((h * 3600) + (m * 60) + s) * 1000;
     }
 
-    // ✅ Função para pegar hora do servidor
     function horaServidor() {
         const srvElem = document.getElementById("serverTime");
         if (!srvElem) return new Date(); // fallback
@@ -155,6 +154,13 @@
         const tempoViagem = duracaoParaMs(duracaoTexto);
         let horarioEnvio = (modo === "chegada") ? new Date(target.getTime() - tempoViagem) : target;
 
+        // ✅ Bloqueio caso horário já passou
+        if (horarioEnvio - horaServidor() <= 0) {
+            status.textContent = "⏹ Horário já passou, agendamento cancelado.";
+            salvarConfig(false);
+            return;
+        }
+
         const btn = document.getElementById("troop_confirm_submit");
         if (!btn) {
             status.textContent = "❌ Botão não encontrado!";
@@ -165,7 +171,6 @@
         atualizarCamposBloqueio(true);
         btnToggle.textContent = "Cancelar";
 
-        // Função para atualizar o countdown usando hora do servidor
         function atualizarCountdown() {
             const restante = horarioEnvio - horaServidor() + ajuste;
             if (restante <= 0) {
@@ -182,7 +187,7 @@
             status.textContent = `⏳ ${h}h ${m}m ${s}s`;
         }
 
-        atualizarCountdown(); // atualiza imediatamente
+        atualizarCountdown();
         intervaloCountdown = setInterval(atualizarCountdown, 250);
     }
 
@@ -207,9 +212,20 @@
         }
     });
 
+    // ✅ Verificação da hora salva antes de iniciar automaticamente
     const cfg = carregarConfig();
-    if (cfg.ativo) {
-        agendar();
+    if (cfg.ativo && cfg.data && cfg.hora) {
+        const [yyyy, mm, dd] = cfg.data.split("-");
+        const target = new Date(yyyy, mm - 1, dd, ...cfg.hora.split(":").map(Number));
+        const ajuste = parseInt(cfg.ajuste, 10) || 0;
+        const restante = target - horaServidor() + ajuste;
+
+        if (restante > 0) {
+            agendar();
+        } else {
+            status.textContent = "Horário já passou.";
+            salvarConfig(false);
+        }
     }
 
     // ====================
