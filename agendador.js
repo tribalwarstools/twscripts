@@ -105,18 +105,25 @@
         return cfg;
     }
 
-function atualizarCamposBloqueio(bloqueado) {
-    document.getElementById("ag_data").disabled = bloqueado;
-    document.getElementById("ag_hora").disabled = bloqueado;
-    document.getElementById("ajuste_fino").disabled = bloqueado;
-    // Bloqueia os radios
-    document.querySelectorAll('input[name="modo"]').forEach(radio => radio.disabled = bloqueado);
-}
-
+    function atualizarCamposBloqueio(bloqueado) {
+        document.getElementById("ag_data").disabled = bloqueado;
+        document.getElementById("ag_hora").disabled = bloqueado;
+        document.getElementById("ajuste_fino").disabled = bloqueado;
+        document.querySelectorAll('input[name="modo"]').forEach(radio => radio.disabled = bloqueado);
+    }
 
     function duracaoParaMs(str) {
         const [h, m, s] = str.split(":").map(Number);
         return ((h * 3600) + (m * 60) + s) * 1000;
+    }
+
+    // ✅ Função para pegar hora do servidor
+    function horaServidor() {
+        const srvElem = document.getElementById("serverTime");
+        if (!srvElem) return new Date(); // fallback
+        const [h, m, s] = srvElem.textContent.trim().split(":").map(Number);
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s);
     }
 
     function agendar() {
@@ -147,7 +154,8 @@ function atualizarCamposBloqueio(bloqueado) {
 
         const tempoViagem = duracaoParaMs(duracaoTexto);
         let horarioEnvio = (modo === "chegada") ? new Date(target.getTime() - tempoViagem) : target;
-        const millis = horarioEnvio - new Date() + ajuste;
+
+        const millis = horarioEnvio - horaServidor() + ajuste;
 
         if (millis <= 0) {
             status.textContent = "⛔ Já passou!";
@@ -164,7 +172,9 @@ function atualizarCamposBloqueio(bloqueado) {
 
         status.textContent = "⏳ Aguardando...";
         btnToggle.textContent = "Cancelar";
-        atualizarCamposBloqueio(true); // ✅ Bloqueia campos ao iniciar
+        atualizarCamposBloqueio(true);
+
+        const inicio = horaServidor().getTime();
 
         agendamentoAtivo = setTimeout(() => {
             btn.click();
@@ -172,9 +182,8 @@ function atualizarCamposBloqueio(bloqueado) {
             fim();
         }, millis);
 
-        const inicio = Date.now();
         intervaloCountdown = setInterval(() => {
-            const restante = millis - (Date.now() - inicio);
+            const restante = millis - (horaServidor().getTime() - inicio);
             if (restante <= 0) {
                 clearInterval(intervaloCountdown);
                 return;
@@ -198,7 +207,7 @@ function atualizarCamposBloqueio(bloqueado) {
     function fim() {
         agendamentoAtivo = null;
         btnToggle.textContent = "Iniciar";
-        atualizarCamposBloqueio(false); // ✅ Libera campos ao finalizar
+        atualizarCamposBloqueio(false);
     }
 
     btnToggle.addEventListener("click", () => {
@@ -209,7 +218,6 @@ function atualizarCamposBloqueio(bloqueado) {
         }
     });
 
-    // 🔄 Restaura configuração da aldeia
     const cfg = carregarConfig();
     if (cfg.ativo) {
         agendar();
