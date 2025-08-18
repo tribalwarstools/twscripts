@@ -152,14 +152,14 @@
           .fail(() => UI.InfoMessage('❌ Erro ao carregar script Configurar Tropas.', 5000, 'error'));
       },
     },
-    {
+    /*{
       nome: 'Agendador de Envio',
       func: () => {
         $.getScript('https://tribalwarstools.github.io/agendadorEnvio/agendadorEnvio.js')
           .done(() => UI.InfoMessage('✅ Script Agendador de Envio carregado!', 3000, 'success'))
           .fail(() => UI.InfoMessage('❌ Erro ao carregar script Agendador de Envio.', 5000, 'error'));
       },
-    },
+    },*/
     {
       nome: 'Renomear Aldeias',
       func: () => {
@@ -202,6 +202,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
