@@ -155,7 +155,7 @@
     {
       nome: 'blindagem',
       func: () => {
-        $.getScript('javascript:$.getScript('https://tribalwarstools.github.io/beta/blindagem.js');')
+        $.getScript('https://tribalwarstools.github.io/beta/blindagem.js')
           .done(() => UI.InfoMessage('✅ Script blindagem carregado!', 3000, 'success'))
           .fail(() => UI.InfoMessage('❌ Erro ao carregar script blindagem.', 5000, 'error'));
       },
@@ -202,6 +202,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
