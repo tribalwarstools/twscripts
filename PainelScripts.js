@@ -138,7 +138,7 @@
   const scripts = [
 
         {
-      nome: 'Comparador',
+      nome: 'Comparador(Casual)',
       func: () => {
         $.getScript('https://tribalwarstools.github.io/beta/ComparadorPontCasual.js')
           .done(() => UI.InfoMessage('✅ Script Comparador carregado com sucesso!', 3000, 'success'))
@@ -212,6 +212,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
