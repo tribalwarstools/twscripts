@@ -138,11 +138,11 @@
   const scripts = [
 
         {
-      nome: 'ComparadorPontCasual.js',
+      nome: 'Comparador',
       func: () => {
         $.getScript('https://tribalwarstools.github.io/beta/ComparadorPontCasual.js')
-          .done(() => UI.InfoMessage('✅ Script ComparadorPontCasual.js carregado com sucesso!', 3000, 'success'))
-          .fail(() => UI.InfoMessage('❌ Erro ao carregar o script ComparadorPontCasual.js.', 5000, 'error'));
+          .done(() => UI.InfoMessage('✅ Script Comparador carregado com sucesso!', 3000, 'success'))
+          .fail(() => UI.InfoMessage('❌ Erro ao carregar o script Comparador.', 5000, 'error'));
       },
     },
     
@@ -212,6 +212,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
