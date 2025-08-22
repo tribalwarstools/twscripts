@@ -136,6 +136,16 @@
   const header = painel.querySelector('#headerPainel');
 
   const scripts = [
+
+        {
+      nome: 'ComparadorPontCasual.js',
+      func: () => {
+        $.getScript('https://tribalwarstools.github.io/beta/ComparadorPontCasual.js')
+          .done(() => UI.InfoMessage('✅ Script ComparadorPontCasual.js carregado com sucesso!', 3000, 'success'))
+          .fail(() => UI.InfoMessage('❌ Erro ao carregar o script ComparadorPontCasual.js.', 5000, 'error'));
+      },
+    },
+    
     {
       nome: 'Construir Edifícios',
       func: () => {
@@ -202,6 +212,7 @@
 
   header.onclick = toggle;
 })();
+
 
 
 
