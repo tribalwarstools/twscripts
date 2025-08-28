@@ -5,6 +5,7 @@
   let wakeLock = null;
   let audioCtx = null;
   let oscillator = null;
+  let proximaAcaoTempo = null; // Variável para armazenar o tempo da próxima ação
 
   async function ativarWakeLock() {
     try {
@@ -67,7 +68,7 @@
       color: #f0e6d2;
       box-shadow: 0 0 8px rgba(0,0,0,0.8);
       z-index: 1000;
-      width: 180px;
+      width: 200px;
       user-select: none;
       text-align: center;
     }
@@ -87,6 +88,7 @@
       font-weight: bold;
       width: 100%;
       transition: background 0.3s ease;
+      margin-bottom: 8px;
     }
     #twPainelAntiLogoff button:hover:not(:disabled) {
       background: #d4b35d;
@@ -94,6 +96,11 @@
     #twPainelAntiLogoff .status {
       margin-top: 6px;
       font-weight: bold;
+    }
+    #twPainelAntiLogoff .contador {
+      font-size: 12px;
+      margin-top: 6px;
+      color: #d4b35d;
     }
     .anti-logoff-blink {
       animation: blinkAnim 0.3s ease;
@@ -112,8 +119,38 @@
     <h4 id="painelTitulo">Anti-Logoff Robusto</h4>
     <button id="btnToggle">Iniciar</button>
     <div id="status" class="status">Inativo 🔴</div>
+    <div id="contador" class="contador">Próxima ação: --:--</div>
   `;
   document.body.appendChild(painel);
+
+  // Função para formatar o tempo em minutos:segundos
+  function formatarTempo(milissegundos) {
+    const segundos = Math.floor(milissegundos / 1000);
+    const minutos = Math.floor(segundos / 60);
+    const segundosRestantes = segundos % 60;
+    return `${minutos.toString().padStart(2, '0')}:${segundosRestantes.toString().padStart(2, '0')}`;
+  }
+
+  // Função para atualizar o contador
+  function atualizarContador() {
+    const contadorEl = painel.querySelector('#contador');
+    if (!window.antiLogoffRobustoAtivo || !proximaAcaoTempo) {
+      contadorEl.textContent = 'Próxima ação: --:--';
+      return;
+    }
+
+    const agora = Date.now();
+    const tempoRestante = proximaAcaoTempo - agora;
+    
+    if (tempoRestante <= 0) {
+      contadorEl.textContent = 'Executando ação...';
+    } else {
+      contadorEl.textContent = `Próxima ação: ${formatarTempo(tempoRestante)}`;
+    }
+  }
+
+  // Atualizar o contador a cada segundo
+  setInterval(atualizarContador, 1000);
 
   function iniciarAntiLogoffRobusto() {
     if (window.antiLogoffRobustoAtivo) return;
@@ -133,10 +170,16 @@
       () => { fetch('/game.php').catch(() => {}); }
     ];
 
+    // Definir o tempo da próxima ação
+    proximaAcaoTempo = Date.now() + INTERVALO_ACOES;
+    
     window.antiLogoffIntervalo = setInterval(() => {
       try {
         acoes[contador % acoes.length]();
         console.log(`💤 Mantendo ativo... [Ação ${contador + 1}]`);
+        
+        // Atualizar o tempo da próxima ação
+        proximaAcaoTempo = Date.now() + INTERVALO_ACOES;
       } catch (e) {
         console.warn("⚠️ Erro na ação anti-logoff:", e);
       }
@@ -144,6 +187,7 @@
     }, INTERVALO_ACOES);
 
     atualizarStatus();
+    atualizarContador();
   }
 
   function desativarAntiLogoff() {
@@ -151,8 +195,10 @@
     window.antiLogoffRobustoAtivo = false;
     localStorage.setItem(STORAGE_KEY, 'false');
     desativarWakeLock();
+    proximaAcaoTempo = null;
     console.log("❌ Anti-logoff desativado.");
     atualizarStatus();
+    atualizarContador();
   }
 
   function atualizarStatus() {
@@ -217,6 +263,7 @@
   } else {
     window.antiLogoffRobustoAtivo = false;
     atualizarStatus();
+    atualizarContador();
   }
 
   window.iniciarAntiLogoffRobusto = iniciarAntiLogoffRobusto;
