@@ -1,10 +1,9 @@
 (function () {
   const STORAGE_KEY = 'twAntiLogoffAtivo';
-  const RELOAD_INTERVAL = 5 * 60; // segundos (5 minutos)
+  const INTERVALO_ACOES = 4 * 60 * 1000; // 4 minutos
 
   const style = document.createElement('style');
-
-style.textContent = `
+  style.textContent = `
     #twPainelAntiLogoff {
       position: fixed;
       bottom: 30px;
@@ -22,7 +21,6 @@ style.textContent = `
       user-select: none;
       text-align: center;
     }
-
     #twPainelAntiLogoff h4 {
       margin: 0 0 8px 0;
       font-weight: bold;
@@ -47,11 +45,6 @@ style.textContent = `
       margin-top: 6px;
       font-weight: bold;
     }
-    #twPainelAntiLogoff .contador {
-      margin-top: 4px;
-      font-size: 12px;
-      color: #ccc;
-    }
     .anti-logoff-blink {
       animation: blinkAnim 0.3s ease;
     }
@@ -69,39 +62,14 @@ style.textContent = `
     <h4 id="painelTitulo">Anti-Logoff Robusto</h4>
     <button id="btnToggle">Iniciar</button>
     <div id="status" class="status">Inativo 🔴</div>
-    <div id="contador" class="contador">Parado 00:00</div>
   `;
   document.body.appendChild(painel);
-
-  let tempoRestante = RELOAD_INTERVAL;
-  let contadorInterval;
-  let reloadTimer;
-
-  function atualizarContador() {
-    const min = String(Math.floor(tempoRestante / 60)).padStart(2, '0');
-    const sec = String(tempoRestante % 60).padStart(2, '0');
-    painel.querySelector('#contador').textContent = `Recarregando em ${min}:${sec}`;
-    if (tempoRestante <= 0) {
-      location.reload();
-    }
-    tempoRestante--;
-  }
-
-  function iniciarContador() {
-    tempoRestante = RELOAD_INTERVAL;
-    atualizarContador();
-    clearInterval(contadorInterval);
-    contadorInterval = setInterval(atualizarContador, 1000);
-  }
 
   function iniciarAntiLogoffRobusto() {
     if (window.antiLogoffRobustoAtivo) return;
     window.antiLogoffRobustoAtivo = true;
     localStorage.setItem(STORAGE_KEY, 'true');
 
-    iniciarContador();
-
-    const intervalo = 4 * 60 * 1000;
     let contador = 0;
     const acoes = [
       () => { document.title = document.title; },
@@ -121,14 +89,13 @@ style.textContent = `
         console.warn("⚠️ Erro na ação anti-logoff:", e);
       }
       contador++;
-    }, intervalo);
+    }, INTERVALO_ACOES);
 
     atualizarStatus();
   }
 
   function desativarAntiLogoff() {
     clearInterval(window.antiLogoffIntervalo);
-    clearInterval(contadorInterval);
     window.antiLogoffRobustoAtivo = false;
     localStorage.setItem(STORAGE_KEY, 'false');
     console.log("❌ Anti-logoff desativado.");
@@ -139,16 +106,15 @@ style.textContent = `
     const statusEl = painel.querySelector('#status');
     const btnToggle = painel.querySelector('#btnToggle');
     if (window.antiLogoffRobustoAtivo) {
-      statusEl.textContent = "Status: Ativo";
+      statusEl.textContent = "Status: Ativo 🟢";
       statusEl.style.color = "#0f0";
       btnToggle.textContent = "Desligar";
       btnToggle.style.backgroundColor = "#dc3545";
     } else {
-      statusEl.textContent = "Status: Inativo";
+      statusEl.textContent = "Status: Inativo 🔴";
       statusEl.style.color = "#f33";
       btnToggle.textContent = "Ligar";
       btnToggle.style.backgroundColor = "#b79755";
-      painel.querySelector('#contador').textContent = "Parado 00:00";
     }
   }
 
@@ -191,6 +157,7 @@ style.textContent = `
     }
   });
 
+  // Restaurar estado salvo
   const estadoSalvo = localStorage.getItem(STORAGE_KEY) === 'true';
   if (estadoSalvo) {
     iniciarAntiLogoffRobusto();
@@ -202,15 +169,3 @@ style.textContent = `
   window.iniciarAntiLogoffRobusto = iniciarAntiLogoffRobusto;
   window.desativarAntiLogoff = desativarAntiLogoff;
 })();
-
-
-
-
-
-
-
-
-
-
-
-
