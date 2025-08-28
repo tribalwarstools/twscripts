@@ -86,6 +86,20 @@
     const status = document.getElementById("ag_status");
     const btnToggle = document.getElementById("btn_toggle");
 
+    // ✅ Preencher automaticamente com data e hora atuais
+    (function preencherAgora() {
+        const agora = new Date();
+        const yyyy = agora.getFullYear();
+        const mm = String(agora.getMonth() + 1).padStart(2, "0");
+        const dd = String(agora.getDate()).padStart(2, "0");
+        const hh = String(agora.getHours()).padStart(2, "0");
+        const mi = String(agora.getMinutes()).padStart(2, "0");
+        const ss = String(agora.getSeconds()).padStart(2, "0");
+
+        document.getElementById("ag_data").value = `${yyyy}-${mm}-${dd}`;
+        document.getElementById("ag_hora").value = `${hh}:${mi}:${ss}`;
+    })();
+
     function salvarConfig(ativo) {
         const cfg = {
             data: document.getElementById("ag_data").value,
@@ -161,7 +175,6 @@
         const tempoViagem = duracaoParaMs(duracaoTexto);
         let horarioEnvio = (modo === "chegada") ? new Date(target.getTime() - tempoViagem) : target;
 
-        // ✅ Bloqueio caso horário já passou
         if (horarioEnvio - horaServidor() <= 0) {
             status.textContent = "Horário já passou.";
             salvarConfig(false);
@@ -219,7 +232,6 @@
         }
     });
 
-    // ✅ Verificação da hora salva antes de iniciar automaticamente
     const cfg = carregarConfig();
     if (cfg.ativo && cfg.data && cfg.hora) {
         const [yyyy, mm, dd] = cfg.data.split("-");
@@ -235,9 +247,6 @@
         }
     }
 
-    // ====================
-    // 🔀 Arrastar painel
-    // ====================
     (function tornarArrastavel() {
         const header = document.getElementById("painel_header");
         let offsetX = 0, offsetY = 0, arrastando = false;
