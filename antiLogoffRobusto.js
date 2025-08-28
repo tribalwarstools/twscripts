@@ -2,6 +2,56 @@
   const STORAGE_KEY = 'twAntiLogoffAtivo';
   const INTERVALO_ACOES = 4 * 60 * 1000; // 4 minutos
 
+  let wakeLock = null;
+  let audioCtx = null;
+  let oscillator = null;
+
+  async function ativarWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          console.log('🔓 Wake Lock liberado');
+        });
+        console.log('🔒 Wake Lock ativo');
+      } else {
+        ativarWebAudioFallback();
+      }
+    } catch (err) {
+      console.warn('⚠️ Falha no Wake Lock, usando Web Audio fallback:', err);
+      ativarWebAudioFallback();
+    }
+  }
+
+  function ativarWebAudioFallback() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0; // inaudível
+      oscillator.connect(gainNode).connect(audioCtx.destination);
+      oscillator.start();
+      console.log('🎵 Web Audio fallback ativado');
+    }
+  }
+
+  function desativarWakeLock() {
+    if (wakeLock) {
+      wakeLock.release().catch(() => {});
+      wakeLock = null;
+    }
+    if (oscillator) {
+      oscillator.stop();
+      oscillator.disconnect();
+      oscillator = null;
+    }
+    if (audioCtx) {
+      audioCtx.close().catch(() => {});
+      audioCtx = null;
+    }
+    console.log('❌ Wake Lock / Web Audio desativado');
+  }
+
   const style = document.createElement('style');
   style.textContent = `
     #twPainelAntiLogoff {
@@ -70,6 +120,8 @@
     window.antiLogoffRobustoAtivo = true;
     localStorage.setItem(STORAGE_KEY, 'true');
 
+    ativarWakeLock();
+
     let contador = 0;
     const acoes = [
       () => { document.title = document.title; },
@@ -98,6 +150,7 @@
     clearInterval(window.antiLogoffIntervalo);
     window.antiLogoffRobustoAtivo = false;
     localStorage.setItem(STORAGE_KEY, 'false');
+    desativarWakeLock();
     console.log("❌ Anti-logoff desativado.");
     atualizarStatus();
   }
