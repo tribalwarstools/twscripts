@@ -1,3 +1,4 @@
+javascript:
 if (!contadorTropas) var contadorTropas = {};
 var textoPainel = [];
 
@@ -20,8 +21,7 @@ if (game_data.locale == "pt_BR") {
         "Atenção\nSomente as primeiras 1000 aldeias",
         "https://help.tribalwars.com.br/wiki/",
         "Total de ",
-        " aldeias",
-        "Ver aldeia:"
+        " aldeias"
     ];
     contadorTropas.nomesUnidades = "Lanceiro,Espadachim,Bárbaro,Arqueiro,Explorador,Cavalaria_Leve,Arqueiro_a_cavalo,Cavalaria_Pesada,Aríete,Catapulta,Paladino,Nobre".split(",");
 } else {
@@ -43,8 +43,7 @@ if (game_data.locale == "pt_BR") {
         "Attention\nOnly the first 1000 villages",
         "https://help.tribalwars.net/wiki/",
         "Total of ",
-        " villages",
-        "View village:"
+        " villages"
     ];
     contadorTropas.nomesUnidades = "Spear_fighter,Swordsman,Axeman,Archer,Scout,Light_cavalry,Mounted_archer,Heavy_cavalry,Ram,Catapult,Paladin,Nobleman".split(",");
 }
@@ -62,7 +61,7 @@ contadorTropas.iconesUnidades = "spear,sword,axe,archer,spy,light,marcher,heavy,
 
 // Painel
 var painel = "<h2 align='center'>" + textoPainel[0] + "</h2><table width='100%'><tr><th>" + textoPainel[1] + "<select id='listaGrupos' onchange=\"contadorTropas.link = this.value; carregarDados();\"><option value='" + contadorTropas.link + "'>" + textoPainel[2] + "</select>";
-painel += "<tr><td><table width='100%'><tr><th colspan='4'>" + textoPainel[3] + "<select onchange=\"mudar(this.value);\"><option value='0'>" + textoPainel[4] + "<option value='0p2p3'>" + textoPainel[5] + "<option value='1'>" + textoPainel[6] + "<option value='1m0'>" + textoPainel[7] + "<option value='2'>" + textoPainel[8] + "<option value='3'>" + textoPainel[9] + "</select><tbody id='tropas_disponiveis'></table><tr><th><b id='qtd_aldeias'></b><a href='#' style='float: right;' onclick=\"exportar();\">" + textoPainel[10] + "</a><br><span id='selectAldeia'></span></table>";
+painel += "<tr><td><table width='100%'><tr><th colspan='4'>" + textoPainel[3] + "<select onchange=\"mudar(this.value);\"><option value='0'>" + textoPainel[4] + "<option value='0p2p3'>" + textoPainel[5] + "<option value='1'>" + textoPainel[6] + "<option value='1m0'>" + textoPainel[7] + "<option value='2'>" + textoPainel[8] + "<option value='3'>" + textoPainel[9] + "</select><tbody id='tropas_disponiveis'></table><tr><th><b id='qtd_aldeias'></b><a href='#' style='float: right;' onclick=\"exportar();\">" + textoPainel[10] + "</a></table>";
 Dialog.show("painel_tropas", painel);
 
 carregarDados();
@@ -113,54 +112,9 @@ function carregarDados() {
             }
             somar();
             mudar(linhaAtual);
-            montarSelectAldeias();
         }
     };
     r.send(null);
-}
-
-// Montar select de aldeias
-function montarSelectAldeias() {
-    var select = "<b>" + textoPainel[18] + "</b> <select onchange='mostrarAldeia(this.value)'><option value=''>" + textoPainel[2] + "</option>";
-    for (var i = 1; i < tabela.rows.length; i++) {
-        let nome = tabela.rows[i].cells[0].textContent.trim();
-        select += "<option value='" + i + "'>" + nome + "</option>";
-    }
-    select += "</select>";
-    $("#selectAldeia").html(select);
-}
-
-// Mostrar tropas de uma aldeia específica em duas colunas
-function mostrarAldeia(idx) {
-    if (!idx) return mudar(linhaAtual);
-    
-    let row = tabela.rows[idx];
-    if (!row) return;
-    
-    let m = (tabela.rows[1].cells.length == row.cells.length) ? 2 : 1;
-    var elem = "";
-    
-    for (let j = m; j < contadorTropas.iconesUnidades.length + m; j++) {
-        let qtd = parseInt(row.cells[j].textContent) || 0;
-        let unidade = contadorTropas.iconesUnidades[j - m];
-        
-        // Criar duas colunas
-        if ((j - m) % 2 === 0) {
-            elem += "<tr>";
-        }
-        
-        elem += "<th width='20'><a href='" + textoPainel[15] + contadorTropas.nomesUnidades[j - m] +
-                "' target='_blank'><img src='" + image_base + "unit/unit_" + unidade +
-                ".png'></a><td bgcolor='#fff5da'>" + qtd.toLocaleString();
-    }
-    
-    // Preencher célula vazia se número ímpar de unidades
-    if (contadorTropas.iconesUnidades.length % 2 !== 0) {
-        elem += "<th><td>";
-    }
-    
-    $("#tropas_disponiveis").html(elem);
-    $("#qtd_aldeias").html("Aldeia: " + row.cells[0].textContent.trim());
 }
 
 function mudar(valor) {
@@ -215,25 +169,12 @@ function espaçar(num) {
 }
 
 function exibir(somaFinal) {
-    var elem = "";
+    var elem = "<tr>";
     contadorTropas.exportar = "<textarea rows='7' cols='25' onclick=\"this.select();\">";
-    
     for (var i = 0; i < contadorTropas.iconesUnidades.length; i++) {
         contadorTropas.exportar += "[unit]" + contadorTropas.iconesUnidades[i] + "[/unit]" + somaFinal[i] + (i % 2 == 0 ? espaçar(somaFinal[i]) : "\n");
-        
-        // Criar duas colunas
-        if (i % 2 === 0) {
-            elem += "<tr>";
-        }
-        
-        elem += "<th width='20'><a href='" + textoPainel[15] + contadorTropas.nomesUnidades[i] + "' target='_blank'><img src='" + image_base + "unit/unit_" + contadorTropas.iconesUnidades[i] + ".png'></a><td bgcolor='#fff5da'>" + somaFinal[i].toLocaleString();
+        elem += (i % 2 == 0 ? "<tr>" : "") + "<th width='20'><a href='" + textoPainel[15] + contadorTropas.nomesUnidades[i] + "' target='_blank'><img src='" + image_base + "unit/unit_" + contadorTropas.iconesUnidades[i] + ".png'></a><td bgcolor='#fff5da'>" + somaFinal[i];
     }
-    
-    // Preencher célula vazia se número ímpar de unidades
-    if (contadorTropas.iconesUnidades.length % 2 !== 0) {
-        elem += "<th><td>";
-    }
-    
     contadorTropas.exportar += "</textarea>";
     $("#tropas_disponiveis").html(elem);
     $(mobile ? "#loading" : "#loading_content").hide();
