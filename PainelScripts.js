@@ -1,143 +1,7 @@
-(function () {
-  if (document.getElementById('painelScriptsTribal')) {
-    document.getElementById('painelScriptsTribal').style.display = 'block';
-    return;
-  }
-
-  function aplicarEstiloTWPadrao() {
-    const style = document.createElement('style');
-    style.textContent = `
-      .twPainelScripts {
-        position: fixed;
-        bottom: 60px;
-        right: 0px;
-        width: 180px;
-        background: #2e2e2e;
-        border: 2px solid #b79755;
-        border-radius: 6px;
-        padding: 0;
-        font-family: Verdana, sans-serif;
-        font-size: 12px;
-        color: #f5deb3;
-        z-index: 99999;
-        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        transition: height 0.3s ease, opacity 0.3s ease;
-        height: 40px;
-      }
-
-      .twPainelScripts h3 {
-        margin: 0 0 10px;
-        font-size: 12px;
-        color: #f0e2b6;
-      }
-
-      .twPainelScripts select, .twPainelScripts input[type="number"], .twPainelScripts button {
-        font-size: 12px;
-        padding: 3px 6px;
-        margin: 4px 0;
-        border-radius: 4px;
-        border: 1px solid #b79755;
-        background-color: #1c1c1c;
-        color: #f5deb3;
-      }
-
-      .twPainelScripts button:hover {
-        background-color: #3a3a3a;
-        cursor: pointer;
-      }
-
-      .twPainelScripts .linha {
-        margin-bottom: 8px;
-      }
-
-      .twPainelScripts .contador {
-        font-size: 12px;
-        font-weight: bold;
-        margin-left: 6px;
-        color: #ffd700;
-      }
-
-      .twPainelScripts .header {
-        background: linear-gradient(180deg, #3c2f0f 0%, #261e07 100%);
-        border-bottom: 1px solid #b79755;
-        padding: 6px 12px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        cursor: pointer;
-        user-select: none;
-        font-weight: bold;
-        font-size: 12px;
-      }
-
-      .twPainelScripts .toggleBtn {
-        background: transparent;
-        border: none;
-        color: #f5deb3;
-        font-weight: bold;
-        font-size: 12px;
-        line-height: 20px;
-        cursor: pointer;
-        user-select: none;
-      }
-
-      .twPainelScripts .listaScripts {
-        display: none;
-        flex-direction: column;
-        padding: 8px 10px;
-        gap: 6px;
-        background: #1c1810;
-        max-height: 280px;
-        overflow-y: auto;
-      }
-
-      .twPainelScripts .scriptBtn {
-        font-family: Verdana, sans-serif;
-        font-size: 12px;
-        color: #f5deb3;
-        background: linear-gradient(180deg, #3c2f0f 0%, #261e07 100%);
-        border: 1px solid #b79755;
-        border-radius: 4px;
-        padding: 6px 10px;
-        cursor: pointer;
-        text-align: left;
-        user-select: none;
-        transition: background 0.25s ease;
-      }
-
-      .twPainelScripts .scriptBtn:hover {
-        background: linear-gradient(180deg, #533e0f 0%, #3a2b06 100%);
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  aplicarEstiloTWPadrao();
-
-  const painel = document.createElement('div');
-  painel.id = 'painelScriptsTribal';
-  painel.className = 'twPainelScripts';
-
-  painel.innerHTML = `
-    <div class="header" id="headerPainel">
-      <span>SCRIPTS</span>
-      <button id="btnToggle" class="toggleBtn">▼</button>
-    </div>
-    <div id="listaScripts" class="listaScripts"></div>
-  `;
-
-  document.body.appendChild(painel);
-
-  const btnToggle = painel.querySelector('#btnToggle');
-  const lista = painel.querySelector('#listaScripts');
-  const header = painel.querySelector('#headerPainel');
-
+(function() {
+  // === Lista de Scripts ===
   const scripts = [
-
-        {
+    {
       nome: 'Comparador(Casual)',
       func: () => {
         $.getScript('https://tribalwarstools.github.io/beta/ComparadorPontCasual.js')
@@ -145,7 +9,6 @@
           .fail(() => UI.InfoMessage('❌ Erro ao carregar o script Comparador.', 5000, 'error'));
       },
     },
-    
     {
       nome: 'Construir Edifícios',
       func: () => {
@@ -163,11 +26,11 @@
       },
     },
     {
-      nome: 'blindagem',
+      nome: 'Blindagem',
       func: () => {
         $.getScript('https://tribalwarstools.github.io/beta/blindagem.js')
-          .done(() => UI.InfoMessage('✅ Script blindagem carregado!', 3000, 'success'))
-          .fail(() => UI.InfoMessage('❌ Erro ao carregar script blindagem.', 5000, 'error'));
+          .done(() => UI.InfoMessage('✅ Script Blindagem carregado!', 3000, 'success'))
+          .fail(() => UI.InfoMessage('❌ Erro ao carregar script Blindagem.', 5000, 'error'));
       },
     },
     {
@@ -180,10 +43,95 @@
     },
   ];
 
-  function criarBotaoScript(script) {
-    const btn = document.createElement('button');
+  // === Criar painel ===
+  const painel = document.createElement("div");
+  painel.id = "tw-painel";
+  painel.innerHTML = `
+    <div id="tw-toggle">📜</div>
+    <div id="tw-conteudo">
+      <h4>Painel de Scripts</h4>
+    </div>
+  `;
+
+  // Estilo
+  const css = `
+    #tw-painel {
+      position: fixed;
+      top: 100px;
+      left: 0;
+      height: auto;
+      background: #2b2b2b;
+      border: 2px solid #654321;
+      border-left: none;
+      border-radius: 0 10px 10px 0;
+      box-shadow: 2px 2px 8px #000;
+      font-family: Verdana, sans-serif;
+      color: #f1e1c1;
+      z-index: 9999;
+      transition: transform 0.3s ease-in-out;
+      transform: translateX(-180px);
+    }
+    #tw-toggle {
+      position: absolute;
+      top: 0;
+      right: -28px;
+      width: 28px;
+      height: 40px;
+      background: #5c4023;
+      border: 2px solid #654321;
+      border-left: none;
+      border-radius: 0 6px 6px 0;
+      color: #f1e1c1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      box-shadow: 2px 2px 6px #000;
+    }
+    #tw-conteudo {
+      padding: 8px;
+      width: 180px;
+    }
+    #tw-conteudo h4 {
+      margin: 0 0 6px 0;
+      font-size: 13px;
+      text-align: center;
+      border-bottom: 1px solid #654321;
+      padding-bottom: 4px;
+    }
+    .scriptBtn {
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      background: #5c4023;
+      border: 1px solid #3c2f2f;
+      border-radius: 6px;
+      color: #f1e1c1;
+      padding: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .scriptBtn:hover {
+      background: #7a5637;
+    }
+    #tw-painel.ativo {
+      transform: translateX(0);
+    }
+  `;
+  const style = document.createElement("style");
+  style.innerHTML = css;
+
+  // Adicionar ao jogo
+  document.head.appendChild(style);
+  document.body.appendChild(painel);
+
+  // Adicionar botões dinamicamente
+  const conteudo = document.getElementById("tw-conteudo");
+  scripts.forEach(script => {
+    const btn = document.createElement("button");
     btn.textContent = script.nome;
-    btn.className = 'scriptBtn';
+    btn.className = "scriptBtn";
     btn.onclick = () => {
       try {
         script.func();
@@ -192,40 +140,14 @@
         console.error(e);
       }
     };
-    return btn;
-  }
+    conteudo.appendChild(btn);
+  });
 
-  scripts.forEach(s => lista.appendChild(criarBotaoScript(s)));
+  // Função abre/fecha
+  const painelEl = document.getElementById("tw-painel");
+  const toggleBtn = document.getElementById("tw-toggle");
 
-  let aberto = false;
-  function toggle() {
-    aberto = !aberto;
-    lista.style.display = aberto ? 'flex' : 'none';
-    painel.style.height = aberto ? 'auto' : '40px';
-    btnToggle.textContent = aberto ? '▲' : '▼';
-  }
-
-  btnToggle.onclick = e => {
-    e.stopPropagation();
-    toggle();
-  };
-
-  header.onclick = toggle;
+  toggleBtn.addEventListener("click", function () {
+    painelEl.classList.toggle("ativo");
+  });
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
