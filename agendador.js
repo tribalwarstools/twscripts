@@ -29,7 +29,7 @@
 padding: 8px; width: 180px;
         }
         #tw-agendador-conteudo h4 {
-padding: 8px; width: 180px;
+margin: 0 0 6px 0; font-size: 13px; text-align: center; border-bottom: 1px solid #654321; padding-bottom: 4px;
         }
 
         #tw-agendador-conteudo label {
