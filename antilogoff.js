@@ -166,27 +166,6 @@
     window.twAL_Ativo ? desativarAntiLogoff() : iniciarAntiLogoffRobusto();
   });
 
-  // Drag
-  const painelTitulo = painel.querySelector('h4');
-  let offsetX, offsetY, isDragging=false;
-  painelTitulo.addEventListener('mousedown', e=>{
-    isDragging=true;
-    const rect=painel.getBoundingClientRect();
-    offsetX=e.clientX-rect.left;
-    offsetY=e.clientY-rect.top;
-    painel.style.transition='none';
-  });
-  document.addEventListener('mousemove', e=>{
-    if(!isDragging) return;
-    let left=e.clientX-offsetX;
-    let top=e.clientY-offsetY;
-    const maxLeft=window.innerWidth-painel.offsetWidth;
-    const maxTop=window.innerHeight-painel.offsetHeight;
-    painel.style.left=Math.min(Math.max(0,left),maxLeft)+'px';
-    painel.style.top=Math.min(Math.max(0,top),maxTop)+'px';
-  });
-  document.addEventListener('mouseup', ()=>{ if(isDragging){isDragging=false;painel.style.transition='';} });
-
   // Restaurar estado salvo
   if(localStorage.getItem(STORAGE_KEY)==='true') iniciarAntiLogoffRobusto();
   else{ window.twAL_Ativo=false; atualizarStatus(); atualizarContador(); }
@@ -195,7 +174,3 @@
   window.desativarAntiLogoff = desativarAntiLogoff;
 
 })();
-
-
-
-
