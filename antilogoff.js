@@ -6,10 +6,12 @@
   let wakeLock = null;
   let audioCtx = null;
   let oscillator = null;
-  let tempoRestante = null; // para contador regressivo
+  let tempoRestante = null;
   let contadorAcoes = 0;
 
-  // === CSS isolado para o painel ===
+  console.log("🟡 Script Anti-Logoff iniciado");
+
+  // === CSS do painel ===
   const style = document.createElement('style');
   style.textContent = `
     #twAL-painel { 
@@ -36,7 +38,7 @@
   `;
   document.head.appendChild(style);
 
-  // === Criar painel ===
+  // === Painel ===
   const painel = document.createElement("div");
   painel.id = "twAL-painel";
   painel.innerHTML = `
@@ -52,6 +54,7 @@
     </div>
   `;
   document.body.appendChild(painel);
+  console.log("🟢 Painel criado no DOM");
 
   const reloadChk = painel.querySelector('#twAL-reloadChk');
 
@@ -59,10 +62,14 @@
   reloadChk.checked = localStorage.getItem(RELOAD_KEY) === 'true';
   reloadChk.addEventListener('change', () => {
     localStorage.setItem(RELOAD_KEY, reloadChk.checked ? 'true' : 'false');
+    console.log(`🔄 Checkbox Recarregar no final: ${reloadChk.checked}`);
   });
 
   // Toggle painel lateral
-  painel.querySelector('#twAL-toggle').addEventListener('click', () => painel.classList.toggle('ativo'));
+  painel.querySelector('#twAL-toggle').addEventListener('click', () => {
+    painel.classList.toggle('ativo');
+    console.log(`📌 Painel ${painel.classList.contains('ativo') ? 'aberto' : 'fechado'}`);
+  });
 
   // WakeLock / WebAudio
   async function ativarWakeLock() {
@@ -70,11 +77,14 @@
       if ('wakeLock' in navigator) {
         wakeLock = await navigator.wakeLock.request('screen');
         wakeLock.addEventListener('release', () => console.log('🔓 Wake Lock liberado'));
+        console.log("💡 Wake Lock ativado");
       } else ativarWebAudioFallback();
-    } catch {
+    } catch (e) {
+      console.warn("⚠️ Falha ao ativar WakeLock, fallback WebAudio", e);
       ativarWebAudioFallback();
     }
   }
+
   function ativarWebAudioFallback() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -83,12 +93,15 @@
       gainNode.gain.value = 0;
       oscillator.connect(gainNode).connect(audioCtx.destination);
       oscillator.start();
+      console.log("🎵 WebAudio fallback ativado");
     }
   }
+
   function desativarWakeLock() {
     if (wakeLock) wakeLock.release().catch(()=>{}); wakeLock=null;
     if (oscillator) { oscillator.stop(); oscillator.disconnect(); oscillator=null; }
     if (audioCtx) { audioCtx.close().catch(()=>{}); audioCtx=null; }
+    console.log("🔴 WakeLock / WebAudio desativado");
   }
 
   function formatarTempo(ms) {
@@ -98,7 +111,6 @@
     return `${min.toString().padStart(2,'0')}:${segRest.toString().padStart(2,'0')}`;
   }
 
-  // Atualizar contador regressivo visual
   function atualizarContador() {
     const contadorEl = painel.querySelector('#twAL-contador');
     if (!window.twAL_Ativo || tempoRestante===null) {
@@ -107,12 +119,17 @@
     }
     contadorEl.textContent = tempoRestante <=0 ? 'Executando ação...' : `Próxima ação: ${formatarTempo(tempoRestante)}`;
   }
+
   setInterval(() => {
     if (window.twAL_Ativo && tempoRestante !== null) {
       tempoRestante -= 1000;
       if (tempoRestante <= 0) {
         tempoRestante = 0;
-        if (reloadChk.checked) location.reload();
+        console.log("⚡ Executando ação de anti-logoff");
+        if (reloadChk.checked) {
+          console.log("♻️ Recarregando página no final");
+          location.reload();
+        }
       }
       atualizarContador();
     }
@@ -122,14 +139,15 @@
     if(window.twAL_Ativo) return;
     window.twAL_Ativo=true;
     localStorage.setItem(STORAGE_KEY,'true');
+    console.log("🟢 Anti-Logoff ativado");
 
     ativarWakeLock();
 
     const acoes=[
-      ()=>document.title=document.title,
-      ()=>document.body.dispatchEvent(new MouseEvent('mousemove',{bubbles:true})),
-      ()=>{document.body.classList.add('twAL-blink'); setTimeout(()=>document.body.classList.remove('twAL-blink'),100);},
-      ()=>fetch('/game.php').catch(()=>{})
+      ()=>{ document.title=document.title; console.log("📝 Ação: atualizar título"); },
+      ()=>{ document.body.dispatchEvent(new MouseEvent('mousemove',{bubbles:true})); console.log("🖱️ Ação: mousemove disparado"); },
+      ()=>{ document.body.classList.add('twAL-blink'); setTimeout(()=>document.body.classList.remove('twAL-blink'),100); console.log("✨ Ação: blink visual"); },
+      ()=>{ fetch('/game.php').catch(()=>{}); console.log("🌐 Ação: fetch /game.php"); }
     ];
 
     contadorAcoes=0;
@@ -139,7 +157,8 @@
       try{
         acoes[contadorAcoes % acoes.length]();
         contadorAcoes++;
-        tempoRestante = INTERVALO_ACOES; // reinicia contador regressivo para próxima ação
+        tempoRestante = INTERVALO_ACOES;
+        console.log(`⏱️ ContadorAcoes: ${contadorAcoes}, próximo em ${INTERVALO_ACOES/1000}s`);
       } catch(e){ console.warn("⚠️ Erro na ação anti-logoff:", e); }
     }, INTERVALO_ACOES);
 
@@ -155,6 +174,7 @@
     tempoRestante=null;
     atualizarStatus();
     atualizarContador();
+    console.log("🔴 Anti-Logoff desativado");
   }
 
   function atualizarStatus() {
