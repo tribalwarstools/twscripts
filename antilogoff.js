@@ -7,10 +7,10 @@
   let oscillator = null;
   let proximaAcaoTempo = null;
 
-  // === CSS estilo TW-painel lateral ===
+  // === CSS estilo tw-painelAntiLogoff lateral ===
   const style = document.createElement('style');
   style.textContent = `
-    #tw-painel { 
+    #tw-painelAntiLogoff { 
       position: fixed; top: 250px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
       border-radius: 0 10px 10px 0; box-shadow: 2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1; 
       z-index: 9999; transition: transform 0.3s ease-in-out; transform: translateX(-180px); 
@@ -27,13 +27,13 @@
     .scriptBtn.on { background: #2e7d32 !important; }
     .scriptBtn.off { background: #8b0000 !important; }
     .scriptBtn:hover { filter: brightness(1.1); }
-    #tw-painel.ativo { transform: translateX(0); }
+    #tw-painelAntiLogoff.ativo { transform: translateX(0); }
   `;
   document.head.appendChild(style);
 
   // === Criar painel ===
   const painel = document.createElement("div");
-  painel.id = "tw-painel";
+  painel.id = "tw-painelAntiLogoff";
   painel.innerHTML = `
     <div id="tw-toggle">📜</div>
     <div id="tw-conteudo">
@@ -201,4 +201,5 @@
   window.iniciarAntiLogoffRobusto = iniciarAntiLogoffRobusto;
   window.desativarAntiLogoff = desativarAntiLogoff;
 })();
+
 
