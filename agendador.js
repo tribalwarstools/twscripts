@@ -20,22 +20,9 @@
         #tw-agendador.ativo { transform: translateX(0); }
 
         #tw-agendador-toggle {
-            position: absolute;
-            top: 0;
-            right: -28px;
-            width: 28px;
-            height: 40px;
-            background: #5c4023;
-            border: 2px solid #654321;
-            border-left: none;
-            border-radius: 0 6px 6px 0;
-            color: #f1e1c1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 16px;
-            box-shadow: 2px 2px 6px #000;
+      position: absolute; top: 0; right: -28px; width: 28px; height: 40px; background: #5c4023; 
+      border: 2px solid #654321; border-left: none; border-radius: 0 6px 6px 0; color: #f1e1c1; 
+      display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; box-shadow: 2px 2px 6px #000; 
         }
 
         #tw-agendador-conteudo {
@@ -46,11 +33,7 @@
             width: 180px;
         }
         #tw-agendador-conteudo h4 {
-            margin: 0 0 4px 0;
-            font-size: 13px;
-            text-align: center;
-            border-bottom: 1px solid #654321;
-            padding-bottom: 4px;
+padding: 8px; width: 180px;
         }
 
         #tw-agendador-conteudo label {
