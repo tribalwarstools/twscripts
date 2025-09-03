@@ -43,9 +43,9 @@
     const style = document.createElement('style');
     style.textContent = `
     #twCUNH-painel { 
-      position: fixed; top: 160px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
+      position: fixed; top: 220px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
       border-radius: 0 10px 10px 0; box-shadow: 2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1; 
-      z-index: 9999; transition: transform 0.3s ease-in-out; transform: translateX(-200px); 
+      z-index: 9996; transition: transform 0.3s ease-in-out; transform: translateX(-200px); 
     }
     #twCUNH-toggle { 
       position: absolute; top: 0; right: -28px; width: 28px; height: 40px; background: #5c4023; 
@@ -221,3 +221,4 @@
         updateUI();
     }
 })();
+
