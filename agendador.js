@@ -26,11 +26,7 @@
         }
 
         #tw-agendador-conteudo {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            padding: 10px;
-            width: 180px;
+padding: 8px; width: 180px;
         }
         #tw-agendador-conteudo h4 {
 padding: 8px; width: 180px;
