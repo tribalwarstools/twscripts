@@ -2,127 +2,84 @@
     'use strict';
 
     const RELOAD_INTERVAL = 60; // segundos
+    const STORAGE_KEY = 'twLBL-enabled';
+    let enabled = sessionStorage.getItem(STORAGE_KEY) === 'true';
 
-    // Estilo do painel
+    // === Estilo ===
     const style = document.createElement('style');
     style.textContent = `
-    #PainelEtiqueta {
-      position: fixed;
-      bottom: 150px;
-      left: 0px;
-      background: #2e2e2e;
-      border: 2px solid #b79755;
-      border-radius: 6px;
-      padding: 10px 15px;
-      font-family: "Tahoma", sans-serif;
-      font-size: 14px;
-      color: #f0e6d2;
-      box-shadow: 0 0 8px rgba(0,0,0,0.8);
-      z-index: 1000;
-      width: 180px;
-      user-select: none;
-      text-align: center;
+    #twLBL-painel { 
+      position: fixed; top: 100px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
+      border-radius: 0 10px 10px 0; box-shadow: 2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1; 
+      z-index: 9999; transition: transform 0.3s ease-in-out; transform: translateX(-180px); 
     }
-    
-    #PainelEtiqueta h4 {
-        margin: 0 0 8px 0;
-        font-weight: bold;
-        color: #d4b35d;
-        text-align: center;
+    #twLBL-toggle { 
+      position: absolute; top: 0; right: -28px; width: 28px; height: 40px; background: #5c4023; 
+      border: 2px solid #654321; border-left: none; border-radius: 0 6px 6px 0; color: #f1e1c1; 
+      display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; box-shadow: 2px 2px 6px #000; 
     }
-    #PainelEtiqueta button {
-        background: #b79755;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        color: #2e2e2e;
-        font-weight: bold;
-        width: 100%;
-        transition: background 0.3s ease;
-    }
-    #PainelEtiqueta button:hover {
-        background: #d4b35d;
-    }
-    #PainelEtiqueta .status {
-        margin-top: 6px;
-        text-align: center;
-        font-weight: bold;
-    }
-    #twCountdown {
-        margin-top: 4px;
-        text-align: center;
-        font-size: 12px;
-        color: #aaa;
-    }
+    #twLBL-conteudo { padding: 8px; width: 180px; }
+    #twLBL-conteudo h4 { margin: 0 0 6px 0; font-size: 13px; text-align: center; border-bottom: 1px solid #654321; padding-bottom: 4px; }
+    .twLBL-btn { display: block; width: 100%; margin: 5px 0; background: #5c4023; border: 1px solid #3c2f2f; border-radius: 6px; 
+      color: #f1e1c1; padding: 6px; cursor: pointer; font-size: 12px; text-align: center; }
+    .twLBL-btn.on { background: #2e7d32 !important; }
+    .twLBL-btn.off { background: #8b0000 !important; }
+    .twLBL-btn:hover { filter: brightness(1.1); }
+    #twLBL-painel.ativo { transform: translateX(0); }
+    .twLBL-status { font-size: 12px; margin-top: 6px; text-align: center; }
+    #twLBL-contador { font-size: 11px; margin-top: 3px; text-align: center; color: #aaa; }
     `;
     document.head.appendChild(style);
 
-    // Painel
+    // === Painel ===
     const panel = document.createElement('div');
-    panel.id = 'PainelEtiqueta';
+    panel.id = 'twLBL-painel';
     panel.innerHTML = `
-        <h4>Auto Etiquetador</h4>
-        <button id="twToggleAutoLabel">Carregando...</button>
-        <div class="status" id="twStatus">Status: -</div>
-        <div id="twCountdown">Recarregando em ${RELOAD_INTERVAL}s</div>
+        <div id="twLBL-toggle">☰</div>
+        <div id="twLBL-conteudo">
+            <h4>Auto Etiquetador</h4>
+            <button id="twLBL-btn" class="twLBL-btn off">Ligar</button>
+            <div id="twLBL-status" class="twLBL-status">Status: Inativo</div>
+            <div id="twLBL-contador">Recarregando em ${RELOAD_INTERVAL}s</div>
+        </div>
     `;
     document.body.appendChild(panel);
 
-    // Drag
-    (function makeDraggable(el) {
-        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-        el.onmousedown = dragMouseDown;
-        function dragMouseDown(e) {
-            e = e || window.event;
-            e.preventDefault();
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            document.onmouseup = closeDragElement;
-            document.onmousemove = elementDrag;
-        }
-        function elementDrag(e) {
-            e = e || window.event;
-            e.preventDefault();
-            pos1 = pos3 - e.clientX;
-            pos2 = pos4 - e.clientY;
-            pos3 = e.clientX;
-            pos4 = e.clientY;
-            el.style.top = (el.offsetTop - pos2) + "px";
-            el.style.left = (el.offsetLeft - pos1) + "px";
-            el.style.bottom = "auto";
-        }
-        function closeDragElement() {
-            document.onmouseup = null;
-            document.onmousemove = null;
-        }
-    })(panel);
-
-    const STORAGE_KEY = 'twAutoLabelEnabled';
-    let enabled = sessionStorage.getItem(STORAGE_KEY) === 'true';
-
-    const btn = document.getElementById('twToggleAutoLabel');
-    const statusEl = document.getElementById('twStatus');
-    const countdownEl = document.getElementById('twCountdown');
+    // === Elementos ===
+    const btn = document.getElementById('twLBL-btn');
+    const statusEl = document.getElementById('twLBL-status');
+    const countdownEl = document.getElementById('twLBL-contador');
+    const toggle = document.getElementById('twLBL-toggle');
 
     let recarregarPermitido = true;
     let monitorInterval = null;
     let countdownInterval = null;
     let countdown = RELOAD_INTERVAL;
 
+    // === Toggle lateral ===
+    toggle.addEventListener('click', () => {
+        panel.classList.toggle('ativo');
+    });
+
+    // === Atualiza UI ===
     function updateUI() {
         if (enabled) {
             btn.textContent = 'Desligar';
+            btn.classList.remove('off');
+            btn.classList.add('on');
             statusEl.textContent = 'Status: Ativo';
             statusEl.style.color = '#a1d490';
         } else {
             btn.textContent = 'Ligar';
+            btn.classList.remove('on');
+            btn.classList.add('off');
             statusEl.textContent = 'Status: Inativo';
             statusEl.style.color = '#d49090';
             countdownEl.textContent = `Recarregando em ${RELOAD_INTERVAL}s`;
         }
     }
 
+    // === Botão ON/OFF ===
     btn.addEventListener('click', () => {
         enabled = !enabled;
         sessionStorage.setItem(STORAGE_KEY, enabled);
@@ -136,9 +93,7 @@
         }
     });
 
-    updateUI();
-
-    // Função que faz a etiquetagem
+    // === Função que faz a etiquetagem ===
     function autoEtiqueta() {
         if (!enabled) return;
 
@@ -166,7 +121,7 @@
                     btnEtiqueta.click();
                     console.log('Auto Etiquetador: Etiquetas aplicadas.');
                 } else {
-                    console.warn('Auto Etiquetador: Botão para aplicar etiquetas não encontrado ou desabilitado.');
+                    console.warn('Auto Etiquetador: Botão aplicar etiquetas não encontrado.');
                 }
             }, 500);
         } else {
@@ -174,7 +129,7 @@
         }
     }
 
-    // Verifica ataques pendentes SOMENTE se estiver na tela de ataques
+    // === Verifica ataques pendentes SOMENTE na tela de ataques ===
     function checkAtaquesERecarregar() {
         if (!enabled) return;
 
@@ -186,7 +141,7 @@
         }
     }
 
-    // Loop principal
+    // === Loop principal ===
     function runAutoLabel() {
         clearInterval(monitorInterval);
         checkAtaquesERecarregar();
@@ -198,7 +153,7 @@
         }, 15000); // 15s
     }
 
-    // Contador regressivo para reload na página normal
+    // === Contador regressivo ===
     function startCountdown() {
         countdown = RELOAD_INTERVAL;
         countdownEl.textContent = `Recarregando em ${countdown}s`;
@@ -218,10 +173,10 @@
         }, 1000);
     }
 
-    // Inicialização
+    // === Inicialização ===
+    updateUI();
     if (enabled) {
         runAutoLabel();
         startCountdown();
     }
-
 })();
