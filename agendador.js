@@ -5,6 +5,7 @@
     }
 
     const villageId = game_data.village.id;
+    const storageKey = 'agendamentoTW_' + villageId;
 
     // === Estilo corrigido do Agendador ===
     function aplicarEstiloAgendador() {
@@ -134,7 +135,6 @@
     `;
     document.body.appendChild(painel);
 
-    // === lógica de agendamento igual antes ===
     let intervaloCountdown = null;
     const status = document.getElementById("tw-ag-status");
     const btnToggle = document.getElementById("btn_toggle");
@@ -158,16 +158,26 @@
         const now = new Date();
         return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s);
     }
+
     function duracaoParaMs(str) {
         const [h, m, s] = str.split(":").map(Number);
         return ((h * 3600) + (m * 60) + s) * 1000;
     }
 
-    function agendar() {
-        const dataRaw = document.getElementById("ag_data").value;
-        const hora = document.getElementById("ag_hora").value;
-        const ajuste = parseInt(document.getElementById("ajuste_fino").value, 10) || 0;
-        const modo = document.querySelector('input[name="modo"]:checked').value;
+    function salvarAgendamento(dataRaw, hora, ajuste, modo) {
+        localStorage.setItem(storageKey, JSON.stringify({ dataRaw, hora, ajuste, modo }));
+    }
+
+    function removerAgendamento() {
+        localStorage.removeItem(storageKey);
+    }
+
+    function agendar(agData = null, agHora = null, agAjuste = null, agModo = null) {
+        const dataRaw = agData || document.getElementById("ag_data").value;
+        const hora = agHora || document.getElementById("ag_hora").value;
+        const ajuste = agAjuste != null ? agAjuste : (parseInt(document.getElementById("ajuste_fino").value, 10) || 0);
+        const modo = agModo || document.querySelector('input[name="modo"]:checked').value;
+
         if (!dataRaw || !hora) { status.textContent = "❌ Preencha data e hora!"; return; }
 
         const [yyyy, mm, dd] = dataRaw.split("-");
@@ -191,8 +201,12 @@
             status.textContent = "Horário já passou.";
             return;
         }
+
         const btn = document.getElementById("troop_confirm_submit");
         if (!btn) { status.textContent = "❌ Botão não encontrado!"; return; }
+
+        // Salvar no localStorage
+        salvarAgendamento(dataRaw, hora, ajuste, modo);
 
         btnToggle.textContent = "Cancelar";
 
@@ -203,6 +217,7 @@
                 btn.click();
                 status.textContent = `✔️ Enviado (${ajuste}ms)`;
                 fim();
+                removerAgendamento();
                 return;
             }
             const seg = Math.floor(restante / 1000);
@@ -218,8 +233,10 @@
     function cancelar() {
         clearInterval(intervaloCountdown);
         fim();
+        removerAgendamento();
         status.textContent = "❌ Cancelado.";
     }
+
     function fim() {
         intervaloCountdown = null;
         btnToggle.textContent = "Iniciar";
@@ -233,5 +250,15 @@
     document.getElementById("tw-agendador-toggle").addEventListener("click", () => {
         painel.classList.toggle("ativo");
     });
+
+    // === Ao carregar, verificar se há agendamento salvo para esta aldeia ===
+    const agendamentoSalvo = JSON.parse(localStorage.getItem(storageKey));
+    if (agendamentoSalvo) {
+        document.getElementById("ag_data").value = agendamentoSalvo.dataRaw;
+        document.getElementById("ag_hora").value = agendamentoSalvo.hora;
+        document.getElementById("ajuste_fino").value = agendamentoSalvo.ajuste;
+        document.querySelector(`input[name="modo"][value="${agendamentoSalvo.modo}"]`).checked = true;
+        agendar(agendamentoSalvo.dataRaw, agendamentoSalvo.hora, agendamentoSalvo.ajuste, agendamentoSalvo.modo);
+    }
 
 })();
