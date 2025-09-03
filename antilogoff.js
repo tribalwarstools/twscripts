@@ -37,7 +37,7 @@
   const painel = document.createElement("div");
   painel.id = "twAL-painel";
   painel.innerHTML = `
-    <div id="twAL-toggle">📜</div>
+    <div id="twAL-toggle">☰</div>
     <div id="twAL-conteudo">
       <h4>Anti-Logoff Robusto</h4>
       <button class="twAL-scriptBtn" id="twAL-btnToggle">Ligar</button>
@@ -195,5 +195,6 @@
   window.desativarAntiLogoff = desativarAntiLogoff;
 
 })();
+
 
 
