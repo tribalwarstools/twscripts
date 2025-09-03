@@ -1,6 +1,79 @@
 (function() {
   // === Lista de Scripts ===
   const scripts = [
+{
+  nome: 'Anti-Logoff',
+  toggle: true,
+  func: () => {
+    const chave = 'antilogoffAtivo';
+    const ativo = localStorage.getItem(chave) === 'true';
+
+    if (!ativo) {
+      localStorage.setItem(chave, 'true');
+      window.antilogoffAtivo = true;
+
+      $.getScript('https://tribalwarstools.github.io/beta/antilogoff.js')
+        .done(() => {
+          if (window.AntiLogoff && typeof window.AntiLogoff.iniciar === 'function') {
+            window.AntiLogoff.iniciar();
+          }
+          UI.InfoMessage('✅ Anti-Logoff ativado!', 3000, 'success');
+        })
+        .fail(() => {
+          window.antilogoffAtivo = false;
+          localStorage.setItem(chave, 'false');
+          UI.InfoMessage('❌ Erro ao carregar Anti-Logoff!', 5000, 'error');
+        });
+    } else {
+      window.antilogoffAtivo = false;
+      localStorage.setItem(chave, 'false');
+      if (window.AntiLogoff && typeof window.AntiLogoff.desativar === 'function') {
+        window.AntiLogoff.desativar();
+      }
+      UI.InfoMessage('🛑 Anti-Logoff desativado!', 3000, 'error');
+    }
+  },
+  estado: () => localStorage.getItem('antilogoffAtivo') === 'true'
+},
+
+
+    {
+      nome: 'Etiquetador',
+      toggle: true,
+      func: () => {
+        if (!window.etiquetadorAtivo) {
+          window.etiquetadorAtivo = true;
+          (function loop() {
+            if (!window.etiquetadorAtivo) return;
+            console.log("🏷 Etiquetador rodando...");
+            setTimeout(loop, 30000);
+          })();
+          UI.InfoMessage('✅ Etiquetador ativado!', 3000, 'success');
+        } else {
+          window.etiquetadorAtivo = false;
+          UI.InfoMessage('🛑 Etiquetador desativado!', 3000, 'error');
+        }
+      }
+    },
+    {
+      nome: 'Cunhar Moedas',
+      toggle: true,
+      func: () => {
+        if (!window.cunharAtivo) {
+          window.cunharAtivo = true;
+          (function loop() {
+            if (!window.cunharAtivo) return;
+            console.log("🪙 Cunhando moedas...");
+            setTimeout(loop, 45000);
+          })();
+          UI.InfoMessage('✅ Cunhar Moedas ativado!', 3000, 'success');
+        } else {
+          window.cunharAtivo = false;
+          UI.InfoMessage('🛑 Cunhar Moedas desativado!', 3000, 'error');
+        }
+      }
+    },
+    
     {
       nome: 'Comparador(Casual)',
       func: () => {
@@ -53,13 +126,11 @@
     </div>
   `;
 
-  // Estilo
   const css = `
     #tw-painel {
       position: fixed;
       top: 100px;
       left: 0;
-      height: auto;
       background: #2b2b2b;
       border: 2px solid #654321;
       border-left: none;
@@ -111,30 +182,32 @@
       padding: 6px;
       cursor: pointer;
       font-size: 12px;
+      text-align: center;
     }
-    .scriptBtn:hover {
-      background: #7a5637;
-    }
-    #tw-painel.ativo {
-      transform: translateX(0);
-    }
+    .scriptBtn.on { background: #2e7d32 !important; }
+    .scriptBtn.off { background: #8b0000 !important; }
+    .scriptBtn:hover { filter: brightness(1.1); }
+    #tw-painel.ativo { transform: translateX(0); }
   `;
   const style = document.createElement("style");
   style.innerHTML = css;
 
-  // Adicionar ao jogo
   document.head.appendChild(style);
   document.body.appendChild(painel);
 
-  // Adicionar botões dinamicamente
+  // === Adicionar botões dinamicamente ===
   const conteudo = document.getElementById("tw-conteudo");
   scripts.forEach(script => {
     const btn = document.createElement("button");
     btn.textContent = script.nome;
-    btn.className = "scriptBtn";
+    btn.className = "scriptBtn " + (script.toggle ? "off" : "");
     btn.onclick = () => {
       try {
         script.func();
+        if (script.toggle) {
+          btn.classList.toggle("on");
+          btn.classList.toggle("off");
+        }
       } catch (e) {
         UI.InfoMessage('⚠️ Erro ao executar o script.', 4000, 'error');
         console.error(e);
@@ -143,10 +216,9 @@
     conteudo.appendChild(btn);
   });
 
-  // Função abre/fecha
+  // === Toggle abre/fecha painel ===
   const painelEl = document.getElementById("tw-painel");
   const toggleBtn = document.getElementById("tw-toggle");
-
   toggleBtn.addEventListener("click", function () {
     painelEl.classList.toggle("ativo");
   });
