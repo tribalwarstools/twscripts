@@ -49,7 +49,7 @@
       <div class="twAL-status" id="twAL-status">Status: Inativo 🔴</div>
       <div class="twAL-contador" id="twAL-contador">Próxima ação: --:--</div>
       <label style="font-size:12px; display:block; margin-top:4px;">
-        <input type="checkbox" id="twAL-reloadChk"> Recarregar no final
+        <input type="checkbox" id="twAL-reloadChk"> Recarregar
       </label>
     </div>
   `;
@@ -205,3 +205,4 @@
   window.desativarAntiLogoff = desativarAntiLogoff;
 
 })();
+
