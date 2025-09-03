@@ -25,7 +25,7 @@
             z-index: 9995;
             transition: transform 0.3s ease-in-out;
             transform: translateX(-220px);
-            width: 220px;
+            
         }
         #tw-agendador.ativo { transform: translateX(0); }
 
@@ -53,6 +53,7 @@
             flex-direction: column;
             gap: 6px;
             padding: 10px;
+            width: 180px;
         }
         #tw-agendador-conteudo h4 {
             margin: 0 0 4px 0;
