@@ -2,47 +2,46 @@
   // === Lista de Scripts ===
   const scripts = [
 {
-  nome: 'Anti-Logoff',
-  toggle: true,
-  func: () => {
-    const chave = 'antilogoffAtivo';
-    const ativo = localStorage.getItem(chave) === 'true';
-
-    if (!ativo) {
-      localStorage.setItem(chave, 'true');
-      window.antilogoffAtivo = true;
-
-      $.getScript('https://tribalwarstools.github.io/twscripts/antilogoff.js')
-        .done(() => {
-          if (window.AntiLogoff && typeof window.AntiLogoff.iniciar === 'function') {
-            window.AntiLogoff.iniciar();
-          }
-          UI.InfoMessage('✅ Anti-Logoff ativado!', 3000, 'success');
-        })
-        .fail(() => {
+      nome: 'Anti-Logoff',
+      toggle: true,
+      chave: 'antilogoffAtivo',
+      func: () => {
+        const ativo = localStorage.getItem('antilogoffAtivo') === 'true';
+        if (!ativo) {
+          localStorage.setItem('antilogoffAtivo', 'true');
+          window.antilogoffAtivo = true;
+          $.getScript('https://tribalwarstools.github.io/twscripts/antilogoff.js')
+            .done(() => {
+              if (window.AntiLogoff && typeof window.AntiLogoff.iniciar === 'function') {
+                window.AntiLogoff.iniciar();
+              }
+              UI.InfoMessage('✅ Anti-Logoff ativado!', 3000, 'success');
+            })
+            .fail(() => {
+              window.antilogoffAtivo = false;
+              localStorage.setItem('antilogoffAtivo', 'false');
+              UI.InfoMessage('❌ Erro ao carregar Anti-Logoff!', 5000, 'error');
+            });
+        } else {
           window.antilogoffAtivo = false;
-          localStorage.setItem(chave, 'false');
-          UI.InfoMessage('❌ Erro ao carregar Anti-Logoff!', 5000, 'error');
-        });
-    } else {
-      window.antilogoffAtivo = false;
-      localStorage.setItem(chave, 'false');
-      if (window.AntiLogoff && typeof window.AntiLogoff.desativar === 'function') {
-        window.AntiLogoff.desativar();
-      }
-      UI.InfoMessage('🛑 Anti-Logoff desativado!', 3000, 'error');
-    }
-  },
-  estado: () => localStorage.getItem('antilogoffAtivo') === 'true'
-},
-
-
+          localStorage.setItem('antilogoffAtivo', 'false');
+          if (window.AntiLogoff && typeof window.AntiLogoff.desativar === 'function') {
+            window.AntiLogoff.desativar();
+          }
+          UI.InfoMessage('🛑 Anti-Logoff desativado!', 3000, 'error');
+        }
+      },
+      estado: () => localStorage.getItem('antilogoffAtivo') === 'true'
+    },
     {
       nome: 'Etiquetador',
       toggle: true,
+      chave: 'etiquetadorAtivo',
       func: () => {
-        if (!window.etiquetadorAtivo) {
+        const ativo = localStorage.getItem('etiquetadorAtivo') === 'true';
+        if (!ativo) {
           window.etiquetadorAtivo = true;
+          localStorage.setItem('etiquetadorAtivo', 'true');
           (function loop() {
             if (!window.etiquetadorAtivo) return;
             console.log("🏷 Etiquetador rodando...");
@@ -51,16 +50,21 @@
           UI.InfoMessage('✅ Etiquetador ativado!', 3000, 'success');
         } else {
           window.etiquetadorAtivo = false;
+          localStorage.setItem('etiquetadorAtivo', 'false');
           UI.InfoMessage('🛑 Etiquetador desativado!', 3000, 'error');
         }
-      }
+      },
+      estado: () => localStorage.getItem('etiquetadorAtivo') === 'true'
     },
     {
       nome: 'Cunhar Moedas',
       toggle: true,
+      chave: 'cunharAtivo',
       func: () => {
-        if (!window.cunharAtivo) {
+        const ativo = localStorage.getItem('cunharAtivo') === 'true';
+        if (!ativo) {
           window.cunharAtivo = true;
+          localStorage.setItem('cunharAtivo', 'true');
           (function loop() {
             if (!window.cunharAtivo) return;
             console.log("🪙 Cunhando moedas...");
@@ -69,9 +73,11 @@
           UI.InfoMessage('✅ Cunhar Moedas ativado!', 3000, 'success');
         } else {
           window.cunharAtivo = false;
+          localStorage.setItem('cunharAtivo', 'false');
           UI.InfoMessage('🛑 Cunhar Moedas desativado!', 3000, 'error');
         }
-      }
+      },
+      estado: () => localStorage.getItem('cunharAtivo') === 'true'
     },
     
     {
@@ -223,5 +229,6 @@
     painelEl.classList.toggle("ativo");
   });
 })();
+
 
 
