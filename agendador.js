@@ -61,15 +61,20 @@ margin: 0 0 6px 0; font-size: 13px; text-align: center; border-bottom: 1px solid
         }
 
         #tw-agendador-conteudo button {
-            background: #5c4023;
-            border: 1px solid #3c2f2f;
-            border-radius: 6px;
-            color: #f1e1c1;
-            padding: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            text-align: center;
-            margin-top: 4px;
+#tw-agendador-conteudo button {
+    background: #5c4023;
+    border: 1px solid #3c2f2f;
+    border-radius: 6px;
+    color: #f1e1c1;
+    padding: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 4px;
+    width: 100%;          /* <<< ocupa toda a largura */
+    box-sizing: border-box;
+}
+
         }
         #tw-agendador-conteudo button:hover { filter: brightness(1.1); }
 
