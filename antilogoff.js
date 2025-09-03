@@ -29,7 +29,10 @@
     .twAL-scriptBtn:hover { filter: brightness(1.1); }
     #twAL-painel.ativo { transform: translateX(0); }
     .twAL-blink { animation: twAL-blinkAnim 0.3s ease; }
-    @keyframes twAL-blinkAnim { 0% { background-color: inherit; } 50% { background-color: #d4b35d; } 100% { background-color: inherit; } }
+    @keyframes twAL-blinkAnim { 0% { background-color: inherit; } 50% { background-color: #d4b35d; } 100% { background-color: inherit; }
+    .twAL-status, .twAL-contador {  text-align: center;  margin-top: 4px;}
+
+
   `;
   document.head.appendChild(style);
 
@@ -174,5 +177,6 @@
   window.desativarAntiLogoff = desativarAntiLogoff;
 
 })();
+
 
 
