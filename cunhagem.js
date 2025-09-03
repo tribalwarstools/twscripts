@@ -39,7 +39,7 @@
     const intervaloSalvo = localStorage.getItem("twCUNH_intervalo") || "10";
     currentInterval = parseInt(intervaloSalvo, 10);
 
-    // === Estilo retrátil ===
+    // === Estilo retrátil (sem arrastar) ===
     const style = document.createElement('style');
     style.textContent = `
     #twCUNH-painel { 
@@ -221,4 +221,3 @@
         updateUI();
     }
 })();
-
