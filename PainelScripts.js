@@ -12,7 +12,7 @@
       localStorage.setItem(chave, 'true');
       window.antilogoffAtivo = true;
 
-      $.getScript('https://tribalwarstools.github.io/TWSCRIPTS/antilogoff.js')
+      $.getScript('https://tribalwarstools.github.io/twscripts/antilogoff.js')
         .done(() => {
           if (window.AntiLogoff && typeof window.AntiLogoff.iniciar === 'function') {
             window.AntiLogoff.iniciar();
@@ -223,4 +223,5 @@
     painelEl.classList.toggle("ativo");
   });
 })();
+
 
