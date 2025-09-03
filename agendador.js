@@ -12,7 +12,7 @@
         style.textContent = `
         #tw-agendador {
             position: fixed;
-            top: 180px;
+            top: 260px;
             left: 0;
             background: #2b2b2b;
             border: 2px solid #654321;
@@ -21,7 +21,7 @@
             box-shadow: 2px 2px 8px #000;
             font-family: Verdana, sans-serif;
             color: #f1e1c1;
-            z-index: 99999;
+            z-index: 9995;
             transition: transform 0.3s ease-in-out;
             transform: translateX(-220px);
             width: 220px;
