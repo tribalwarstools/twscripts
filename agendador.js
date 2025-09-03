@@ -6,87 +6,139 @@
 
     const villageId = game_data.village.id;
 
-    function aplicarEstiloTWPadrao() {
+    // === Estilo corrigido do Agendador ===
+    function aplicarEstiloAgendador() {
         const style = document.createElement('style');
         style.textContent = `
-            .twPainelAgendador {
-                position: fixed;
-                top: 60%;
-                left: 20px;
-                transform: translateY(-50%);
-                background: #2e2e2e;
-                border: 2px solid #b79755;
-                border-radius: 6px;
-                padding: 8px;
-                font-family: Verdana, sans-serif;
-                font-size: 12px;
-                color: #f5deb3;
-                z-index: 99999;
-                box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
-                width: 180px;
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-            }
-            .twPainelAgendador h3 {
-                margin: 0 0 5px;
-                font-size: 13px;
-                color: #f0e2b6;
-                text-align: center;
-                cursor: move;
-            }
-            .twPainelAgendador label { display: flex; flex-direction: column; gap: 2px; }
-            .twPainelAgendador input[type="date"],
-            .twPainelAgendador input[type="time"],
-            .twPainelAgendador input[type="number"] {
-                font-size: 12px; padding: 3px 4px; border-radius: 4px;
-                border: 1px solid #b79755; background-color: #1c1c1c; color: #f5deb3;
-            }
-            .twPainelAgendador button {
-                background: #b79755;
-                border: none;
-                padding: 6px 12px;
-                border-radius: 4px;
-                cursor: pointer;
-                color: #2e2e2e;
-                font-weight: bold;
-                width: 100%;
-                transition: background 0.3s ease;
-                margin-bottom: 8px;
-            }
-            .twPainelAgendador button:hover { background-color: #d4b35d; cursor: pointer; }
-            .twPainelAgendador .radioGroup { display: flex; flex-direction: row; justify-content: space-between; gap: 6px; }
-            .twPainelAgendador .radioGroup label { display: flex; align-items: center; gap: 4px; font-size: 12px; }
-            .twPainelAgendador .contador { font-size: 13px; font-weight: bold; text-align: center; color: #ffd700; margin-top: 4px; }
+        #tw-agendador {
+            position: fixed;
+            top: 120px;
+            left: 0;
+            background: #2b2b2b;
+            border: 2px solid #654321;
+            border-left: none;
+            border-radius: 0 10px 10px 0;
+            box-shadow: 2px 2px 8px #000;
+            font-family: Verdana, sans-serif;
+            color: #f1e1c1;
+            z-index: 99999;
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(-220px);
+            width: 220px;
+        }
+        #tw-agendador.ativo { transform: translateX(0); }
+
+        #tw-agendador-toggle {
+            position: absolute;
+            top: 0;
+            right: -28px;
+            width: 28px;
+            height: 40px;
+            background: #5c4023;
+            border: 2px solid #654321;
+            border-left: none;
+            border-radius: 0 6px 6px 0;
+            color: #f1e1c1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 2px 2px 6px #000;
+        }
+
+        #tw-agendador-conteudo {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 10px;
+        }
+        #tw-agendador-conteudo h4 {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+            text-align: center;
+            border-bottom: 1px solid #654321;
+            padding-bottom: 4px;
+        }
+
+        #tw-agendador-conteudo label {
+            display: flex;
+            flex-direction: column;
+            font-size: 12px;
+            gap: 2px;
+        }
+
+        #tw-agendador-conteudo input {
+            font-size: 12px;
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid #b79755;
+            background-color: #1c1c1c;
+            color: #f5deb3;
+        }
+
+        #tw-agendador-conteudo .radioGroup {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+        }
+        #tw-agendador-conteudo .radioGroup label {
+            flex-direction: row;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+        }
+
+        #tw-agendador-conteudo button {
+            background: #5c4023;
+            border: 1px solid #3c2f2f;
+            border-radius: 6px;
+            color: #f1e1c1;
+            padding: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+            margin-top: 4px;
+        }
+        #tw-agendador-conteudo button:hover { filter: brightness(1.1); }
+
+        #tw-ag-status {
+            font-size: 13px;
+            font-weight: bold;
+            text-align: center;
+            color: #ffd700;
+            margin-top: 4px;
+        }
         `;
         document.head.appendChild(style);
     }
+    aplicarEstiloAgendador();
 
-    aplicarEstiloTWPadrao();
-
-    let agendamentoAtivo = null;
-    let intervaloCountdown = null;
-
+    // === Criar painel ===
     const painel = document.createElement("div");
-    painel.className = "twPainelAgendador";
+    painel.id = "tw-agendador";
     painel.innerHTML = `
-        <h3 id="painel_header">⚔️ Agendador de Envio</h3>
-        <label>📅 Data:<input id="ag_data" type="date"></label>
-        <label>⏰ Hora:<input id="ag_hora" type="time" step="1"></label>
-        <label>⚙️ Ajuste (ms):<input id="ajuste_fino" type="number" value="0" step="10"></label>
-        <div class="radioGroup">
-          <label><input type="radio" name="modo" value="saida" checked> 🚀 Saída</label>
-          <label><input type="radio" name="modo" value="chegada"> 🎯 Chegada</label>
+        <div id="tw-agendador-toggle">⏳</div>
+        <div id="tw-agendador-conteudo">
+            <h4>⚔️ Agendador</h4>
+            <label>📅 Data:<input id="ag_data" type="date"></label>
+            <label>⏰ Hora:<input id="ag_hora" type="time" step="1"></label>
+            <label>⚙️ Ajuste (ms):<input id="ajuste_fino" type="number" value="0" step="10"></label>
+            <div class="radioGroup">
+                <label><input type="radio" name="modo" value="saida" checked> 🚀 Saída</label>
+                <label><input type="radio" name="modo" value="chegada"> 🎯 Chegada</label>
+            </div>
+            <button id="btn_toggle">Iniciar</button>
+            <div id="tw-ag-status"></div>
         </div>
-        <button id="btn_toggle">Iniciar</button>
-        <div id="ag_status" class="contador"></div>
     `;
     document.body.appendChild(painel);
 
-    const status = document.getElementById("ag_status");
+    // === lógica de agendamento igual antes ===
+    let intervaloCountdown = null;
+    const status = document.getElementById("tw-ag-status");
     const btnToggle = document.getElementById("btn_toggle");
 
-    // ✅ Preencher automaticamente com data e hora atuais
     (function preencherAgora() {
         const agora = new Date();
         const yyyy = agora.getFullYear();
@@ -95,68 +147,28 @@
         const hh = String(agora.getHours()).padStart(2, "0");
         const mi = String(agora.getMinutes()).padStart(2, "0");
         const ss = String(agora.getSeconds()).padStart(2, "0");
-
         document.getElementById("ag_data").value = `${yyyy}-${mm}-${dd}`;
         document.getElementById("ag_hora").value = `${hh}:${mi}:${ss}`;
     })();
 
-    function salvarConfig(ativo) {
-        const cfg = {
-            data: document.getElementById("ag_data").value,
-            hora: document.getElementById("ag_hora").value,
-            ajuste: document.getElementById("ajuste_fino").value,
-            modo: document.querySelector('input[name="modo"]:checked').value,
-            ativo: ativo,
-            pos: { top: painel.style.top, left: painel.style.left }
-        };
-        localStorage.setItem(`tw_agendamento_${villageId}`, JSON.stringify(cfg));
+    function horaServidor() {
+        const srvElem = document.getElementById("serverTime");
+        if (!srvElem) return new Date();
+        const [h, m, s] = srvElem.textContent.trim().split(":").map(Number);
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s);
     }
-
-    function carregarConfig() {
-        const cfg = JSON.parse(localStorage.getItem(`tw_agendamento_${villageId}`) || "{}");
-        if (cfg.data) document.getElementById("ag_data").value = cfg.data;
-        if (cfg.hora) document.getElementById("ag_hora").value = cfg.hora;
-        if (cfg.ajuste) document.getElementById("ajuste_fino").value = cfg.ajuste;
-        if (cfg.modo) document.querySelector(`input[name="modo"][value="${cfg.modo}"]`).checked = true;
-        if (cfg.pos) {
-            painel.style.top = cfg.pos.top || "60%";
-            painel.style.left = cfg.pos.left || "20px";
-            painel.style.transform = "translateY(0)";
-        }
-        return cfg;
-    }
-
-    function atualizarCamposBloqueio(bloqueado) {
-        document.getElementById("ag_data").disabled = bloqueado;
-        document.getElementById("ag_hora").disabled = bloqueado;
-        document.getElementById("ajuste_fino").disabled = bloqueado;
-        document.querySelectorAll('input[name="modo"]').forEach(radio => radio.disabled = bloqueado);
-    }
-
     function duracaoParaMs(str) {
         const [h, m, s] = str.split(":").map(Number);
         return ((h * 3600) + (m * 60) + s) * 1000;
     }
 
-    function horaServidor() {
-        const srvElem = document.getElementById("serverTime");
-        if (!srvElem) return new Date(); // fallback
-        const [h, m, s] = srvElem.textContent.trim().split(":").map(Number);
-        const now = new Date();
-        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s);
-    }
-
     function agendar() {
-        salvarConfig(true);
         const dataRaw = document.getElementById("ag_data").value;
         const hora = document.getElementById("ag_hora").value;
         const ajuste = parseInt(document.getElementById("ajuste_fino").value, 10) || 0;
         const modo = document.querySelector('input[name="modo"]:checked').value;
-
-        if (!dataRaw || !hora) {
-            status.textContent = "❌ Preencha data e hora!";
-            return;
-        }
+        if (!dataRaw || !hora) { status.textContent = "❌ Preencha data e hora!"; return; }
 
         const [yyyy, mm, dd] = dataRaw.split("-");
         const target = new Date(yyyy, mm - 1, dd, ...hora.split(":").map(Number));
@@ -177,18 +189,11 @@
 
         if (horarioEnvio - horaServidor() <= 0) {
             status.textContent = "Horário já passou.";
-            salvarConfig(false);
             return;
         }
-
         const btn = document.getElementById("troop_confirm_submit");
-        if (!btn) {
-            status.textContent = "❌ Botão não encontrado!";
-            salvarConfig(false);
-            return;
-        }
+        if (!btn) { status.textContent = "❌ Botão não encontrado!"; return; }
 
-        atualizarCamposBloqueio(true);
         btnToggle.textContent = "Cancelar";
 
         function atualizarCountdown() {
@@ -206,7 +211,6 @@
             const s = seg % 60;
             status.textContent = `⏳ ${h}h ${m}m ${s}s`;
         }
-
         atualizarCountdown();
         intervaloCountdown = setInterval(atualizarCountdown, 250);
     }
@@ -215,63 +219,19 @@
         clearInterval(intervaloCountdown);
         fim();
         status.textContent = "❌ Cancelado.";
-        salvarConfig(false);
     }
-
     function fim() {
         intervaloCountdown = null;
         btnToggle.textContent = "Iniciar";
-        atualizarCamposBloqueio(false);
     }
 
     btnToggle.addEventListener("click", () => {
-        if (intervaloCountdown) {
-            cancelar();
-        } else {
-            agendar();
-        }
+        if (intervaloCountdown) { cancelar(); } else { agendar(); }
     });
 
-    const cfg = carregarConfig();
-    if (cfg.ativo && cfg.data && cfg.hora) {
-        const [yyyy, mm, dd] = cfg.data.split("-");
-        const target = new Date(yyyy, mm - 1, dd, ...cfg.hora.split(":").map(Number));
-        const ajuste = parseInt(cfg.ajuste, 10) || 0;
-        const restante = target - horaServidor() + ajuste;
-
-        if (restante > 0) {
-            agendar();
-        } else {
-            status.textContent = "Horário já passou.";
-            salvarConfig(false);
-        }
-    }
-
-    (function tornarArrastavel() {
-        const header = document.getElementById("painel_header");
-        let offsetX = 0, offsetY = 0, arrastando = false;
-
-        header.addEventListener("mousedown", (e) => {
-            arrastando = true;
-            offsetX = e.clientX - painel.offsetLeft;
-            offsetY = e.clientY - painel.offsetTop;
-            document.body.style.userSelect = "none";
-        });
-
-        document.addEventListener("mousemove", (e) => {
-            if (arrastando) {
-                painel.style.left = (e.clientX - offsetX) + "px";
-                painel.style.top = (e.clientY - offsetY) + "px";
-            }
-        });
-
-        document.addEventListener("mouseup", () => {
-            if (arrastando) {
-                arrastando = false;
-                document.body.style.userSelect = "auto";
-                salvarConfig(!!intervaloCountdown);
-            }
-        });
-    })();
+    // === Toggle abrir/fechar painel ===
+    document.getElementById("tw-agendador-toggle").addEventListener("click", () => {
+        painel.classList.toggle("ativo");
+    });
 
 })();
