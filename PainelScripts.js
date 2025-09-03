@@ -5,7 +5,7 @@
     function aplicarEstiloPainel() {
         const style = document.createElement('style');
         style.textContent = `
-            #tw-painelCons { 
+            #tw-painel { 
                 position: fixed; top: 100px; left: 0; background: #2b2b2b; 
                 border: 2px solid #654321; border-left: none; border-radius: 0 10px 10px 0; 
                 box-shadow: 2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1; 
@@ -30,7 +30,7 @@
             .scriptBtn.on { background: #2e7d32 !important; }
             .scriptBtn.off { background: #8b0000 !important; }
             .scriptBtn:hover { filter: brightness(1.1); }
-            #tw-painelCons.ativo { transform: translateX(0); }
+            #tw-painel.ativo { transform: translateX(0); }
         `;
         document.head.appendChild(style);
     }
@@ -112,3 +112,4 @@
         UI.InfoMessage("Fila de construção parada!", 2000, "error");
     };
 })();
+
