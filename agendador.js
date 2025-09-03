@@ -119,7 +119,7 @@
     const painel = document.createElement("div");
     painel.id = "tw-agendador";
     painel.innerHTML = `
-        <div id="tw-agendador-toggle">⚔️</div>
+        <div id="tw-agendador-toggle">☰</div>
         <div id="tw-agendador-conteudo">
             <h4>⚔️ Agendador</h4>
             <label>📅 Data:<input id="ag_data" type="date"></label>
