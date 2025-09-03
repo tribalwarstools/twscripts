@@ -22,10 +22,9 @@
             box-shadow: 2px 2px 8px #000;
             font-family: Verdana, sans-serif;
             color: #f1e1c1;
-            z-index: 9995;
+            z-index: 9997;
             transition: transform 0.3s ease-in-out;
-            transform: translateX(-220px);
-            
+            transform: translateX(-200px);
         }
         #tw-agendador.ativo { transform: translateX(0); }
 
@@ -49,13 +48,11 @@
         }
 
         #tw-agendador-conteudo {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            padding: 10px;
+            padding: 8px;
+            width: 180px;
         }
         #tw-agendador-conteudo h4 {
-            margin: 0 0 4px 0;
+            margin: 0 0 6px 0;
             font-size: 13px;
             text-align: center;
             border-bottom: 1px solid #654321;
@@ -100,15 +97,16 @@
             font-size: 12px;
             text-align: center;
             margin-top: 4px;
+            display: block;
+            width: 100%;
         }
         #tw-agendador-conteudo button:hover { filter: brightness(1.1); }
 
         #tw-ag-status {
-            font-size: 13px;
-            font-weight: bold;
+            font-size: 12px;
+            margin-top: 6px;
             text-align: center;
             color: #ffd700;
-            margin-top: 4px;
         }
         `;
         document.head.appendChild(style);
@@ -205,7 +203,6 @@
         const btn = document.getElementById("troop_confirm_submit");
         if (!btn) { status.textContent = "❌ Botão não encontrado!"; return; }
 
-        // Salvar no localStorage
         salvarAgendamento(dataRaw, hora, ajuste, modo);
 
         btnToggle.textContent = "Cancelar";
@@ -246,12 +243,10 @@
         if (intervaloCountdown) { cancelar(); } else { agendar(); }
     });
 
-    // === Toggle abrir/fechar painel ===
     document.getElementById("tw-agendador-toggle").addEventListener("click", () => {
         painel.classList.toggle("ativo");
     });
 
-    // === Ao carregar, verificar se há agendamento salvo para esta aldeia ===
     const agendamentoSalvo = JSON.parse(localStorage.getItem(storageKey));
     if (agendamentoSalvo) {
         document.getElementById("ag_data").value = agendamentoSalvo.dataRaw;
@@ -260,5 +255,4 @@
         document.querySelector(`input[name="modo"][value="${agendamentoSalvo.modo}"]`).checked = true;
         agendar(agendamentoSalvo.dataRaw, agendamentoSalvo.hora, agendamentoSalvo.ajuste, agendamentoSalvo.modo);
     }
-
 })();
