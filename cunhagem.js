@@ -52,7 +52,7 @@
       border: 2px solid #654321; border-left: none; border-radius: 0 6px 6px 0; color: #f1e1c1; 
       display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; box-shadow: 2px 2px 6px #000; 
     }
-    #twCUNH-conteudo { padding: 8px; width: 200px; }
+    #twCUNH-conteudo { padding: 8px; width: 180px; }
     #twCUNH-conteudo h4 { margin: 0 0 6px 0; font-size: 13px; text-align: center; border-bottom: 1px solid #654321; padding-bottom: 4px; }
     .twCUNH-btn { display: block; width: 100%; margin: 5px 0; background: #5c4023; border: 1px solid #3c2f2f; border-radius: 6px; 
       color: #f1e1c1; padding: 6px; cursor: pointer; font-size: 12px; text-align: center; }
@@ -221,6 +221,7 @@
         updateUI();
     }
 })();
+
 
 
 
