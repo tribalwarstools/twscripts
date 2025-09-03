@@ -24,7 +24,7 @@
             color: #f1e1c1;
             z-index: 9995;
             transition: transform 0.3s ease-in-out;
-            transform: translateX(-180px);
+            transform: translateX(-200px);
             
         }
         #tw-agendador.ativo { transform: translateX(0); }
