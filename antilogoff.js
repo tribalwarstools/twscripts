@@ -15,7 +15,7 @@
   const style = document.createElement('style');
   style.textContent = `
     #twAL-painel { 
-      position: fixed; top: 140px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
+      position: fixed; top: 70px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
       border-radius: 0 10px 10px 0; box-shadow: 2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1; 
       z-index: 9998; transition: transform 0.3s ease-in-out; transform: translateX(-200px); 
     }
@@ -205,4 +205,5 @@
   window.desativarAntiLogoff = desativarAntiLogoff;
 
 })();
+
 
