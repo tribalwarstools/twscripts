@@ -1,13 +1,13 @@
 (function() {
+  const STORAGE_KEY = "twPainelAberto";
+
   // === Lista de Scripts ===
   const scripts = [
-   
-    // Scripts sem toggle
     { nome: 'Comparador(Casual)', func: () => { $.getScript('https://tribalwarstools.github.io/beta/ComparadorPontCasual.js').done(() => UI.InfoMessage('✅ Script Comparador carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Comparador.',5000,'error')); }},
     { nome: 'Configurar Tropas', func: () => { $.getScript('https://tribalwarstools.github.io/ConfigTropas/ConfigTropas.js').done(() => UI.InfoMessage('✅ Script Configurar Tropas carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Configurar Tropas.',5000,'error')); }},
     { nome: 'Blindagem', func: () => { $.getScript('https://tribalwarstools.github.io/beta/blindagem.js').done(() => UI.InfoMessage('✅ Script Blindagem carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Blindagem.',5000,'error')); }},
     { nome: 'Renomear Aldeias', func: () => { $.getScript('https://tribalwarstools.github.io/RenomearAldeias/renomearAld.js').done(() => UI.InfoMessage('✅ Script Renomear Aldeias carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Renomear Aldeias.',5000,'error')); }},
-    { nome: 'Ataque', func: () => { $.getScript('https://tribalwarstools.github.io/ConfigTropas/ScriptAtaque.js').done(() => UI.InfoMessage('✅ Script tAtaque carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Ataque.',5000,'error')); }},
+    { nome: 'Ataque', func: () => { $.getScript('https://tribalwarstools.github.io/ConfigTropas/ScriptAtaque.js').done(() => UI.InfoMessage('✅ Script Ataque carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Ataque.',5000,'error')); }},
   ];
 
   // === Criar painel ===
@@ -41,20 +41,10 @@
   scripts.forEach(script => {
     const btn = document.createElement("button");
     btn.textContent = script.nome;
-    // Checar estado salvo
-    if (script.toggle && script.estado && script.estado()) {
-      btn.className = "scriptBtn on";
-    } else {
-      btn.className = "scriptBtn " + (script.toggle ? "off" : "");
-    }
-
+    btn.className = "scriptBtn";
     btn.onclick = () => {
       try {
         script.func();
-        if (script.toggle) {
-          btn.classList.toggle("on");
-          btn.classList.toggle("off");
-        }
       } catch (e) {
         UI.InfoMessage('⚠️ Erro ao executar o script.', 4000, 'error');
         console.error(e);
@@ -63,17 +53,17 @@
     conteudo.appendChild(btn);
   });
 
-  // === Toggle abre/fecha painel ===
+  // === Toggle abre/fecha painel com persistência ===
   const painelEl = document.getElementById("tw-painel");
   const toggleBtn = document.getElementById("tw-toggle");
+
+  // Restaurar estado salvo
+  if (localStorage.getItem(STORAGE_KEY) === "aberto") {
+    painelEl.classList.add("ativo");
+  }
+
   toggleBtn.addEventListener("click", function () {
     painelEl.classList.toggle("ativo");
+    localStorage.setItem(STORAGE_KEY, painelEl.classList.contains("ativo") ? "aberto" : "fechado");
   });
 })();
-
-
-
-
-
-
-
