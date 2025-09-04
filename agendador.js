@@ -124,8 +124,8 @@
             <label>⏰ Hora:<input id="ag_hora" type="time" step="1"></label>
             <label>⚙️ Ajuste (ms):<input id="ajuste_fino" type="number" value="0" step="10"></label>
             <div class="radioGroup">
-                <label><input type="radio" name="modo" value="saida" checked> 🚀 Saída</label>
-                <label><input type="radio" name="modo" value="chegada"> 🎯 Chegada</label>
+                <label><input type="radio" name="modo" value="saida" checked> Saída</label>
+                <label><input type="radio" name="modo" value="chegada"> Chegada</label>
             </div>
             <button id="btn_toggle">Iniciar</button>
             <div id="tw-ag-status"></div>
