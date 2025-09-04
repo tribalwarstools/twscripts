@@ -43,7 +43,7 @@
     const style = document.createElement('style');
     style.textContent = `
     #twCUNH-painel { 
-      position: fixed; top: 120px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
+      position: fixed; top: 150px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
       border-radius: 0 10px 10px 0; box-shadow: 2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1; 
       z-index: 9996; transition: transform 0.3s ease-in-out; transform: translateX(-200px); 
     }
@@ -221,6 +221,7 @@
         updateUI();
     }
 })();
+
 
 
 
