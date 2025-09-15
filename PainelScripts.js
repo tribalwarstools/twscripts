@@ -3,18 +3,18 @@
 
   // === Lista de Scripts ===
   const scripts = [
-    { nome: 'Comparador(Casual)', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/comparador.js').done(() => UI.InfoMessage('✅ Script Comparador carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Comparador.',5000,'error')); }},
+    { nome: 'Comparador(Casual)', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/comparador.js').done(() => UI.InfoMessage('✅ Script carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
     
-	{ nome: 'Blindagem', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/blindagem.js').done(() => UI.InfoMessage('✅ Script Blindagem carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Blindagem.',5000,'error')); }},
+	{ nome: 'Blindagem', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/blindagem.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
     
-	{ nome: 'Renomear Aldeias', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/renomear.js').done(() => UI.InfoMessage('✅ Script Renomear Aldeias carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Renomear Aldeias.',5000,'error')); }},
+	{ nome: 'Renomear Aldeias', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/renomear.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
 	
 	{ nome: 'Contador', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/contador.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
 	
     
     // === Scripts Farm ===
-    { nome: 'Configurar Tropas', func: () => { $.getScript('https://tribalwarstools.github.io/ConfigTropas/ConfigTropas.js').done(() => UI.InfoMessage('✅ Script Configurar Tropas carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Configurar Tropas.',5000,'error')); }},
-    { nome: 'Ataque', func: () => { $.getScript('https://tribalwarstools.github.io/ConfigTropas/ScriptAtaque.js').done(() => UI.InfoMessage('✅ Script Ataque carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Ataque.',5000,'error')); }},
+    { nome: 'Configurar Tropas', func: () => { $.getScript('https://tribalwarstools.github.io/ConfigTropas/ConfigTropas.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
+    { nome: 'Ataque', func: () => { $.getScript('https://tribalwarstools.github.io/ConfigTropas/ScriptAtaque.js').done(() => UI.InfoMessage('✅ Script carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
   ];
 
   // === Criar painel ===
@@ -74,6 +74,7 @@
     localStorage.setItem(STORAGE_KEY, painelEl.classList.contains("ativo") ? "aberto" : "fechado");
   });
 })();
+
 
 
 
