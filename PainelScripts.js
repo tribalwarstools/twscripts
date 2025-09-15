@@ -3,13 +3,13 @@
 
   // === Lista de Scripts ===
   const scripts = [
-    { nome: 'Comparador(Casual)', func: () => { $.getScript('https://tribalwarstools.github.io/beta/ComparadorPontCasual.js').done(() => UI.InfoMessage('✅ Script Comparador carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Comparador.',5000,'error')); }},
+    { nome: 'Comparador(Casual)', func: () => { $.getScript('https://tribalwarstools.github.io/twscript/comparador.js').done(() => UI.InfoMessage('✅ Script Comparador carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Comparador.',5000,'error')); }},
     
-	{ nome: 'Blindagem', func: () => { $.getScript('https://tribalwarstools.github.io/beta/blindagem.js').done(() => UI.InfoMessage('✅ Script Blindagem carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Blindagem.',5000,'error')); }},
+	{ nome: 'Blindagem', func: () => { $.getScript('https://tribalwarstools.github.io/twscript/blindagem.js').done(() => UI.InfoMessage('✅ Script Blindagem carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Blindagem.',5000,'error')); }},
     
-	{ nome: 'Renomear Aldeias', func: () => { $.getScript('https://tribalwarstools.github.io/RenomearAldeias/renomearAld.js').done(() => UI.InfoMessage('✅ Script Renomear Aldeias carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Renomear Aldeias.',5000,'error')); }},
+	{ nome: 'Renomear Aldeias', func: () => { $.getScript('https://tribalwarstools.github.io/twscript/renomear.js').done(() => UI.InfoMessage('✅ Script Renomear Aldeias carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script Renomear Aldeias.',5000,'error')); }},
 	
-	{ nome: 'Contador', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/Contador.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
+	{ nome: 'Contador', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/contador.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
 	
     
     // === Scripts Farm ===
@@ -74,6 +74,7 @@
     localStorage.setItem(STORAGE_KEY, painelEl.classList.contains("ativo") ? "aberto" : "fechado");
   });
 })();
+
 
 
 
