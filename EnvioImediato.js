@@ -23,7 +23,7 @@
             box-shadow: 2px 2px 8px #000;
             font-family: Verdana, sans-serif;
             color: #f1e1c1;
-            z-index: 9997;
+            z-index: 999999;
             transition: transform 0.3s ease-in-out;
             transform: translateX(-200px);
         }
