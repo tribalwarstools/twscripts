@@ -14,7 +14,7 @@
     style.textContent = `
         #painel-envio-imediato {
             position: fixed;
-            top: 220px;
+            top: 200px;
             left: 0;
             background: #2b2b2b;
             border: 2px solid #654321;
