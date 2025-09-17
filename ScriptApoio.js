@@ -69,7 +69,7 @@
                 alert("Todas as coordenadas já receberam apoio!");
 
                 // 🔽 Chama script de reset quando termina
-                $.getScript('https://tribalwarstools.github.io/ConfigTropas/ResetarCoord.js');
+                $.getScript('https://tribalwarstools.github.io/twscripts/ResetarCoord.js');
 
                 return;
             }
