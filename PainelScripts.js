@@ -10,6 +10,7 @@
 	{ nome: 'Renomear Aldeias', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/renomear.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
 	
 	{ nome: 'Contador', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/contador.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
+	  { nome: 'Snipe', func: () => { $.getScript('https://tribalwarstools.github.io/twscripts/snipe.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
 	
    
     
@@ -78,6 +79,7 @@
     localStorage.setItem(STORAGE_KEY, painelEl.classList.contains("ativo") ? "aberto" : "fechado");
   });
 })();
+
 
 
 
