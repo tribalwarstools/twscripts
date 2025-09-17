@@ -200,7 +200,7 @@
     document.getElementById("btnPreview").onclick = mostrarPreview;
 
     document.getElementById("btnBuscarBarbara").onclick = () => {
-      $.getScript('https://tribalwarstools.github.io/twscripts/buscaBarbaras.js');
+      $.getScript('https://tribalwarstools.github.io/twscripts/buscarBarbara.js');
     };
 
     document.getElementById("btnAtalho").onclick = () => {
