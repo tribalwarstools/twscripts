@@ -61,9 +61,7 @@
         });
 
         const html = `
-            <h2>
-                Comparador (Casual)
-            </h2>
+            <h2>Comparador (Casual)</h2>
             <p>Sua pontuação: <input id="minhaPontuacaoInput" type="number" value="${minhaPontuacao}" style="width:120px"></p>
 
             <label>Limite atual (%):
@@ -76,7 +74,7 @@
             </label>
 
             <div style="margin-top:8px;">
-                <small><b>Alcance atual</b>: ${alcance.min.toString()} – ${alcance.max.toString()} pontos</small>
+                <small><b>Alcance atual</b>: ${alcance.min} – ${alcance.max} pontos</small>
             </div>
 
             <div style="margin-top:10px;">
@@ -118,7 +116,6 @@
         document.getElementById("filtroInput").oninput = () => { paginaAtual = 1; analisar(); };
         document.getElementById("filtroTribo").onchange = () => { paginaAtual = 1; analisar(); };
 
-        // Exportar
         document.getElementById("btnExport").onclick = () => {
             const lista = filtrarJogadores().map(j => j.nome).join("\n");
             const blob = new Blob([lista], {type: "text/plain"});
@@ -153,6 +150,13 @@
         const alcance = calcularAlcance(minhaPontuacao, limitePercentual);
         const filtrados = filtrarJogadores();
 
+        // Contagem geral
+        let contLiberados = 0, contBloqueados = 0;
+        filtrados.forEach(j => {
+            if (podeAtacar(minhaPontuacao, j.pontos, limitePercentual)) contLiberados++;
+            else contBloqueados++;
+        });
+
         const totalPaginas = Math.max(1, Math.ceil(filtrados.length / porPagina));
         if (paginaAtual > totalPaginas) paginaAtual = totalPaginas;
 
@@ -160,20 +164,22 @@
         const fim = inicio + porPagina;
         const pagina = filtrados.slice(inicio, fim);
 
-        let contLiberados = 0, contBloqueados = 0;
-
-        let saida = `<p style="margin:6px 0 10px;"><small><b>Alcance recalculado</b>: ${alcance.min} – ${alcance.max}</small></p>
+        let saida = `
+            <div style="margin-bottom:6px;">
+                <img src="/graphic/dots/green.png"> <b>Liberados:</b> ${contLiberados} &nbsp; 
+                <img src="/graphic/dots/red.png"> <b>Bloqueados:</b> ${contBloqueados}
+            </div>
+            <p style="margin:6px 0 10px;"><small><b>Alcance recalculado</b>: ${alcance.min} – ${alcance.max}</small></p>
             <p style="margin:0 0 6px;"><small>Limite atual: <b>${limitePercentual}%</b></small></p>
             <table class="vis tw-table" width="100%">
                 <tr><th>Jogador</th><th>Pontos</th><th>Tribo</th><th>Status</th></tr>`;
 
         pagina.forEach(j => {
             const liberado = podeAtacar(minhaPontuacao, j.pontos, limitePercentual);
-            if (liberado) contLiberados++; else contBloqueados++;
             const cls = liberado ? "tw-ok" : "tw-no";
             const status = liberado 
-                ? `<img src="/graphic/dots/green.png" title="Liberado"> ` 
-                : `<img src="/graphic/dots/red.png" title="Bloqueado"> `;
+                ? `<img src="/graphic/dots/green.png" title="Liberado">` 
+                : `<img src="/graphic/dots/red.png" title="Bloqueado">`;
             const link = `game.php?screen=info_player&id=${j.id}`;
             const tagTribo = j.tribo ? (tribosMap[j.tribo] || `T${j.tribo}`) : "-";
 
@@ -186,10 +192,6 @@
         });
 
         saida += `</table>
-            <div style="margin:6px 0;">
-                <img src="/graphic/dots/green.png"> Liberados: ${contLiberados} &nbsp; 
-                <img src="/graphic/dots/red.png"> Bloqueados: ${contBloqueados}
-            </div>
             <div class="paginacao" style="margin-top:8px; text-align:center;">
                 <button class="btn" id="btnPrev" ${paginaAtual <= 1 ? "disabled" : ""}>Anterior</button>
                 <span style="margin:0 8px;">Página ${paginaAtual} / ${totalPaginas}</span>
