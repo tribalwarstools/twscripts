@@ -79,7 +79,7 @@
 
             <div style="margin-top:10px;">
                 <label>🔍 Buscar jogador: 
-                    <input id="filtroInput" type="text" placeholder="Digite o nome..." style="width:180px">
+                    <input id="filtroInput" type="text" placeholder="Digite o nome..." style="width:100px">
                 </label>
                 <label style="margin-left:10px;">Tribo:
                     <select id="filtroTribo">${optionsTribos}</select>
