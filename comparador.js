@@ -61,7 +61,9 @@
         });
 
         const html = `
-            <h2>Comparador de Pontuação (Casual)</h2>
+            <h2>
+                Comparador (Casual)
+            </h2>
             <p>Sua pontuação: <input id="minhaPontuacaoInput" type="number" value="${minhaPontuacao}" style="width:120px"></p>
 
             <label>Limite atual (%):
@@ -131,7 +133,6 @@
         analisar();
     }
 
-    // função de filtro compartilhada
     function filtrarJogadores() {
         const filtro = (document.getElementById("filtroInput")?.value || "").toLowerCase();
         const triboFiltro = parseInt(document.getElementById("filtroTribo")?.value || "0", 10);
@@ -159,6 +160,8 @@
         const fim = inicio + porPagina;
         const pagina = filtrados.slice(inicio, fim);
 
+        let contLiberados = 0, contBloqueados = 0;
+
         let saida = `<p style="margin:6px 0 10px;"><small><b>Alcance recalculado</b>: ${alcance.min} – ${alcance.max}</small></p>
             <p style="margin:0 0 6px;"><small>Limite atual: <b>${limitePercentual}%</b></small></p>
             <table class="vis tw-table" width="100%">
@@ -166,8 +169,11 @@
 
         pagina.forEach(j => {
             const liberado = podeAtacar(minhaPontuacao, j.pontos, limitePercentual);
+            if (liberado) contLiberados++; else contBloqueados++;
             const cls = liberado ? "tw-ok" : "tw-no";
-            const status = liberado ? "✅ Ataque Liberado" : "❌ Bloqueado";
+            const status = liberado 
+                ? `<img src="/graphic/dots/green.png" title="Liberado"> ` 
+                : `<img src="/graphic/dots/red.png" title="Bloqueado"> `;
             const link = `game.php?screen=info_player&id=${j.id}`;
             const tagTribo = j.tribo ? (tribosMap[j.tribo] || `T${j.tribo}`) : "-";
 
@@ -180,10 +186,14 @@
         });
 
         saida += `</table>
+            <div style="margin:6px 0;">
+                <img src="/graphic/dots/green.png"> Liberados: ${contLiberados} &nbsp; 
+                <img src="/graphic/dots/red.png"> Bloqueados: ${contBloqueados}
+            </div>
             <div class="paginacao" style="margin-top:8px; text-align:center;">
-                <button class="btn btn" id="btnPrev" ${paginaAtual <= 1 ? "disabled" : ""}>Anterior</button>
+                <button class="btn" id="btnPrev" ${paginaAtual <= 1 ? "disabled" : ""}>Anterior</button>
                 <span style="margin:0 8px;">Página ${paginaAtual} / ${totalPaginas}</span>
-                <button class="btn btn" id="btnNext" ${paginaAtual >= totalPaginas ? "disabled" : ""}>Próxima</button>
+                <button class="btn" id="btnNext" ${paginaAtual >= totalPaginas ? "disabled" : ""}>Próxima</button>
             </div>`;
 
         res.innerHTML = saida;
