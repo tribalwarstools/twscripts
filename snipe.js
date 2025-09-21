@@ -45,7 +45,7 @@
       margin-top:10px; padding:8px; border:1px solid #654321; border-radius:8px; background:#3a3a3a; font-size:12px; 
     }
     #twSNP-resultado b { font-size: 13px; }
-    #twSNP-contador { background:#22263a; border-color:#556; text-align:center; }
+    #twSNP-contador { background:#22263a; border-color:#556; }
     `;
     document.head.appendChild(style);
 
@@ -132,4 +132,5 @@
         }, 500);
     };
 })();
+
 
