@@ -1,182 +1,110 @@
-(function() {
-    'use strict';
+(function () {
+    let contadorInterval = null;
 
-    const RELOAD_INTERVAL = 60; // segundos
-    const STORAGE_KEY = 'twLBL-enabled';
-    let enabled = sessionStorage.getItem(STORAGE_KEY) === 'true';
-
-    // === Estilo ===
-    const style = document.createElement('style');
+    // === CSS do painel ===
+    let style = document.createElement("style");
     style.textContent = `
-    #twLBL-painel { 
+    #twSNP-painel { 
       position: fixed; top: 150px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
       border-radius: 0 10px 10px 0; box-shadow: 2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1; 
       z-index: 9997; transition: transform 0.3s ease-in-out; transform: translateX(-200px); 
     }
-    #twLBL-toggle { 
+    #twSNP-toggle { 
       position: absolute; top: 0; right: -28px; width: 28px; height: 40px; background: #5c4023; 
       border: 2px solid #654321; border-left: none; border-radius: 0 6px 6px 0; color: #f1e1c1; 
       display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; box-shadow: 2px 2px 6px #000; 
     }
-    #twLBL-conteudo { padding: 8px; width: 180px; }
-    #twLBL-conteudo h4 { margin: 0 0 6px 0; font-size: 13px; text-align: center; border-bottom: 1px solid #654321; padding-bottom: 4px; }
-    .twLBL-btn { display: block; width: 100%; margin: 5px 0; background: #5c4023; border: 1px solid #3c2f2f; border-radius: 6px; 
+    #twSNP-conteudo { padding: 8px; width: 200px; }
+    #twSNP-conteudo h4 { margin: 0 0 6px 0; font-size: 13px; text-align: center; border-bottom: 1px solid #654321; padding-bottom: 4px; }
+    .twSNP-btn { display: block; width: 100%; margin: 6px 0; background: #5c4023; border: 1px solid #3c2f2f; border-radius: 6px; 
       color: #f1e1c1; padding: 6px; cursor: pointer; font-size: 12px; text-align: center; }
-    .twLBL-btn.on { background: #2e7d32 !important; }
-    .twLBL-btn.off { background: #8b0000 !important; }
-    .twLBL-btn:hover { filter: brightness(1.1); }
-    #twLBL-painel.ativo { transform: translateX(0); }
-    .twLBL-status { font-size: 12px; margin-top: 6px; text-align: center; }
-    #twLBL-contador { font-size: 11px; margin-top: 3px; text-align: center; color: #aaa; }
+    .twSNP-btn:hover { filter: brightness(1.1); }
+    #twSNP-painel.ativo { transform: translateX(0); }
+    .twSNP-label { font-size: 12px; margin: 4px 0 2px 0; display: block; }
+    .twSNP-input, .twSNP-select { width: 100%; padding: 4px; margin-bottom: 6px; font-size: 12px; border-radius: 4px; border: 1px solid #654321; background:#3a3a3a; color:#f1e1c1; }
+    #twSNP-resultado { margin-top:8px; padding:6px; border:1px solid #654321; border-radius:6px; background:#3a3a3a; font-size:12px; }
+    #twSNP-contador { margin-top:6px; padding:6px; border:1px solid #99c; border-radius:6px; background:#223; font-size:12px; text-align:center; }
     `;
     document.head.appendChild(style);
 
-    // === Painel ===
-    const panel = document.createElement('div');
-    panel.id = 'twLBL-painel';
-    panel.innerHTML = `
-        <div id="twLBL-toggle">☰</div>
-        <div id="twLBL-conteudo">
-            <h4>Auto Etiquetador</h4>
-            <button id="twLBL-btn" class="twLBL-btn off">Ligar</button>
-            <div id="twLBL-status" class="twLBL-status">Status: Inativo</div>
-            <div id="twLBL-contador">Recarregando em ${RELOAD_INTERVAL}s</div>
+    // === HTML painel ===
+    let painel = document.createElement("div");
+    painel.id = "twSNP-painel";
+    painel.innerHTML = `
+        <div id="twSNP-toggle">⚔️</div>
+        <div id="twSNP-conteudo">
+            <h4>Snipe Cancelamento</h4>
+            <label class="twSNP-label"><b>Hora de chegada:</b></label>
+            <input type="time" step="1" id="twSNP-hora" class="twSNP-input" value="12:00:00"/>
+            
+            <label class="twSNP-label"><b>Tempo de viagem:</b></label>
+            <select id="twSNP-tempo" class="twSNP-select">
+                ${Array.from({length: 20}, (_, i) => {
+                    let min = 20 - i;
+                    return `<option value="${min}">${min} minuto${min>1?"s":""}</option>`;
+                }).join("")}
+                <option value="0.5">30 segundos</option>
+            </select>
+            
+            <button class="twSNP-btn" onclick="window.twSNP_calcular()">📌 Calcular</button>
+            <div id="twSNP-resultado"></div>
+            <div id="twSNP-contador"></div>
         </div>
     `;
-    document.body.appendChild(panel);
+    document.body.appendChild(painel);
 
-    // === Elementos ===
-    const btn = document.getElementById('twLBL-btn');
-    const statusEl = document.getElementById('twLBL-status');
-    const countdownEl = document.getElementById('twLBL-contador');
-    const toggle = document.getElementById('twLBL-toggle');
-
-    let recarregarPermitido = true;
-    let monitorInterval = null;
-    let countdownInterval = null;
-    let countdown = RELOAD_INTERVAL;
-
-    // === Toggle lateral ===
-    toggle.addEventListener('click', () => {
-        panel.classList.toggle('ativo');
+    // === Toggle do painel ===
+    document.getElementById("twSNP-toggle").addEventListener("click", () => {
+        painel.classList.toggle("ativo");
     });
 
-    // === Atualiza UI ===
-    function updateUI() {
-        if (enabled) {
-            btn.textContent = 'Desligar';
-            btn.classList.remove('off');
-            btn.classList.add('on');
-            statusEl.textContent = 'Status: Ativo';
-            statusEl.style.color = '#a1d490';
-        } else {
-            btn.textContent = 'Ligar';
-            btn.classList.remove('on');
-            btn.classList.add('off');
-            statusEl.textContent = 'Status: Inativo';
-            statusEl.style.color = '#d49090';
-            countdownEl.textContent = `Recarregando em ${RELOAD_INTERVAL}s`;
+    // === Função cálculo ===
+    window.twSNP_calcular = function () {
+        let chegadaStr = document.getElementById("twSNP-hora").value;
+        let tempo = parseFloat(document.getElementById("twSNP-tempo").value);
+
+        if (!chegadaStr) {
+            UI.ErrorMessage("Defina a hora de chegada!");
+            return;
         }
-    }
 
-    // === Botão ON/OFF ===
-    btn.addEventListener('click', () => {
-        enabled = !enabled;
-        sessionStorage.setItem(STORAGE_KEY, enabled);
-        updateUI();
-        if (enabled) {
-            runAutoLabel();
-            startCountdown();
-        } else {
-            clearInterval(monitorInterval);
-            clearInterval(countdownInterval);
+        let [h, m, s] = chegadaStr.split(":").map(Number);
+        let chegada = new Date();
+        chegada.setHours(h, m, s, 0);
+
+        let viagemSeg = tempo * 60;
+        let enviar = new Date(chegada.getTime() - viagemSeg * 1000);
+        let cancelar = new Date(chegada.getTime() - (viagemSeg / 2) * 1000);
+
+        function formatar(data) {
+            return data.toTimeString().split(" ")[0];
         }
-    });
 
-    // === Função que faz a etiquetagem ===
-    function autoEtiqueta() {
-        if (!enabled) return;
+        document.getElementById("twSNP-resultado").innerHTML = `
+            🟢 ENVIAR: <b style="color:lime;">${formatar(enviar)}</b><br>
+            🔴 CANCELAR: <b style="color:red;">${formatar(cancelar)}</b>
+        `;
 
-        let encontrou = false;
-        const linhas = Array.from(document.querySelectorAll('tr'));
+        if (contadorInterval) clearInterval(contadorInterval);
 
-        linhas.forEach(linha => {
-            const nomeEl = linha.querySelector('span.quickedit-label');
-            if (!nomeEl) return;
-            const nome = nomeEl.textContent.trim();
-            if (nome === "Ataque") {
-                const checkbox = linha.querySelector('input[type="checkbox"][name^="id_"]:not(:disabled)');
-                if (checkbox && !checkbox.checked) {
-                    checkbox.checked = true;
-                    encontrou = true;
-                }
+        contadorInterval = setInterval(() => {
+            let agora = new Date();
+            let faltaEnviar = Math.floor((enviar - agora) / 1000);
+            let faltaCancelar = Math.floor((cancelar - agora) / 1000);
+
+            function formatSegundos(seg) {
+                if (seg < 0) return "✔ já passou";
+                let mm = Math.floor(seg / 60);
+                let ss = seg % 60;
+                return `${mm.toString().padStart(2,"0")}:${ss.toString().padStart(2,"0")}`;
             }
-        });
 
-        if (encontrou) {
-            recarregarPermitido = false;
-            setTimeout(() => {
-                const btnEtiqueta = document.querySelector('input.btn[type="submit"][name="label"]');
-                if (btnEtiqueta && !btnEtiqueta.disabled && btnEtiqueta.offsetParent !== null) {
-                    btnEtiqueta.click();
-                    console.log('Auto Etiquetador: Etiquetas aplicadas.');
-                } else {
-                    console.warn('Auto Etiquetador: Botão aplicar etiquetas não encontrado.');
-                }
-            }, 500);
-        } else {
-            recarregarPermitido = true;
-        }
-    }
+            document.getElementById("twSNP-contador").innerHTML = `
+                ⏳ Até ENVIAR: <b style="color:lime;">${formatSegundos(faltaEnviar)}</b><br>
+                ⏳ Até CANCELAR: <b style="color:red;">${formatSegundos(faltaCancelar)}</b>
+            `;
 
-    // === Verifica ataques pendentes SOMENTE na tela de ataques ===
-    function checkAtaquesERecarregar() {
-        if (!enabled) return;
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const isAtaquesPage = urlParams.get('mode') === 'incomings' && urlParams.get('subtype') === 'attacks';
-
-        if (isAtaquesPage) {
-            autoEtiqueta();
-        }
-    }
-
-    // === Loop principal ===
-    function runAutoLabel() {
-        clearInterval(monitorInterval);
-        checkAtaquesERecarregar();
-
-        monitorInterval = setInterval(() => {
-            if (enabled) {
-                checkAtaquesERecarregar();
-            }
-        }, 15000); // 15s
-    }
-
-    // === Contador regressivo ===
-    function startCountdown() {
-        countdown = RELOAD_INTERVAL;
-        countdownEl.textContent = `Recarregando em ${countdown}s`;
-        clearInterval(countdownInterval);
-        countdownInterval = setInterval(() => {
-            countdown--;
-            countdownEl.textContent = `Recarregando em ${countdown}s`;
-            if (countdown <= 0) {
-                clearInterval(countdownInterval);
-                if (recarregarPermitido) {
-                    console.log('[Reload] Nenhuma etiqueta pendente. Recarregando...');
-                    location.reload();
-                } else {
-                    startCountdown();
-                }
-            }
-        }, 1000);
-    }
-
-    // === Inicialização ===
-    updateUI();
-    if (enabled) {
-        runAutoLabel();
-        startCountdown();
-    }
+            if (faltaCancelar < -5) clearInterval(contadorInterval);
+        }, 500);
+    };
 })();
