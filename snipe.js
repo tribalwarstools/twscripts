@@ -14,7 +14,7 @@
       border: 2px solid #654321; border-left: none; border-radius: 0 8px 8px 0; color: #f1e1c1; 
       display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; box-shadow: 2px 2px 6px #000; 
     }
-    #twSNP-conteudo { padding: 10px; width: 220px; }
+    #twSNP-conteudo { padding: 10px; width: 200px; }
     #twSNP-conteudo h4 { margin: 0 0 10px 0; font-size: 14px; text-align: center; border-bottom: 1px solid #654321; padding-bottom: 6px; }
     
     .twSNP-label { font-size: 12px; margin: 6px 0 2px 0; display: block; font-weight: bold; }
@@ -132,3 +132,4 @@
         }, 500);
     };
 })();
+
