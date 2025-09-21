@@ -172,7 +172,7 @@
             <p style="margin:6px 0 10px;"><small><b>Alcance recalculado</b>: ${alcance.min} – ${alcance.max}</small></p>
             <p style="margin:0 0 6px;"><small>Limite atual: <b>${limitePercentual}%</b></small></p>
             <table class="vis tw-table" width="100%">
-                <tr><th>Jogador</th><th>Pontos</th><th>Tribo</th><th>Status</th></tr>`;
+                <tr><th>Status</th><th>Jogador</th><th>Tribo</th><th>Pontos</th></tr>`;
 
         pagina.forEach(j => {
             const liberado = podeAtacar(minhaPontuacao, j.pontos, limitePercentual);
@@ -184,10 +184,10 @@
             const tagTribo = j.tribo ? (tribosMap[j.tribo] || `T${j.tribo}`) : "-";
 
             saida += `<tr class="${cls}">
-                        <td><a href="${link}">${j.nome}</a></td>
-                        <td>${j.pontos.toLocaleString()}</td>
-                        <td>${tagTribo}</td>
                         <td>${status}</td>
+                        <td><a href="${link}">${j.nome}</a></td>
+                        <td>${tagTribo}</td>
+                        <td>${j.pontos.toLocaleString()}</td>
                       </tr>`;
         });
 
