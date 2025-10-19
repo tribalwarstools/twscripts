@@ -13,7 +13,7 @@
     let contadorId = null;
     let segundosRestantes = 0;
     let currentInterval = parseInt(localStorage.getItem("twRES_intervalo") || "10", 10);
-    let currentFactor = localStorage.getItem("twRES_factor") || "2";
+    let currentFactor = "max"; // 🔹 sempre buscar o máximo
 
     function carregarEstado() {
         try {
@@ -59,7 +59,7 @@
     #twRES-painel.ativo { transform: translateX(0); }
     .twRES-status { font-size: 12px; margin-top: 6px; text-align: center; }
     #twRES-contador { font-size: 11px; margin-top: 3px; text-align: center; color: #aaa; }
-    #twRES-intervalo, #twRES-factor { width: 100%; margin-top: 6px; padding: 4px; background-color: #3a3a3a; color: #f1e1c1; border: 1px solid #654321; border-radius: 6px; }
+    #twRES-intervalo { width: 100%; margin-top: 6px; padding: 4px; background-color: #3a3a3a; color: #f1e1c1; border: 1px solid #654321; border-radius: 6px; }
     `;
     document.head.appendChild(style);
 
@@ -70,14 +70,6 @@
         <div id="twRES-conteudo">
             <h4>Armazenamento</h4>
             <button id="twRES-btn" class="twRES-btn off">Iniciar</button>
-            <label for="twRES-factor">Multiplicador:</label>
-            <select id="twRES-factor">
-                <option value="0">Nada</option>
-                <option value="1">1x</option>
-                <option value="2">2x</option>
-                <option value="3">3x</option>
-                <option value="4">4x</option>
-            </select>
             <label for="twRES-intervalo">Intervalo:</label>
             <select id="twRES-intervalo">
                 <option value="10">10s</option>
@@ -102,10 +94,8 @@
     const countdownEl = document.getElementById('twRES-contador');
     const toggle = document.getElementById('twRES-toggle');
     const selectInterval = document.getElementById('twRES-intervalo');
-    const selectFactor = document.getElementById('twRES-factor');
 
     selectInterval.value = currentInterval;
-    selectFactor.value = currentFactor;
 
     toggle.addEventListener('click', () => panel.classList.toggle('ativo'));
 
@@ -126,16 +116,30 @@
         }
     }
 
+    // 🔹 Sempre seleciona o maior multiplicador disponível
+    function obterMaximoMultiplicador() {
+        const form = document.querySelector('form[action*="action=reserve"]');
+        if (!form) return null;
+        const select = form.querySelector('select[name="factor"]');
+        if (!select) return null;
+
+        // Pega o maior valor numérico do select
+        const valores = Array.from(select.options).map(o => parseInt(o.value, 10) || 0);
+        const maxVal = Math.max(...valores);
+        return maxVal.toString();
+    }
+
     function executarArmazenamento() {
         const proximo = Date.now() + currentInterval * 1000;
-        salvarEstado({ active: true, nextRun: proximo, factor: currentFactor });
+        salvarEstado({ active: true, nextRun: proximo, factor: "max" });
 
         const form = document.querySelector('form[action*="action=reserve"]');
         if (form) {
             const select = form.querySelector('select[name="factor"]');
             const btn = form.querySelector('input[type="submit"]');
             if (select && btn) {
-                select.value = currentFactor;
+                const maxVal = obterMaximoMultiplicador() || "0";
+                select.value = maxVal; // 🔹 usa o máximo
                 setTimeout(() => btn.click(), 1000);
             }
         } else {
@@ -174,12 +178,11 @@
     btn.addEventListener('click', () => {
         if (!window.twRES_running) {
             currentInterval = parseInt(selectInterval.value, 10);
-            currentFactor = selectFactor.value;
             segundosRestantes = currentInterval;
             window.twRES_running = true;
             updateUI();
             const proximo = Date.now() + currentInterval * 1000;
-            salvarEstado({ active: true, nextRun: proximo, factor: currentFactor });
+            salvarEstado({ active: true, nextRun: proximo, factor: "max" });
             contadorId = setInterval(atualizarContador, 1000);
         } else {
             desativarFluxo();
@@ -193,20 +196,12 @@
         currentInterval = parseInt(novo, 10);
     });
 
-    selectFactor.addEventListener('change', () => {
-        const novo = selectFactor.value;
-        localStorage.setItem("twRES_factor", novo);
-        currentFactor = novo;
-    });
-
     const estado = carregarEstado();
     if (estado) {
-        currentFactor = estado.factor || currentFactor;
-        selectFactor.value = currentFactor;
         if (estado.active) {
             let nextRun = estado.nextRun || (Date.now() + currentInterval * 1000);
             if (nextRun <= Date.now()) nextRun = Date.now() + currentInterval * 1000;
-            salvarEstado({ active: true, nextRun, factor: currentFactor });
+            salvarEstado({ active: true, nextRun, factor: "max" });
             ativarFluxo(nextRun);
         } else updateUI();
     } else updateUI();
