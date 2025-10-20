@@ -78,7 +78,7 @@
     UI.SuccessMessage("Todos os campos foram limpos.");
 
     // 🚀 Executa o ResetarCoord.js também
-    $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/ResetarCoord.js');
+    $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/ResetarCoord.js');
   }
 
   function carregarDados() {
@@ -200,11 +200,11 @@
     document.getElementById("btnPreview").onclick = mostrarPreview;
 
     document.getElementById("btnBuscarBarbara").onclick = () => {
-      $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/buscarBarbara.js');
+      $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/buscarBarbara.js');
     };
 
     document.getElementById("btnAtalho").onclick = () => {
-      $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/CriaAtalho.js');
+      $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/CriaAtalho.js');
     };
 
     carregarDados();
