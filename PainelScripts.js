@@ -8,7 +8,7 @@
 	{ nome: 'Renomear Aldeias', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/renomear.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
 	{ nome: 'Contador', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/contador.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},	
 	{ nome: 'Snipe', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/snipe.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
-	{ nome: 'Evolução', func: () => { $.getScript('https://tribalwarstools.github.io/beta/evolucao.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
+	{ nome: 'Evolução', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/beta/evolucao.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
     { nome: 'Configurar Tropas', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/ConfigTropas.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
     { nome: 'Configurar Envio', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/EnvioImediato.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},    
     { nome: 'Ataque', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/ScriptAtaque.js').done(() => UI.InfoMessage('✅ Script carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
@@ -72,6 +72,7 @@
     localStorage.setItem(STORAGE_KEY, painelEl.classList.contains("ativo") ? "aberto" : "fechado");
   });
 })();
+
 
 
 
