@@ -11,7 +11,7 @@
 
   function mostrarPreviewMini(contadorAtual) {
     const usarNumeracao = $('#firstbox').prop('checked');
-    const digitos = parseInt($('#end').val()) || 2;
+    const digitos = parseInt($('#end').val()) || 3;
     const usarPrefixo = $('#prefixcheck').prop('checked');
     const prefixo = $('#prefixbox').val().trim();
     const usarTexto = $('#secondbox').prop('checked');
@@ -57,7 +57,7 @@
 
     interromper = false;
     const usarNumeracao = $('#firstbox').prop('checked');
-    const digitos = parseInt($('#end').val()) || 2;
+    const digitos = parseInt($('#end').val()) || 3;
     const usarPrefixo = $('#prefixcheck').prop('checked');
     const prefixo = $('#prefixbox').val().trim();
     const usarTexto = $('#secondbox').prop('checked');
@@ -113,7 +113,7 @@
         <h2 align='center'>Renomear aldeias</h2>
         <table class="vis" style="width:100%; margin-top:4px;">
           <tr><td><input id="firstbox" type="checkbox">Dígitos</td>
-              <td><input id="end" type="number" min="1" max="10" value="2" style="width:40px;"></td></tr>
+              <td><input id="end" type="number" min="1" max="10" value="3" style="width:40px;"></td></tr>
           <tr><td><input id="prefixcheck" type="checkbox">Prefixo</td>
               <td><input id="prefixbox" type="text" maxlength="10" style="width:50px;" placeholder="Ex: 08"></td></tr>
           <tr><td><input id="secondbox" type="checkbox">Nome</td>
@@ -136,7 +136,7 @@
 
     let config = carregarConfig();
     $('#firstbox').prop('checked', config.firstbox || false);
-    $('#end').val(config.end || 2);
+    $('#end').val(config.end || 3);
     $('#prefixcheck').prop('checked', config.prefixcheck || false);
     $('#prefixbox').val(config.prefixbox || '');
     $('#secondbox').prop('checked', config.secondbox || false);
@@ -145,7 +145,7 @@
     $('#save').on('click', () => {
       config = {
         firstbox: $('#firstbox').prop('checked'),
-        end: parseInt($('#end').val()) || 2,
+        end: parseInt($('#end').val()) || 3,
         prefixcheck: $('#prefixcheck').prop('checked'),
         prefixbox: $('#prefixbox').val(),
         secondbox: $('#secondbox').prop('checked'),
