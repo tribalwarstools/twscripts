@@ -1,14 +1,6 @@
 (function () {
   let interromper = false;
 
-  function getGrupoAtivoViaMenu() {
-    const ativo = document.querySelector('strong.group-menu-item');
-    if (!ativo) return { id: 0, name: "Nenhum" };
-    const id = parseInt(ativo.getAttribute('data-group-id') || "0");
-    const texto = ativo.textContent.trim().replace(/[><]/g, '');
-    return { id, name: texto };
-  }
-
   function montarNome(contador, digitos, prefixo, textoBase, usarNumeracao, usarPrefixo, usarTexto) {
     return [
       usarNumeracao ? String(contador).padStart(digitos, '0') : '',
@@ -25,16 +17,10 @@
     const usarTexto = $('#secondbox').prop('checked');
     const textoBase = $('#textname').val() || '';
     const novoInicio = parseInt($('#setCounter').val());
-
     let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
 
     const nomeExemplo = montarNome(contador, digitos, prefixo, textoBase, usarNumeracao, usarPrefixo, usarTexto);
-
-    if (nomeExemplo) {
-      $('#previewMini').html(`Exemplo: <b>${nomeExemplo}</b>`);
-    } else {
-      $('#previewMini').html('');
-    }
+    $('#previewMini').html(nomeExemplo ? `Exemplo: <b>${nomeExemplo}</b>` : '');
   }
 
   function carregarConfig() {
@@ -62,8 +48,14 @@
   }
 
   function executarRenomeacao(contadorAtual) {
-    interromper = false;
+    const $aldeias = $('.rename-icon');
 
+    if (!$aldeias.length) {
+      UI.ErrorMessage('Nenhum ícone de renomear encontrado nesta página.');
+      return;
+    }
+
+    interromper = false;
     const usarNumeracao = $('#firstbox').prop('checked');
     const digitos = parseInt($('#end').val()) || 2;
     const usarPrefixo = $('#prefixcheck').prop('checked');
@@ -71,14 +63,11 @@
     const usarTexto = $('#secondbox').prop('checked');
     const textoBase = $('#textname').val() || '';
     const novoInicio = parseInt($('#setCounter').val());
-
     let contador = !isNaN(novoInicio) ? novoInicio : contadorAtual;
-    if (!isNaN(novoInicio)) {
-      localStorage.setItem('renamer_counter', contador.toString());
-    }
+
+    if (!isNaN(novoInicio)) localStorage.setItem('renamer_counter', contador.toString());
 
     Dialog.close();
-
     Dialog.show('stopDialog', `
       <div style="text-align:center; font-size:12px;">
         <p>Renomeando aldeias...</p>
@@ -92,9 +81,7 @@
       UI.InfoMessage('Renomeação será encerrada em instantes...');
     });
 
-    const $aldeias = $('.rename-icon');
     const total = $aldeias.length;
-
     $aldeias.each(function (i) {
       const $btn = this;
       setTimeout(() => {
@@ -108,77 +95,40 @@
         $('.vis input[type="text"]').val(novoNome);
         $('input[type="button"]').click();
         UI.SuccessMessage(`Renomeada: ${i + 1}/${total}`);
+
         if (i + 1 === total) {
           localStorage.setItem('renamer_counter', String(contador));
           Dialog.close();
+          UI.SuccessMessage('Renomeação concluída.');
         }
       }, i * 300);
     });
   }
 
   function abrirPainelRenomear() {
-    const url = window.location.href;
-    const urlBase = '/game.php?screen=overview_villages&mode=combined&group=0';
-
-    if (!url.includes('screen=overview_villages') || !url.includes('mode=combined')) {
-      Dialog.show('redirDialog', `
-        <div style="font-size:12px; text-align:center;">
-          <p>Você não está na página de aldeias combinadas. Deseja ser redirecionado?</p>
-          <div style="margin-top:10px;">
-            <button id="redirSim" class="btn btn-confirm-yes">Sim</button>
-            <button id="redirNao" class="btn btn-confirm-no">Não</button>
-          </div>
-        </div>
-      `);
-
-      $('#redirSim').on('click', () => {
-        window.location.href = urlBase;
-      });
-
-      $('#redirNao').on('click', () => {
-        Dialog.close();
-      });
-
-      return;
-    }
-
     const contadorAtual = parseInt(localStorage.getItem('renamer_counter') || '1', 10);
 
     const $html = `
       <div style="font-size:11px; line-height:1.2;">
         <h2 align='center'>Renomear aldeias</h2>
         <table class="vis" style="width:100%; margin-top:4px;">
-          <tr>
-            <td><input id="firstbox" type="checkbox">Dígitos</td>
-            <td><input id="end" type="number" min="1" max="10" value="2" style="width:40px;"></td>
-          </tr>
-          <tr>
-            <td><input id="prefixcheck" type="checkbox">Prefixo</td>
-            <td><input id="prefixbox" type="text" maxlength="10" style="width:50px;" placeholder="Ex: 08"></td>
-          </tr>
-          <tr>
-            <td><input id="secondbox" type="checkbox">Nome</td>
-            <td><input id="textname" type="text" maxlength="32" style="width:90px;" placeholder="Nome"></td>
-          </tr>
-          <tr>
-            <td>Atual:</td>
-            <td><span id="contadorAtual" style="color:green;">${contadorAtual}</span></td>
-          </tr>
-          <tr>
-            <td>Início:</td>
-            <td><input id="setCounter" type="number" style="width:50px;"></td>
-          </tr>
-          <tr>
-            <td colspan="2" style="text-align:center; padding-top:4px;">
+          <tr><td><input id="firstbox" type="checkbox">Dígitos</td>
+              <td><input id="end" type="number" min="1" max="10" value="2" style="width:40px;"></td></tr>
+          <tr><td><input id="prefixcheck" type="checkbox">Prefixo</td>
+              <td><input id="prefixbox" type="text" maxlength="10" style="width:50px;" placeholder="Ex: 08"></td></tr>
+          <tr><td><input id="secondbox" type="checkbox">Nome</td>
+              <td><input id="textname" type="text" maxlength="32" style="width:90px;" placeholder="Nome"></td></tr>
+          <tr><td>Atual:</td><td><span id="contadorAtual" style="color:green;">${contadorAtual}</span></td></tr>
+          <tr><td>Início:</td><td><input id="setCounter" type="number" style="width:50px;"></td></tr>
+          <tr><td colspan="2" style="text-align:center; padding-top:4px;">
               <input id="rename" type="button" class="btn" value="Renomear">
               <input id="resetCounter" type="button" class="btn" value="Limpar">
               <input id="save" type="button" class="btn" value="Salvar">
-            </td>
-          </tr>
+          </td></tr>
         </table>
         <div id="previewMini" style="text-align:center; font-size:10px; margin-top:4px; color:#555;"></div>
         <div style="text-align:center; font-size:10px; margin-top:4px;">
-          <strong>Versão: <span style="color:red;">2.0</span></strong>
+          <strong>Versão: <span style="color:red;">2.1</span></strong>
         </div>
       </div>`;
 
@@ -204,16 +154,12 @@
       salvarConfig(config);
     });
 
-    $('#resetCounter').on('click', () => {
-      resetarConfiguracoes();
-    });
-
+    $('#resetCounter').on('click', resetarConfiguracoes);
     $('#rename').on('click', (e) => {
       e.preventDefault();
       executarRenomeacao(contadorAtual);
     });
 
-    // Preview dinâmico ao alterar campos
     const atualizar = () => mostrarPreviewMini(parseInt($('#contadorAtual').text()) || 1);
     ['#firstbox', '#end', '#prefixcheck', '#prefixbox', '#secondbox', '#textname', '#setCounter']
       .forEach(id => $(document).on('input change', id, atualizar));
