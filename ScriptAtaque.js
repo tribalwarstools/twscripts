@@ -69,7 +69,7 @@
                 alert("Todas as coordenadas já foram atacadas!");
 
                 // 🔽 CHAMADA DO SCRIPT DE RESET QUANDO LISTA TERMINA
-                $.getScript('https://tribalwarstools.github.io/twscripts/ResetarCoord.js');
+                $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/ResetarCoord.js');
 
                 return;
             }
