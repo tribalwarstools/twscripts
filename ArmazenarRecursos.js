@@ -111,41 +111,102 @@
         }
     }
 
-    // === EXECUÇÃO PRINCIPAL ===
+    // === FUNÇÃO ROBUSTA QUE MANIPULA MODO MULTI E NORMAL ===
     function executarArmazenamento() {
         const proximo = Date.now() + currentInterval * 1000;
         salvarEstado({ active: true, nextRun: proximo });
 
-        // 🔹 Detecta se é tela de múltiplas aldeias
-        const multiSelect = document.querySelector('select[name="coin_amount"]');
-        const multiSelecionar = document.querySelector('#select_anchor_top');
-        const multiArmazenar = document.querySelector('input.btn[value="Armazenar"]');
+        // 1) Verifica existência de selects de múltiplas aldeias
+        const multiSelects = Array.from(document.querySelectorAll('select[name="coin_amount"], select[name="coin_amount[]"]'));
+        const selectAnchor = document.querySelector('#select_anchor_top') || document.querySelector('a#select_anchor_top');
+        const submitButtons = Array.from(document.querySelectorAll('input[type="submit"].btn, input[type="submit"]'))
+            .filter(i => (i.value || '').toLowerCase().includes('armazenar'));
 
-        if (multiSelect && multiSelecionar && multiArmazenar) {
-            // === MODO MULTIALDEIAS ===
-            multiSelect.value = "-1"; // máximo
-            multiSelecionar.click();
-            setTimeout(() => multiArmazenar.click(), 800);
-            setTimeout(() => { if (window.twRES_running) location.reload(); }, 1500);
-            return;
+        if (multiSelects.length > 0) {
+            // Modo múltiplas aldeias detectado
+            UI.InfoMessage(`Modo multi detectado: ${multiSelects.length} selects — aplicando Máximo...`, 2000, "info");
+
+            // Define -1 em todos os selects e dispara change
+            multiSelects.forEach((sel) => {
+                try {
+                    sel.value = "-1";
+                    // dispara evento change compatível
+                    const ev = new Event('change', { bubbles: true });
+                    sel.dispatchEvent(ev);
+                } catch (e) {
+                    console.warn('Erro ao ajustar select coin_amount', e);
+                }
+            });
+
+            // Se existir a função Snob.Coin.setCoinAmount, chamamos diretamente (mais confiável)
+            if (window.Snob && Snob.Coin && typeof Snob.Coin.setCoinAmount === 'function') {
+                try {
+                    Snob.Coin.setCoinAmount();
+                } catch (e) {
+                    console.warn('Erro ao chamar Snob.Coin.setCoinAmount()', e);
+                    if (selectAnchor) selectAnchor.click();
+                }
+            } else if (selectAnchor) {
+                // clicamos no link "Selecionar" (caso exista)
+                selectAnchor.click();
+            }
+
+            // Após um pequeno atraso, clicamos nos botões de "Armazenar" (um por um)
+            if (submitButtons.length > 0) {
+                UI.InfoMessage(`Clicando em ${submitButtons.length} botão(ões) Armazenar...`, 2000, "info");
+                submitButtons.forEach((btnEl, idx) => {
+                    setTimeout(() => {
+                        try {
+                            btnEl.click();
+                        } catch (e) {
+                            console.warn('Erro ao clicar Armazenar', e);
+                        }
+                    }, 600 + idx * 500); // espaço entre cliques
+                });
+                // recarrega depois do último clique
+                setTimeout(() => { if (window.twRES_running) location.reload(); }, 800 + submitButtons.length * 600);
+                return;
+            } else {
+                // Não encontrou botão Armazenar; tenta submeter formulários individuais
+                const forms = Array.from(document.querySelectorAll('form')).filter(f => f.querySelector('select[name="coin_amount"], input[name*="coin"]'));
+                if (forms.length > 0) {
+                    forms.forEach((f, i) => {
+                        setTimeout(() => {
+                            try {
+                                // tenta submeter o form (se existir um input submit dentro do mesmo, clicamos nele)
+                                const sub = f.querySelector('input[type="submit"].btn, input[type="submit"]');
+                                if (sub) sub.click();
+                                else f.submit();
+                            } catch (e) { console.warn('Erro ao submeter form multi', e); }
+                        }, 600 + i * 500);
+                    });
+                    setTimeout(() => { if (window.twRES_running) location.reload(); }, 800 + forms.length * 600);
+                    return;
+                }
+
+                UI.InfoMessage('Modo multi: não encontrei botão "Armazenar" nem formulários acionáveis.', 3000, "warning");
+            }
         }
 
-        // === MODO NORMAL ===
-        const form = document.querySelector('form[action*="action=reserve"]');
+        // 2) Se não for modo multialdeias, tenta o formulário normal action=reserve
+        const form = document.querySelector('form[action*="action=reserve"], form[action*="action=reserveResources"], form[action*="action=reserve_coin"]');
         if (form) {
-            const select = form.querySelector('select[name="factor"]');
-            const btn = form.querySelector('input[type="submit"]');
-            if (select && btn) {
+            const select = form.querySelector('select[name="factor"], select[name="factor[]"]');
+            const submitBtn = form.querySelector('input[type="submit"]');
+            if (select && submitBtn) {
+                // escolhe maior opção disponível no select (como antes)
                 const valores = Array.from(select.options).map(o => parseInt(o.value, 10) || 0);
                 const maxVal = Math.max(...valores);
                 select.value = maxVal.toString();
-                setTimeout(() => btn.click(), 800);
+                // dispara change para garantir atualização
+                try { select.dispatchEvent(new Event('change', { bubbles: true })); } catch {}
+                setTimeout(() => submitBtn.click(), 700);
+                setTimeout(() => { if (window.twRES_running) location.reload(); }, 1500);
+                return;
             }
-        } else {
-            UI.InfoMessage("⚠️ Nenhum formulário de armazenamento encontrado.", 3000, "warning");
         }
 
-        setTimeout(() => { if (window.twRES_running) location.reload(); }, 1500);
+        UI.InfoMessage("⚠️ Nenhum formulário de armazenamento encontrado (nem multi nem normal).", 3500, "warning");
     }
 
     function atualizarContador() {
