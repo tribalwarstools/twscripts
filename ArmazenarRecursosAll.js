@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Armazenar Recursos (Auto Máximo 10s)
 // @namespace    https://tribalwars.com.br/
-// @version      1.3
+// @version      1.5
 // @description  Armazena automaticamente o máximo de recursos a cada 10s com painel lateral e persistência
 // @match        *://*.tribalwars.com.br/game.php?*screen=snob*
 // @grant        none
@@ -27,81 +27,74 @@
     }
     #twARM-conteudo { padding: 8px; width: 180px; }
     #twARM-conteudo h4 { margin: 0 0 6px 0; font-size: 13px; text-align: center; border-bottom: 1px solid #654321; padding-bottom: 4px; }
-    .twRES-btn { display: block; width: 100%; margin: 5px 0; background: #5c4023; border: 1px solid #3c2f2f; border-radius: 6px;
+    .twARM-btn { display: block; width: 100%; margin: 5px 0; background: #5c4023; border: 1px solid #3c2f2f; border-radius: 6px;
       color: #f1e1c1; padding: 6px; cursor: pointer; font-size: 12px; transition: 0.2s; }
-    .twRES-btn.on { background: #2e7d32 !important; }
-    .twRES-btn.off { background: #8b0000 !important; }
-    .twRES-btn:hover { filter: brightness(1.1); }
+    .twARM-btn.on { background: #2e7d32 !important; }
+    .twARM-btn.off { background: #8b0000 !important; }
+    .twARM-btn:hover { filter: brightness(1.1); }
     #twARM-painel.ativo { transform: translateX(0); }
-    .twRES-status { font-size: 12px; margin-top: 6px; text-align: center; }
+    .twARM-status { font-size: 12px; margin-top: 6px; text-align: center; }
     `;
     document.head.appendChild(estilo);
 
     // === Criar painel ===
     const painel = document.createElement("div");
-    painel.id = "twRES-painel";
+    painel.id = "twARM-painel";
     painel.classList.add("ativo");
     painel.innerHTML = `
-        <div id="twRES-toggle">⚙️</div>
-        <div id="twRES-conteudo">
+        <div id="twARM-toggle">⚙️</div>
+        <div id="twARM-conteudo">
             <h4>Armazenar Recursos</h4>
-            <button id="twRES-btnToggle" class="twRES-btn ${ativo ? "on" : "off"}">
+            <button id="twARM-btnToggle" class="twARM-btn ${ativo ? "on" : "off"}">
                 ${ativo ? "🟢 Ativo" : "🔴 Inativo"}
             </button>
-            <div class="twRES-status" id="twRES-status">
+            <div class="twARM-status" id="twARM-status">
                 ${ativo ? "Executando a cada 10s..." : "Pausado"}
             </div>
         </div>
     `;
     document.body.appendChild(painel);
 
-    const btnPainel = document.getElementById("twRES-toggle");
-    const btnToggle = document.getElementById("twRES-btnToggle");
-    const status = document.getElementById("twRES-status");
+    const btnPainel = document.getElementById("twARM-toggle");
+    const btnToggle = document.getElementById("twARM-btnToggle");
+    const status = document.getElementById("twARM-status");
 
-    // === Função principal (pega o máximo e executa cliques do jogo) ===
+    // === Função principal (sempre pega o 1º option = máximo disponível) ===
     function armazenarRecursos() {
         if (!location.href.includes("screen=snob")) return;
 
         const select = document.querySelector('select[name="coin_amount"]');
-        const btnSelecionar = document.querySelector('a.btn'); // botão "Selecionar"
-        const btnArmazenar = document.querySelector('input[type="submit"]'); // botão "Armazenar"
+        const btnSelecionar = document.querySelector('a.btn');
+        const btnArmazenar = document.querySelector('input[type="submit"]');
 
         if (!select || !btnSelecionar || !btnArmazenar) return;
 
-        // Tenta achar a opção com texto "Máximo" ou "-1x"
-        let optMax = Array.from(select.options).find(opt =>
-            opt.textContent.toLowerCase().includes("máximo") ||
-            opt.textContent.includes("-1")
-        );
+        // ✅ Sempre o primeiro option = máximo disponível
+        select.selectedIndex = 0;
 
-        if (optMax) select.value = optMax.value;
-        else select.selectedIndex = select.options.length - 1; // fallback
-
-        // Sincroniza o select se a função do jogo existir
+        // Atualiza valores do jogo
         if (typeof Snob?.Coin?.syncInputs === "function") Snob.Coin.syncInputs(select);
 
-        // Clica nos botões reais
+        // Executa cliques no jogo
         btnSelecionar.click();
-
         setTimeout(() => {
             btnArmazenar.click();
-            console.log("✅ Armazenamento automático executado.");
+            console.log("✅ Armazenamento automático executado (máximo).");
         }, 800);
     }
 
-    // === Iniciar/parar execução automática ===
+    // === Controle automático ===
     function iniciarAuto() {
         if (intervalo) clearInterval(intervalo);
-        intervalo = setInterval(armazenarRecursos, 10000); // a cada 10s
+        intervalo = setInterval(armazenarRecursos, 10000);
         status.textContent = "Executando a cada 10s...";
-        UI.InfoMessage("✅ Automação iniciada (10s)", 2000, "success");
+        if (window.UI?.InfoMessage) UI.InfoMessage("✅ Automação iniciada (10s)", 2000, "success");
     }
 
     function pararAuto() {
         if (intervalo) clearInterval(intervalo);
         status.textContent = "Pausado";
-        UI.InfoMessage("⏸️ Automação pausada", 2000, "success");
+        if (window.UI?.InfoMessage) UI.InfoMessage("⏸️ Automação pausada", 2000, "success");
     }
 
     // === Alternar estado ===
@@ -115,7 +108,7 @@
         else pararAuto();
     });
 
-    // === Toggle do painel lateral ===
+    // === Toggle painel lateral ===
     let aberto = true;
     btnPainel.addEventListener("click", () => {
         aberto = !aberto;
