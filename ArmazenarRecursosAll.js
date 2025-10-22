@@ -8,7 +8,7 @@
 // ==/UserScript==
 
 (function () {
-    const STORAGE_KEY = "TW_RES_Ativo";
+    const STORAGE_KEY = "TW_ARM_Ativo";
     let ativo = localStorage.getItem(STORAGE_KEY) === "true";
     let intervalo = null;
 
