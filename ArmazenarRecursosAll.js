@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Armazenar Recursos (Auto Máximo 10s)
 // @namespace    https://tribalwars.com.br/
-// @version      1.5
+// @version      1.6
 // @description  Armazena automaticamente o máximo de recursos a cada 10s com painel lateral e persistência
 // @match        *://*.tribalwars.com.br/game.php?*screen=snob*
 // @grant        none
@@ -59,7 +59,7 @@
     const btnToggle = document.getElementById("twARM-btnToggle");
     const status = document.getElementById("twARM-status");
 
-    // === Função principal (sempre pega o 1º option = máximo disponível) ===
+    // === Função principal (pega o máximo e executa cliques do jogo) ===
     function armazenarRecursos() {
         if (!location.href.includes("screen=snob")) return;
 
@@ -72,18 +72,29 @@
         // ✅ Sempre o primeiro option = máximo disponível
         select.selectedIndex = 0;
 
-        // Atualiza valores do jogo
         if (typeof Snob?.Coin?.syncInputs === "function") Snob.Coin.syncInputs(select);
 
-        // Executa cliques no jogo
         btnSelecionar.click();
+
         setTimeout(() => {
             btnArmazenar.click();
             console.log("✅ Armazenamento automático executado (máximo).");
+
+            // 🔁 Após armazenar, clicar no link principal para recarregar a página
+            setTimeout(() => {
+                const linkArmazenar = document.querySelector('a[href*="screen=snob"][href*="mode=reserve"]');
+                if (linkArmazenar) {
+                    console.log("🔄 Recarregando página via link Armazenar...");
+                    linkArmazenar.click();
+                } else {
+                    console.warn("⚠️ Link de recarregar (mode=reserve) não encontrado.");
+                }
+            }, 1000);
+
         }, 800);
     }
 
-    // === Controle automático ===
+    // === Iniciar/parar execução automática ===
     function iniciarAuto() {
         if (intervalo) clearInterval(intervalo);
         intervalo = setInterval(armazenarRecursos, 10000);
@@ -108,7 +119,7 @@
         else pararAuto();
     });
 
-    // === Toggle painel lateral ===
+    // === Toggle do painel lateral ===
     let aberto = true;
     btnPainel.addEventListener("click", () => {
         aberto = !aberto;
