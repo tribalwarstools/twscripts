@@ -13,6 +13,7 @@
     let contadorId = null;
     let segundosRestantes = 0;
     let currentInterval = parseInt(localStorage.getItem("twRES_intervalo") || "10", 10);
+    let currentFactor = "max"; // 🔹 sempre buscar o máximo
 
     function carregarEstado() {
         try {
@@ -36,18 +37,21 @@
         salvarEstado({ active: false, nextRun: null });
     }
 
-    // === PAINEL VISUAL ===
     const style = document.createElement('style');
     style.textContent = `
-    #twRES-painel { position: fixed; top: 150px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none;
-      border-radius: 0 10px 10px 0; box-shadow: 2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1;
-      z-index: 9996; transition: transform 0.3s ease-in-out; transform: translateX(-200px); }
-    #twRES-toggle { position: absolute; top: 0; right: -28px; width: 28px; height: 40px; background: #5c4023;
-      border: 2px solid #654321; border-left: none; border-radius: 0 6px 6px 0; color: #f1e1c1;
-      display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; box-shadow: 2px 2px 6px #000; }
+    #twRES-painel { 
+      position: fixed; top: 150px; left: 0; background: #2b2b2b; border: 2px solid #654321; border-left: none; 
+      border-radius: 0 10px 10px 0; box-shadow: 2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1; 
+      z-index: 9996; transition: transform 0.3s ease-in-out; transform: translateX(-200px); 
+    }
+    #twRES-toggle { 
+      position: absolute; top: 0; right: -28px; width: 28px; height: 40px; background: #5c4023; 
+      border: 2px solid #654321; border-left: none; border-radius: 0 6px 6px 0; color: #f1e1c1; 
+      display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; box-shadow: 2px 2px 6px #000; 
+    }
     #twRES-conteudo { padding: 8px; width: 180px; }
     #twRES-conteudo h4 { margin: 0 0 6px 0; font-size: 13px; text-align: center; border-bottom: 1px solid #654321; padding-bottom: 4px; }
-    .twRES-btn { display: block; width: 100%; margin: 5px 0; background: #5c4023; border: 1px solid #3c2f2f; border-radius: 6px;
+    .twRES-btn { display: block; width: 100%; margin: 5px 0; background: #5c4023; border: 1px solid #3c2f2f; border-radius: 6px; 
       color: #f1e1c1; padding: 6px; cursor: pointer; font-size: 12px; text-align: center; }
     .twRES-btn.on { background: #2e7d32 !important; }
     .twRES-btn.off { background: #8b0000 !important; }
@@ -55,8 +59,7 @@
     #twRES-painel.ativo { transform: translateX(0); }
     .twRES-status { font-size: 12px; margin-top: 6px; text-align: center; }
     #twRES-contador { font-size: 11px; margin-top: 3px; text-align: center; color: #aaa; }
-    #twRES-intervalo { width: 100%; margin-top: 6px; padding: 4px; background-color: #3a3a3a; color: #f1e1c1;
-      border: 1px solid #654321; border-radius: 6px; }
+    #twRES-intervalo { width: 100%; margin-top: 6px; padding: 4px; background-color: #3a3a3a; color: #f1e1c1; border: 1px solid #654321; border-radius: 6px; }
     `;
     document.head.appendChild(style);
 
@@ -91,7 +94,9 @@
     const countdownEl = document.getElementById('twRES-contador');
     const toggle = document.getElementById('twRES-toggle');
     const selectInterval = document.getElementById('twRES-intervalo');
+
     selectInterval.value = currentInterval;
+
     toggle.addEventListener('click', () => panel.classList.toggle('ativo'));
 
     function updateUI() {
@@ -111,102 +116,37 @@
         }
     }
 
-    // === FUNÇÃO ROBUSTA QUE MANIPULA MODO MULTI E NORMAL ===
+    // 🔹 Sempre seleciona o maior multiplicador disponível
+    function obterMaximoMultiplicador() {
+        const form = document.querySelector('form[action*="action=reserve"]');
+        if (!form) return null;
+        const select = form.querySelector('select[name="factor"]');
+        if (!select) return null;
+
+        // Pega o maior valor numérico do select
+        const valores = Array.from(select.options).map(o => parseInt(o.value, 10) || 0);
+        const maxVal = Math.max(...valores);
+        return maxVal.toString();
+    }
+
     function executarArmazenamento() {
         const proximo = Date.now() + currentInterval * 1000;
-        salvarEstado({ active: true, nextRun: proximo });
+        salvarEstado({ active: true, nextRun: proximo, factor: "max" });
 
-        // 1) Verifica existência de selects de múltiplas aldeias
-        const multiSelects = Array.from(document.querySelectorAll('select[name="coin_amount"], select[name="coin_amount[]"]'));
-        const selectAnchor = document.querySelector('#select_anchor_top') || document.querySelector('a#select_anchor_top');
-        const submitButtons = Array.from(document.querySelectorAll('input[type="submit"].btn, input[type="submit"]'))
-            .filter(i => (i.value || '').toLowerCase().includes('armazenar'));
-
-        if (multiSelects.length > 0) {
-            // Modo múltiplas aldeias detectado
-            UI.InfoMessage(`Modo multi detectado: ${multiSelects.length} selects — aplicando Máximo...`, 2000, "info");
-
-            // Define -1 em todos os selects e dispara change
-            multiSelects.forEach((sel) => {
-                try {
-                    sel.value = "-1";
-                    // dispara evento change compatível
-                    const ev = new Event('change', { bubbles: true });
-                    sel.dispatchEvent(ev);
-                } catch (e) {
-                    console.warn('Erro ao ajustar select coin_amount', e);
-                }
-            });
-
-            // Se existir a função Snob.Coin.setCoinAmount, chamamos diretamente (mais confiável)
-            if (window.Snob && Snob.Coin && typeof Snob.Coin.setCoinAmount === 'function') {
-                try {
-                    Snob.Coin.setCoinAmount();
-                } catch (e) {
-                    console.warn('Erro ao chamar Snob.Coin.setCoinAmount()', e);
-                    if (selectAnchor) selectAnchor.click();
-                }
-            } else if (selectAnchor) {
-                // clicamos no link "Selecionar" (caso exista)
-                selectAnchor.click();
-            }
-
-            // Após um pequeno atraso, clicamos nos botões de "Armazenar" (um por um)
-            if (submitButtons.length > 0) {
-                UI.InfoMessage(`Clicando em ${submitButtons.length} botão(ões) Armazenar...`, 2000, "info");
-                submitButtons.forEach((btnEl, idx) => {
-                    setTimeout(() => {
-                        try {
-                            btnEl.click();
-                        } catch (e) {
-                            console.warn('Erro ao clicar Armazenar', e);
-                        }
-                    }, 600 + idx * 500); // espaço entre cliques
-                });
-                // recarrega depois do último clique
-                setTimeout(() => { if (window.twRES_running) location.reload(); }, 800 + submitButtons.length * 600);
-                return;
-            } else {
-                // Não encontrou botão Armazenar; tenta submeter formulários individuais
-                const forms = Array.from(document.querySelectorAll('form')).filter(f => f.querySelector('select[name="coin_amount"], input[name*="coin"]'));
-                if (forms.length > 0) {
-                    forms.forEach((f, i) => {
-                        setTimeout(() => {
-                            try {
-                                // tenta submeter o form (se existir um input submit dentro do mesmo, clicamos nele)
-                                const sub = f.querySelector('input[type="submit"].btn, input[type="submit"]');
-                                if (sub) sub.click();
-                                else f.submit();
-                            } catch (e) { console.warn('Erro ao submeter form multi', e); }
-                        }, 600 + i * 500);
-                    });
-                    setTimeout(() => { if (window.twRES_running) location.reload(); }, 800 + forms.length * 600);
-                    return;
-                }
-
-                UI.InfoMessage('Modo multi: não encontrei botão "Armazenar" nem formulários acionáveis.', 3000, "warning");
-            }
-        }
-
-        // 2) Se não for modo multialdeias, tenta o formulário normal action=reserve
-        const form = document.querySelector('form[action*="action=reserve"], form[action*="action=reserveResources"], form[action*="action=reserve_coin"]');
+        const form = document.querySelector('form[action*="action=reserve"]');
         if (form) {
-            const select = form.querySelector('select[name="factor"], select[name="factor[]"]');
-            const submitBtn = form.querySelector('input[type="submit"]');
-            if (select && submitBtn) {
-                // escolhe maior opção disponível no select (como antes)
-                const valores = Array.from(select.options).map(o => parseInt(o.value, 10) || 0);
-                const maxVal = Math.max(...valores);
-                select.value = maxVal.toString();
-                // dispara change para garantir atualização
-                try { select.dispatchEvent(new Event('change', { bubbles: true })); } catch {}
-                setTimeout(() => submitBtn.click(), 700);
-                setTimeout(() => { if (window.twRES_running) location.reload(); }, 1500);
-                return;
+            const select = form.querySelector('select[name="factor"]');
+            const btn = form.querySelector('input[type="submit"]');
+            if (select && btn) {
+                const maxVal = obterMaximoMultiplicador() || "0";
+                select.value = maxVal; // 🔹 usa o máximo
+                setTimeout(() => btn.click(), 1000);
             }
+        } else {
+            UI.InfoMessage("⚠️ Não há formulário de armazenamento na página.", 3000, "warning");
         }
 
-        UI.InfoMessage("⚠️ Nenhum formulário de armazenamento encontrado (nem multi nem normal).", 3500, "warning");
+        setTimeout(() => { if (window.twRES_running) location.reload(); }, 1500);
     }
 
     function atualizarContador() {
@@ -242,7 +182,7 @@
             window.twRES_running = true;
             updateUI();
             const proximo = Date.now() + currentInterval * 1000;
-            salvarEstado({ active: true, nextRun: proximo });
+            salvarEstado({ active: true, nextRun: proximo, factor: "max" });
             contadorId = setInterval(atualizarContador, 1000);
         } else {
             desativarFluxo();
@@ -261,7 +201,7 @@
         if (estado.active) {
             let nextRun = estado.nextRun || (Date.now() + currentInterval * 1000);
             if (nextRun <= Date.now()) nextRun = Date.now() + currentInterval * 1000;
-            salvarEstado({ active: true, nextRun });
+            salvarEstado({ active: true, nextRun, factor: "max" });
             ativarFluxo(nextRun);
         } else updateUI();
     } else updateUI();
