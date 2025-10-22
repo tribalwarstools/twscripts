@@ -1,15 +1,17 @@
 // ==UserScript==
-// @name         Armazenar Recursos (Auto Máximo 10s)
+// @name         Armazenar Recursos (Auto Máximo com Select de Tempo)
 // @namespace    https://tribalwars.com.br/
-// @version      1.6
-// @description  Armazena automaticamente o máximo de recursos a cada 10s com painel lateral e persistência
+// @version      1.7
+// @description  Armazena automaticamente o máximo de recursos com painel lateral, persistência e tempo configurável
 // @match        *://*.tribalwars.com.br/game.php?*screen=snob*
 // @grant        none
 // ==/UserScript==
 
 (function () {
-    const STORAGE_KEY = "TW_ARM_Ativo";
-    let ativo = localStorage.getItem(STORAGE_KEY) === "true";
+    const STORAGE_KEY_ATIVO = "TW_ARM_Ativo";
+    const STORAGE_KEY_INTERVALO = "TW_ARM_Intervalo";
+    let ativo = localStorage.getItem(STORAGE_KEY_ATIVO) === "true";
+    let intervaloTempo = parseInt(localStorage.getItem(STORAGE_KEY_INTERVALO)) || 10;
     let intervalo = null;
 
     // === CSS do painel ===
@@ -34,6 +36,7 @@
     .twARM-btn:hover { filter: brightness(1.1); }
     #twARM-painel.ativo { transform: translateX(0); }
     .twARM-status { font-size: 12px; margin-top: 6px; text-align: center; }
+    .twARM-select { width: 100%; margin: 5px 0; border-radius: 6px; border: 1px solid #3c2f2f; background: #5c4023; color: #f1e1c1; padding: 4px; }
     `;
     document.head.appendChild(estilo);
 
@@ -48,8 +51,16 @@
             <button id="twARM-btnToggle" class="twARM-btn ${ativo ? "on" : "off"}">
                 ${ativo ? "🟢 Ativo" : "🔴 Inativo"}
             </button>
+            <select id="twARM-selectIntervalo" class="twARM-select">
+                <option value="5">5s</option>
+                <option value="10">10s</option>
+                <option value="15">15s</option>
+                <option value="20">20s</option>
+                <option value="30">30s</option>
+                <option value="60">60s</option>
+            </select>
             <div class="twARM-status" id="twARM-status">
-                ${ativo ? "Executando a cada 10s..." : "Pausado"}
+                ${ativo ? `Executando a cada ${intervaloTempo}s...` : "Pausado"}
             </div>
         </div>
     `;
@@ -58,8 +69,19 @@
     const btnPainel = document.getElementById("twARM-toggle");
     const btnToggle = document.getElementById("twARM-btnToggle");
     const status = document.getElementById("twARM-status");
+    const selectIntervalo = document.getElementById("twARM-selectIntervalo");
 
-    // === Função principal (pega o máximo e executa cliques do jogo) ===
+    // === Definir select para intervalo salvo ===
+    selectIntervalo.value = intervaloTempo;
+
+    selectIntervalo.addEventListener("change", () => {
+        intervaloTempo = parseInt(selectIntervalo.value);
+        localStorage.setItem(STORAGE_KEY_INTERVALO, intervaloTempo);
+        if (ativo) iniciarAuto();
+        status.textContent = `Executando a cada ${intervaloTempo}s...`;
+    });
+
+    // === Função principal ===
     function armazenarRecursos() {
         if (!location.href.includes("screen=snob")) return;
 
@@ -69,37 +91,26 @@
 
         if (!select || !btnSelecionar || !btnArmazenar) return;
 
-        // ✅ Sempre o primeiro option = máximo disponível
         select.selectedIndex = 0;
-
         if (typeof Snob?.Coin?.syncInputs === "function") Snob.Coin.syncInputs(select);
-
         btnSelecionar.click();
 
         setTimeout(() => {
             btnArmazenar.click();
-            console.log("✅ Armazenamento automático executado (máximo).");
-
-            // 🔁 Após armazenar, clicar no link principal para recarregar a página
+            console.log(`✅ Armazenamento automático executado (máximo).`);
             setTimeout(() => {
                 const linkArmazenar = document.querySelector('a[href*="screen=snob"][href*="mode=reserve"]');
-                if (linkArmazenar) {
-                    console.log("🔄 Recarregando página via link Armazenar...");
-                    linkArmazenar.click();
-                } else {
-                    console.warn("⚠️ Link de recarregar (mode=reserve) não encontrado.");
-                }
+                if (linkArmazenar) linkArmazenar.click();
             }, 1000);
-
         }, 800);
     }
 
     // === Iniciar/parar execução automática ===
     function iniciarAuto() {
         if (intervalo) clearInterval(intervalo);
-        intervalo = setInterval(armazenarRecursos, 10000);
-        status.textContent = "Executando a cada 10s...";
-        if (window.UI?.InfoMessage) UI.InfoMessage("✅ Automação iniciada (10s)", 2000, "success");
+        intervalo = setInterval(armazenarRecursos, intervaloTempo * 1000);
+        status.textContent = `Executando a cada ${intervaloTempo}s...`;
+        if (window.UI?.InfoMessage) UI.InfoMessage(`✅ Automação iniciada (${intervaloTempo}s)`, 2000, "success");
     }
 
     function pararAuto() {
@@ -111,7 +122,7 @@
     // === Alternar estado ===
     btnToggle.addEventListener("click", () => {
         ativo = !ativo;
-        localStorage.setItem(STORAGE_KEY, ativo);
+        localStorage.setItem(STORAGE_KEY_ATIVO, ativo);
         btnToggle.classList.toggle("on", ativo);
         btnToggle.classList.toggle("off", !ativo);
         btnToggle.textContent = ativo ? "🟢 Ativo" : "🔴 Inativo";
