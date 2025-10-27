@@ -1,106 +1,53 @@
 (function () {
     'use strict';
 
-    if (!window.TribalWars) {
-        alert("Este script deve ser executado dentro do Tribal Wars.");
-        return;
-    }
+    // só roda dentro do jogo
+    if (!window.TribalWars || !window.game_data) return;
 
-    const villageId = game_data.village.id;
-    const storageKey = "configEnvioImediato_" + villageId;
+    // checar tela de envio com confirmação
+    if (game_data.screen === 'place' && location.search.includes('try=confirm')) {
+        const maxAttempts = 10;    // número máximo de tentativas
+        let attempts = 0;
 
-    // === CSS estilo TW ===
-    const style = document.createElement("style");
-    style.textContent = `
-        #painel-envio-imediato {
-            position: fixed;
-            top: 200px;
-            left: 0;
-            background: #2b2b2b;
-            border: 2px solid #654321;
-            border-left: none;
-            border-radius: 0 10px 10px 0;
-            box-shadow: 2px 2px 8px #000;
-            font-family: Verdana, sans-serif;
-            color: #f1e1c1;
-            z-index: 999999;
-            transition: transform 0.3s ease-in-out;
-            transform: translateX(-200px);
-        }
-        #painel-envio-imediato.ativo { transform: translateX(0); }
+        function tryConfirm() {
+            // procurar pelo botão de confirmação mais comum
+            const btn =
+                document.getElementById('troop_confirm_submit') ||
+                document.querySelector('button[type="submit"]') ||
+                document.querySelector('input[type="submit"]') ||
+                document.querySelector('button[name="confirm"]');
 
-        #toggle-envio-imediato {
-            position: absolute;
-            top: 0;
-            right: -28px;
-            width: 28px;
-            height: 40px;
-            background: #5c4023;
-            border: 2px solid #654321;
-            border-left: none;
-            border-radius: 0 6px 6px 0;
-            color: #f1e1c1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 16px;
-            box-shadow: 2px 2px 6px #000;
+            if (btn) {
+                try {
+                    btn.click();
+                    console.log('⚡ Envio imediato automático executado (modo sempre ativo).');
+                } catch (e) {
+                    try {
+                        // fallback: submeter o form pai
+                        const form = btn.closest('form');
+                        if (form) form.submit();
+                        console.log('⚡ Form submetido como fallback.');
+                    } catch (err) {
+                        console.warn('Erro ao tentar confirmar envio:', err);
+                    }
+                }
+                return true;
+            }
+            return false;
         }
 
-        #conteudo-envio-imediato {
-            padding: 8px;
-            width: 180px;
-        }
-        #conteudo-envio-imediato h4 {
-            margin: 0 0 6px 0;
-            font-size: 13px;
-            text-align: center;
-            border-bottom: 1px solid #654321;
-            padding-bottom: 4px;
-        }
-        #btnToggleAtivar {
-            border: 1px solid #3c2f2f;
-            border-radius: 6px;
-            padding: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            text-align: center;
-            width: 100%;
-            margin-top: 4px;
-            transition: background 0.2s ease-in-out;
-            background: #2e7d32; /* verde */
-            color: #fff;
-        }
-    `;
-    document.head.appendChild(style);
-
-    // === Criar painel ===
-    const painel = document.createElement("div");
-    painel.id = "painel-envio-imediato";
-    painel.innerHTML = `
-        <div id="toggle-envio-imediato">⚡</div>
-        <div id="conteudo-envio-imediato">
-            <h4>🚀 Envio Imediato</h4>
-            <button id="btnToggleAtivar" class="ativo">Ativo</button>
-        </div>
-    `;
-    document.body.appendChild(painel);
-
-    // === Clique para abrir/fechar painel ===
-    document.getElementById("toggle-envio-imediato").addEventListener("click", () => {
-        painel.classList.toggle("ativo");
-    });
-
-    // === Sempre ativo: salva e mantém como ativado ===
-    localStorage.setItem(storageKey, JSON.stringify({ ativado: true }));
-
-    // === Execução automática ===
-    if (game_data.screen === "place" && location.search.includes("try=confirm")) {
-        const btn = document.getElementById("troop_confirm_submit");
-        if (btn) {
-            btn.click();
-            console.log("⚡ Envio imediato automático executado (modo sempre ativo)!");
+        // tentar imediatamente
+        if (!tryConfirm()) {
+            // se não encontrou, tenta por alguns ciclos (caso o botão seja adicionado depois)
+            const timer = setInterval(() => {
+                attempts++;
+                if (tryConfirm() || attempts >= maxAttempts) {
+                    clearInterval(timer);
+                    if (attempts >= maxAttempts) {
+                        console.warn('Não foi possível encontrar o botão de confirmação após várias tentativas.');
+                    }
+                }
+            }, 300); // tenta a cada 300ms por ~3 segundos
         }
     }
 })();
