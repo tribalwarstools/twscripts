@@ -69,13 +69,7 @@
             width: 100%;
             margin-top: 4px;
             transition: background 0.2s ease-in-out;
-        }
-        #btnToggleAtivar.ativo {
             background: #2e7d32; /* verde */
-            color: #fff;
-        }
-        #btnToggleAtivar.inativo {
-            background: #8b0000; /* vermelho */
             color: #fff;
         }
     `;
@@ -88,59 +82,25 @@
         <div id="toggle-envio-imediato">⚡</div>
         <div id="conteudo-envio-imediato">
             <h4>🚀 Envio Imediato</h4>
-            <button id="btnToggleAtivar">Ativar</button>
+            <button id="btnToggleAtivar" class="ativo">Ativo</button>
         </div>
     `;
     document.body.appendChild(painel);
 
-    const btnToggle = document.getElementById("btnToggleAtivar");
-
-    // === Carregar configuração (ativo por padrão) ===
-    let salvo = JSON.parse(localStorage.getItem(storageKey) || "{}");
-    if (salvo.ativado === undefined) {
-        salvo.ativado = true; // ativo por padrão
-        localStorage.setItem(storageKey, JSON.stringify(salvo));
-    }
-
-    // Atualiza visual
-    if (salvo.ativado) {
-        btnToggle.classList.add("ativo");
-        btnToggle.textContent = "Desativar";
-    } else {
-        btnToggle.classList.add("inativo");
-        btnToggle.textContent = "Ativar";
-    }
-
-    // === Alternar estado manualmente ===
-    btnToggle.addEventListener("click", () => {
-        const novoEstado = btnToggle.classList.contains("inativo"); // se estava inativo, vai ativar
-        if (novoEstado) {
-            btnToggle.classList.remove("inativo");
-            btnToggle.classList.add("ativo");
-            btnToggle.textContent = "Desativar";
-        } else {
-            btnToggle.classList.remove("ativo");
-            btnToggle.classList.add("inativo");
-            btnToggle.textContent = "Ativar";
-        }
-        // 🔹 salvar o novo estado corretamente
-        localStorage.setItem(storageKey, JSON.stringify({ ativado: novoEstado }));
-    });
-
-    // Abrir/fechar painel
+    // === Clique para abrir/fechar painel ===
     document.getElementById("toggle-envio-imediato").addEventListener("click", () => {
         painel.classList.toggle("ativo");
     });
 
+    // === Sempre ativo: salva e mantém como ativado ===
+    localStorage.setItem(storageKey, JSON.stringify({ ativado: true }));
+
     // === Execução automática ===
     if (game_data.screen === "place" && location.search.includes("try=confirm")) {
-        const cfg = JSON.parse(localStorage.getItem(storageKey) || "{}");
-        if (cfg.ativado) {
-            const btn = document.getElementById("troop_confirm_submit");
-            if (btn) {
-                btn.click();
-                console.log("⚡ Envio imediato automático executado!");
-            }
+        const btn = document.getElementById("troop_confirm_submit");
+        if (btn) {
+            btn.click();
+            console.log("⚡ Envio imediato automático executado (modo sempre ativo)!");
         }
     }
 })();
