@@ -9,7 +9,7 @@
 	{ nome: 'Contador', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/contador.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},	
 	{ nome: 'Evolução', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/evolucao.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
     { nome: 'Configurar Tropas', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/ConfigTropas.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
-    { nome: 'Configurar Envio', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/EnvioImediato.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},    
+    { nome: 'Configurar Envio', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/envioImediato.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},    
     { nome: 'Ataque', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/ScriptAtaque.js').done(() => UI.InfoMessage('✅ Script carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
 	{ nome: 'Apoio', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/ScriptApoio.js').done(() => UI.InfoMessage('✅ Script carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
   ];
@@ -71,6 +71,7 @@
     localStorage.setItem(STORAGE_KEY, painelEl.classList.contains("ativo") ? "aberto" : "fechado");
   });
 })();
+
 
 
 
