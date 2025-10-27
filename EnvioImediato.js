@@ -9,7 +9,7 @@
     const villageId = game_data.village.id;
     const storageKey = "configEnvioImediato_" + villageId;
 
-    // === CSS compartilhado com estilo TW ===
+    // === CSS estilo TW ===
     const style = document.createElement("style");
     style.textContent = `
         #painel-envio-imediato {
@@ -95,8 +95,14 @@
 
     const btnToggle = document.getElementById("btnToggleAtivar");
 
-    // Carregar configuração
-    const salvo = JSON.parse(localStorage.getItem(storageKey) || "{}");
+    // === Carregar configuração (ativo por padrão) ===
+    let salvo = JSON.parse(localStorage.getItem(storageKey) || "{}");
+    if (salvo.ativado === undefined) {
+        salvo.ativado = true; // ativo por padrão
+        localStorage.setItem(storageKey, JSON.stringify(salvo));
+    }
+
+    // Atualiza visual
     if (salvo.ativado) {
         btnToggle.classList.add("ativo");
         btnToggle.textContent = "Desativar";
@@ -105,7 +111,7 @@
         btnToggle.textContent = "Ativar";
     }
 
-    // Alternar estado
+    // Alternar estado manualmente
     btnToggle.addEventListener("click", () => {
         const ativado = btnToggle.classList.contains("inativo");
         if (ativado) {
@@ -125,7 +131,7 @@
         painel.classList.toggle("ativo");
     });
 
-    // === Executar se estiver no confirm ===
+    // === Execução automática ===
     if (game_data.screen === "place" && location.search.includes("try=confirm")) {
         const cfg = JSON.parse(localStorage.getItem(storageKey) || "{}");
         if (cfg.ativado) {
