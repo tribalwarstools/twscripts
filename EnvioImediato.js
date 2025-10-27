@@ -111,10 +111,10 @@
         btnToggle.textContent = "Ativar";
     }
 
-    // Alternar estado manualmente
+    // === Alternar estado manualmente ===
     btnToggle.addEventListener("click", () => {
-        const ativado = btnToggle.classList.contains("inativo");
-        if (ativado) {
+        const novoEstado = btnToggle.classList.contains("inativo"); // se estava inativo, vai ativar
+        if (novoEstado) {
             btnToggle.classList.remove("inativo");
             btnToggle.classList.add("ativo");
             btnToggle.textContent = "Desativar";
@@ -123,7 +123,8 @@
             btnToggle.classList.add("inativo");
             btnToggle.textContent = "Ativar";
         }
-        localStorage.setItem(storageKey, JSON.stringify({ ativado }));
+        // 🔹 salvar o novo estado corretamente
+        localStorage.setItem(storageKey, JSON.stringify({ ativado: novoEstado }));
     });
 
     // Abrir/fechar painel
