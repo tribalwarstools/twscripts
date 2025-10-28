@@ -1,4 +1,6 @@
 (async function () {
+'use strict';
+
 const PAGE_SIZE = 50;
 const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
 let currentPage = 1;
@@ -47,7 +49,7 @@ for (let v of villages) {
     playerVillages[v.playerId]++;
 }
 
-// === Carregar snapshot antigo ===
+// === Snapshot anterior ===
 let snapshotAntigo = JSON.parse(localStorage.getItem("atividadeJogadores") || "{}");
 let ultimaExecucaoAntiga = localStorage.getItem("atividadeUltimaExecucao") || null;
 let hoje = Date.now();
@@ -84,75 +86,135 @@ Object.keys(players).forEach(pid => {
             tempoEstavel = dias + "d";
         }
     } else {
-        // primeira vez que vê esse jogador
         status = aldeias === 0 ? `<img src="/graphic/dots/grey.png">` : `<img src="/graphic/dots/blue.png">`;
     }
 
     jogadores.push({ id, nome, tribo, pontos: pontosAtuais, aldeias, status, variacao, tempoEstavel, lastUpdate });
 });
 
-// === Salvar novo snapshot ===
+// === Salvar snapshot novo ===
 let snapshotNovo = {};
 jogadores.forEach(j => {
     snapshotNovo[j.id] = { pontos: j.pontos, lastUpdate: j.lastUpdate };
 });
 localStorage.setItem("atividadeJogadores", JSON.stringify(snapshotNovo));
-
-// === Salvar horário da execução atual ===
 localStorage.setItem("atividadeUltimaExecucao", hoje);
 
-// === Layout ===
-const ultimaExecucaoTexto = `
-⏱️ Última execução: ${ultimaExecucaoAntiga ? formatarData(+ultimaExecucaoAntiga) : "primeira execução"}<br>
-⏱️ Execução atual: ${formatarData(hoje)}
-`;
+// === Painel estilo Tribal Wars ===
+const painelId = "painelAtividadeTW";
+document.getElementById(painelId)?.remove();
 
-const html = `
-    <div style="font-family: Verdana; font-size:12px; width:850px; height:600px; display:flex; flex-direction:column;">
-        <style>
-            #painelAtividade { display:flex; flex-direction:column; height:100%; }
-            #painelHeader { flex:0 0 auto; border-bottom:1px solid #999; padding:5px; background:#f4f4f4; }
-            #painelBody   { flex:1 1 auto; overflow-y:auto; padding:5px; }
-            #painelFooter { flex:0 0 auto; border-top:1px solid #999; padding:5px; background:#f4f4f4; text-align:center; }
-            #resultado table { table-layout: fixed; width: 100%; border-collapse: collapse; }
-            #resultado th, #resultado td { text-align:left; padding:2px; word-break:break-word; cursor:pointer; }
-            #resultado th.sorted-asc::after { content:" ▲"; }
-            #resultado th.sorted-desc::after { content:" ▼"; }
-            #resultado th:nth-child(1), #resultado td:nth-child(1) { width:25px; cursor:default; }
-        </style>
-        <div id="painelAtividade">
-            <div id="painelHeader">
-                <h3 style="margin-top:0;">📊 Atividade dos Jogadores</h3>
-                <div>${ultimaExecucaoTexto}</div>
-                <div style="display:flex; gap:5px; margin-top:5px; margin-bottom:5px;">
-                    <input type="text" id="filtroNome" placeholder="Nome" style="width:100px; padding:2px;">
-                    <input type="text" id="filtroTribo" placeholder="Tribo (TAG)" style="width:70px; padding:2px;">
-                    <select id="filtroStatus" style="padding:2px;">
-                        <option value="">Status</option>
-                        <option value="green">Cresceu</option>
-                        <option value="red">Perdeu</option>
-                        <option value="yellow">Estável</option>
-                        <option value="blue">Novo</option>
-                        <option value="grey">Inativo</option>
-                    </select>
-                </div>
-                <div id="statsLegenda"></div>
-            </div>
-            <div id="painelBody"><div id="resultado"></div></div>
-            <div id="painelFooter"><div id="paginacao"></div></div>
-        </div>
-    </div>
+const style = document.createElement("style");
+style.textContent = `
+#${painelId} {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 880px;
+    height: 640px;
+    background: #e5d3a0;
+    border: 2px solid #804000;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    font-family: Verdana;
+    font-size: 12px;
+    color: #000;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+}
+#${painelId} .header {
+    background: #d2b47a;
+    padding: 5px 8px;
+    border-bottom: 1px solid #804000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#${painelId} .header h3 { margin: 0; font-size: 13px; color: #3c2a12; }
+#${painelId} .close-btn {
+    background: #804000;
+    color: #fff;
+    border: none;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+#${painelId} .body {
+    flex: 1 1 auto;
+    background: #f5ecd0;
+    overflow-y: auto;
+    padding: 8px;
+}
+#${painelId} .footer {
+    background: #d2b47a;
+    border-top: 1px solid #804000;
+    text-align: center;
+    padding: 4px;
+}
+#${painelId} table.vis { width:100%; border-collapse: collapse; }
+#${painelId} table.vis th, #${painelId} table.vis td {
+    padding: 3px;
+    border-bottom: 1px solid #c5b585;
+    text-align: left;
+}
+#${painelId} th { cursor: pointer; }
+#${painelId} th.sorted-asc::after { content:" ▲"; }
+#${painelId} th.sorted-desc::after { content:" ▼"; }
+#${painelId} input, #${painelId} select {
+    border: 1px solid #a8864b;
+    background: #fffaf0;
+    padding: 2px;
+}
+#${painelId} button.btn {
+    background: #a8864b;
+    color: #fff;
+    border: none;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+#${painelId} button.btn:disabled { opacity: 0.6; cursor: default; }
 `;
-if (typeof Dialog !== 'undefined') Dialog.show("atividade_jogadores", html);
-else document.body.insertAdjacentHTML("beforeend", html);
+document.head.appendChild(style);
 
-// === Utils ===
+// === Inserir HTML ===
+const painel = document.createElement("div");
+painel.id = painelId;
+painel.innerHTML = `
+  <div class="header">
+      <h3>📊 Atividade dos Jogadores</h3>
+      <button class="close-btn" id="${painelId}-close">X</button>
+  </div>
+  <div class="body">
+      <div>
+          ⏱️ Última execução: ${ultimaExecucaoAntiga ? formatarData(+ultimaExecucaoAntiga) : "primeira execução"}<br>
+          ⏱️ Execução atual: ${formatarData(hoje)}<br><br>
+          <input type="text" id="filtroNome" placeholder="Nome" style="width:100px;">
+          <input type="text" id="filtroTribo" placeholder="Tribo" style="width:70px;">
+          <select id="filtroStatus">
+              <option value="">Status</option>
+              <option value="green">Cresceu</option>
+              <option value="red">Perdeu</option>
+              <option value="yellow">Estável</option>
+              <option value="blue">Novo</option>
+              <option value="grey">Inativo</option>
+          </select>
+      </div>
+      <div id="statsLegenda" style="margin-top:5px;"></div>
+      <div id="resultado" style="margin-top:10px;"></div>
+  </div>
+  <div class="footer" id="paginacao"></div>
+`;
+document.body.appendChild(painel);
+
+document.getElementById(`${painelId}-close`).addEventListener("click", ()=> painel.remove());
+
+// === Funções ===
 function formatarData(ts) {
     const d = new Date(ts);
     return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
 
-// === Render ===
 function renderPage(filtros = {}) {
     const { nome = "", status = "", tribo = "" } = filtros;
     let filtrados = jogadores.filter(j =>
@@ -262,6 +324,6 @@ function renderPage(filtros = {}) {
         });
     });
 });
+
 renderPage();
 })();
-
