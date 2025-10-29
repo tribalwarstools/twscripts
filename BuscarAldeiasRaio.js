@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TW - Buscar aldeias por raio (Autocomplete Jogador)
 // @namespace    https://tribalwars/
-// @version      3.2
+// @version      3.4
 // @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com autocompletar de nome de jogador, usando village.txt e player.txt.
 // @match        *://*.tribalwars.*/*
 // @grant        none
@@ -61,23 +61,25 @@
   }
 
   async function abrirPainel() {
+    const saved = JSON.parse(localStorage.getItem('twRadiusConfig') || '{}');
+
     const html = `
       <div style="font-size:13px;color:#333;margin-bottom:10px">
         <label><b>Coordenada base:</b></label>
-        <input type="text" id="coordInput" placeholder="Ex: 500|500" style="width:80px;text-align:center;margin-left:5px">
+        <input type="text" id="coordInput" placeholder="Ex: 500|500" value="${saved.coord || ''}" style="width:80px;text-align:center;margin-left:5px">
       </div>
 
       <div style="margin-bottom:10px">
         <label><b>Raio (campos):</b></label>
-        <input type="number" id="radiusInput" min="1" value="10" style="width:70px;text-align:center;margin-left:5px">
+        <input type="number" id="radiusInput" min="1" value="${saved.raio || 10}" style="width:70px;text-align:center;margin-left:5px">
       </div>
 
       <div style="margin-bottom:10px">
         <label><b>Tipo de busca:</b></label><br>
-        <label><input type="radio" name="tipoBusca" value="minhas" checked> Minhas aldeias</label><br>
-        <label><input type="radio" name="tipoBusca" value="barbaras"> Aldeias bárbaras</label><br>
-        <label><input type="radio" name="tipoBusca" value="jogador"> Jogador específico:</label><br>
-        <input type="text" id="playerNameInput" list="playerList" placeholder="Nome do jogador" style="width:180px;margin-top:5px">
+        <label><input type="radio" name="tipoBusca" value="minhas" ${saved.tipo === 'minhas' || !saved.tipo ? 'checked' : ''}> Minhas aldeias</label><br>
+        <label><input type="radio" name="tipoBusca" value="barbaras" ${saved.tipo === 'barbaras' ? 'checked' : ''}> Aldeias bárbaras</label><br>
+        <label><input type="radio" name="tipoBusca" value="jogador" ${saved.tipo === 'jogador' ? 'checked' : ''}> Jogador específico:</label><br>
+        <input type="text" id="playerNameInput" list="playerList" placeholder="Nome do jogador" value="${saved.player || ''}" style="width:180px;margin-top:5px">
         <datalist id="playerList"></datalist>
       </div>
 
@@ -90,13 +92,13 @@
       <br>
       <center>
         <button class="btn" id="copyCsvBtn" disabled>Copiar coordenadas</button>
-        <button class="btn" id="closeDialogBtn">Fechar</button>
+        <button class="btn" id="saveDialogBtn">Salvar</button>
       </center>
     `;
 
     Dialog.show('radius_search', html);
 
-    // Carrega os jogadores para autocomplete
+    // Carrega autocomplete de jogadores
     const players = await carregarPlayerTxt();
     const dataList = document.querySelector('#playerList');
     players.forEach(p => {
@@ -107,7 +109,19 @@
 
     document.querySelector('#searchBtn').addEventListener('click', () => executarBusca(players));
     document.querySelector('#copyCsvBtn').addEventListener('click', copiarCoords);
-    document.querySelector('#closeDialogBtn').addEventListener('click', () => Dialog.close('radius_search'));
+    document.querySelector('#saveDialogBtn').addEventListener('click', salvarConfiguracao);
+  }
+
+  function salvarConfiguracao() {
+    const config = {
+      coord: document.querySelector('#coordInput').value.trim(),
+      raio: document.querySelector('#radiusInput').value,
+      tipo: document.querySelector('input[name="tipoBusca"]:checked').value,
+      player: document.querySelector('#playerNameInput').value.trim()
+    };
+    localStorage.setItem('twRadiusConfig', JSON.stringify(config));
+    UI.SuccessMessage('Configurações salvas com sucesso.');
+    // painel permanece aberto
   }
 
   async function executarBusca(players) {
