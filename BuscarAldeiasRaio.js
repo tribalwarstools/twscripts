@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TW - Buscar aldeias por raio (Autocomplete Jogador)
 // @namespace    https://tribalwars/
-// @version      3.4
+// @version      3.5
 // @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com autocompletar de nome de jogador, usando village.txt e player.txt.
 // @match        *://*.tribalwars.*/*
 // @grant        none
@@ -62,11 +62,12 @@
 
   async function abrirPainel() {
     const saved = JSON.parse(localStorage.getItem('twRadiusConfig') || '{}');
+    const coordAtual = game_data.village.coord || '';
 
     const html = `
       <div style="font-size:13px;color:#333;margin-bottom:10px">
         <label><b>Coordenada base:</b></label>
-        <input type="text" id="coordInput" placeholder="Ex: 500|500" value="${saved.coord || ''}" style="width:80px;text-align:center;margin-left:5px">
+        <input type="text" id="coordInput" placeholder="Ex: 500|500" value="${saved.coord || coordAtual}" style="width:80px;text-align:center;margin-left:5px">
       </div>
 
       <div style="margin-bottom:10px">
@@ -121,7 +122,6 @@
     };
     localStorage.setItem('twRadiusConfig', JSON.stringify(config));
     UI.SuccessMessage('Configurações salvas com sucesso.');
-    // painel permanece aberto
   }
 
   async function executarBusca(players) {
@@ -199,9 +199,9 @@
   function copiarCoords() {
     const coords = JSON.parse(sessionStorage.getItem('twRadiusCoords') || '[]');
     if (!coords.length) return;
-    const list = coords.map(c => `${c.x}|${c.y}`).join('\n');
+    const list = coords.map(c => `${c.x}|${c.y}`).join(' ');
     copyToClipboard(list);
-    UI.InfoMessage('Coordenadas copiadas para a área de transferência.');
+    UI.InfoMessage('Coordenadas copiadas (em linha) para a área de transferência.');
   }
 
   abrirPainel();
