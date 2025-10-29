@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW - Buscar aldeias por raio (Simplificado)
+// @name         TW - Buscar aldeias por raio (Autocomplete Jogador)
 // @namespace    https://tribalwars/
-// @version      3.1
-// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) a partir de uma coordenada base, usando village.txt e player.txt. Exibe apenas coordenadas e distância.
+// @version      3.2
+// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com autocompletar de nome de jogador, usando village.txt e player.txt.
 // @match        *://*.tribalwars.*/*
 // @grant        none
 // ==/UserScript==
@@ -12,8 +12,7 @@
 
   const parseCoords = str => {
     const m = str.match(/(\d{1,3})\|(\d{1,3})/);
-    if (!m) return null;
-    return { x: parseInt(m[1]), y: parseInt(m[2]) };
+    return m ? { x: +m[1], y: +m[2] } : null;
   };
 
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -30,23 +29,15 @@
   async function carregarVillageTxt() {
     try {
       const world = game_data.world;
-      const url = `https://${world}.tribalwars.com.br/map/village.txt`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Erro ao baixar village.txt');
+      const res = await fetch(`https://${world}.tribalwars.com.br/map/village.txt`);
       const txt = await res.text();
       return txt.split('\n').map(l => {
         const p = l.split(',');
         if (p.length < 6) return null;
-        return {
-          id: p[0],
-          name: p[1],
-          x: parseInt(p[2]),
-          y: parseInt(p[3]),
-          playerId: p[4]
-        };
+        return { id: p[0], name: p[1], x: +p[2], y: +p[3], playerId: p[4] };
       }).filter(Boolean);
     } catch (e) {
-      UI.ErrorMessage('Falha ao carregar village.txt');
+      UI.ErrorMessage('Erro ao carregar village.txt');
       console.error(e);
       return [];
     }
@@ -55,23 +46,21 @@
   async function carregarPlayerTxt() {
     try {
       const world = game_data.world;
-      const url = `https://${world}.tribalwars.com.br/map/player.txt`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Erro ao baixar player.txt');
+      const res = await fetch(`https://${world}.tribalwars.com.br/map/player.txt`);
       const txt = await res.text();
       return txt.split('\n').map(l => {
         const p = l.split(',');
         if (p.length < 2) return null;
-        return { id: p[0], name: p[1] };
+        return { id: p[0], name: decodeURIComponent(p[1].replace(/\+/g, ' ')) };
       }).filter(Boolean);
     } catch (e) {
-      UI.ErrorMessage('Falha ao carregar player.txt');
+      UI.ErrorMessage('Erro ao carregar player.txt');
       console.error(e);
       return [];
     }
   }
 
-  function abrirPainel() {
+  async function abrirPainel() {
     const html = `
       <div style="font-size:13px;color:#333;margin-bottom:10px">
         <label><b>Coordenada base:</b></label>
@@ -87,8 +76,9 @@
         <label><b>Tipo de busca:</b></label><br>
         <label><input type="radio" name="tipoBusca" value="minhas" checked> Minhas aldeias</label><br>
         <label><input type="radio" name="tipoBusca" value="barbaras"> Aldeias bárbaras</label><br>
-        <label><input type="radio" name="tipoBusca" value="jogador"> Jogador específico:</label>
-        <input type="text" id="playerNameInput" placeholder="Nome do jogador" style="width:160px;margin-left:5px">
+        <label><input type="radio" name="tipoBusca" value="jogador"> Jogador específico:</label><br>
+        <input type="text" id="playerNameInput" list="playerList" placeholder="Nome do jogador" style="width:180px;margin-top:5px">
+        <datalist id="playerList"></datalist>
       </div>
 
       <button class="btn" id="searchBtn">Buscar</button>
@@ -106,12 +96,21 @@
 
     Dialog.show('radius_search', html);
 
-    document.querySelector('#searchBtn').addEventListener('click', executarBusca);
+    // Carrega os jogadores para autocomplete
+    const players = await carregarPlayerTxt();
+    const dataList = document.querySelector('#playerList');
+    players.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name;
+      dataList.appendChild(opt);
+    });
+
+    document.querySelector('#searchBtn').addEventListener('click', () => executarBusca(players));
     document.querySelector('#copyCsvBtn').addEventListener('click', copiarCoords);
     document.querySelector('#closeDialogBtn').addEventListener('click', () => Dialog.close('radius_search'));
   }
 
-  async function executarBusca() {
+  async function executarBusca(players) {
     const coordStr = document.querySelector('#coordInput').value.trim();
     const radius = parseFloat(document.querySelector('#radiusInput').value);
     const tipo = document.querySelector('input[name="tipoBusca"]:checked').value;
@@ -121,9 +120,8 @@
     if (!origin) return UI.ErrorMessage('Digite uma coordenada válida (ex: 500|500).');
     if (isNaN(radius) || radius <= 0) return UI.ErrorMessage('Digite um raio válido.');
 
-    UI.InfoMessage('Carregando village.txt e player.txt...');
-    const [villages, players] = await Promise.all([carregarVillageTxt(), carregarPlayerTxt()]);
-
+    UI.InfoMessage('Carregando aldeias...');
+    const villages = await carregarVillageTxt();
     let alvo = [];
 
     if (tipo === 'minhas') {
@@ -138,13 +136,8 @@
 
     if (tipo === 'jogador') {
       const player = players.find(p => p.name.toLowerCase() === playerName.toLowerCase());
-      if (!player) return UI.ErrorMessage('Jogador não encontrado no arquivo player.txt.');
+      if (!player) return UI.ErrorMessage('Jogador não encontrado.');
       alvo = villages.filter(v => v.playerId === player.id);
-    }
-
-    if (!alvo.length) {
-      UI.ErrorMessage('Nenhuma aldeia correspondente encontrada.');
-      return;
     }
 
     const results = alvo
@@ -163,7 +156,7 @@
       return;
     }
 
-    let tabela = `
+    div.innerHTML = `
       <div style="margin-bottom:6px">
         <b>${results.length}</b> aldeias encontradas dentro de <b>${radius}</b> campos.
       </div>
@@ -185,7 +178,6 @@
       </table>
     `;
 
-    div.innerHTML = tabela;
     document.querySelector('#copyCsvBtn').disabled = false;
     sessionStorage.setItem('twRadiusCoords', JSON.stringify(results));
   }
