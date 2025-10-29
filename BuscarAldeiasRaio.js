@@ -68,7 +68,7 @@
       </div>
 
       <div style="margin-bottom:10px">
-        <label><b>Raio (tiles):</b></label>
+        <label><b>Raio:</b></label>
         <input type="number" id="radiusInput" min="1" value="10" style="width:80px;margin-left:5px;text-align:center">
         <button class="btn" id="searchBtn">Buscar</button>
       </div>
