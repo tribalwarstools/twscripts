@@ -124,14 +124,14 @@
   const atualizarTabela = (results, origin, radius) => {
     const div = document.querySelector('#radiusResults');
     if (!results.length) {
-      div.innerHTML = `<i>Nenhuma aldeia encontrada dentro de ${radius} tiles.</i>`;
+      div.innerHTML = `<i>Nenhuma aldeia encontrada dentro de ${radius} campos.</i>`;
       document.querySelector('#copyCsvBtn').disabled = true;
       return;
     }
 
     let tabela = `
       <div style="margin-bottom:6px">
-        <b>${results.length}</b> aldeias encontradas dentro de <b>${radius}</b> tiles.
+        <b>${results.length}</b> aldeias encontradas dentro de <b>${radius}</b> campos.
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:center">
         <thead>
