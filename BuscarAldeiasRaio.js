@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW - Buscar aldeias por raio (Tabela Coordenadas e Distância)
+// @name         TW - Buscar aldeias por raio (Usando village.txt)
 // @namespace    https://tribalwars/
-// @version      1.5
-// @description  Exibe em tabela as coordenadas e distância das suas aldeias dentro de um raio, com painel Dialog.show estilizado.
+// @version      2.0
+// @description  Busca suas aldeias dentro de um raio a partir do arquivo village.txt e exibe tabela com coordenadas e distância.
 // @match        *://*.tribalwars.*/*
 // @grant        none
 // ==/UserScript==
@@ -10,7 +10,6 @@
 (function () {
   'use strict';
 
-  // === Funções auxiliares ===
   const parseCoords = str => {
     const m = str.match(/(\d{1,3})\|(\d{1,3})/);
     if (!m) return null;
@@ -24,25 +23,8 @@
       const c = parseCoords(game_data.village.coord);
       if (c) return c;
     }
-    const els = Array.from(document.querySelectorAll('.village_name, .village_anchor, a, h1, h2, span, strong'));
-    for (const el of els) {
-      const c = parseCoords(el.textContent);
-      if (c) return c;
-    }
     const manual = prompt('Não consegui detectar a aldeia atual. Digite as coordenadas (ex: 123|456):');
     return manual ? parseCoords(manual) : null;
-  };
-
-  const collectPlayerVillages = () => {
-    const villages = [];
-    const links = Array.from(document.querySelectorAll('a[href*="village="]'));
-    for (const a of links) {
-      const coords = parseCoords(a.textContent.trim());
-      if (coords && !villages.some(v => v.x === coords.x && v.y === coords.y)) {
-        villages.push(coords);
-      }
-    }
-    return villages;
   };
 
   const copyToClipboard = text => {
@@ -54,7 +36,53 @@
     ta.remove();
   };
 
-  // === Painel principal ===
+  async function carregarVillageTxt() {
+    try {
+      const world = game_data.world; // exemplo: br123
+      const url = `https://${world}.tribalwars.com.br/map/village.txt`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Erro ao baixar village.txt');
+      const txt = await res.text();
+      return txt.split('\n').map(l => {
+        const p = l.split(',');
+        if (p.length < 6) return null;
+        return {
+          id: p[0],
+          name: p[1],
+          x: parseInt(p[2]),
+          y: parseInt(p[3]),
+          playerId: p[4]
+        };
+      }).filter(Boolean);
+    } catch (e) {
+      UI.ErrorMessage('Falha ao carregar village.txt');
+      console.error(e);
+      return [];
+    }
+  }
+
+  async function carregarPlayerTxt() {
+    try {
+      const world = game_data.world;
+      const url = `https://${world}.tribalwars.com.br/map/player.txt`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Erro ao baixar player.txt');
+      const txt = await res.text();
+      return txt.split('\n').map(l => {
+        const p = l.split(',');
+        if (p.length < 2) return null;
+        return {
+          id: p[0],
+          name: p[1]
+        };
+      }).filter(Boolean);
+    } catch (e) {
+      UI.ErrorMessage('Falha ao carregar player.txt');
+      console.error(e);
+      return [];
+    }
+  }
+
   const abrirPainel = () => {
     const origin = getCurrentVillageCoord();
     if (!origin) {
@@ -86,20 +114,32 @@
 
     Dialog.show('radius_search', html);
 
-    document.querySelector('#searchBtn').addEventListener('click', () => {
+    document.querySelector('#searchBtn').addEventListener('click', async () => {
       const radius = parseFloat(document.querySelector('#radiusInput').value);
       if (isNaN(radius) || radius <= 0) {
         UI.ErrorMessage('Digite um raio válido.');
         return;
       }
 
-      const villages = collectPlayerVillages();
-      if (!villages.length) {
-        UI.ErrorMessage('Nenhuma aldeia encontrada na página.');
+      UI.InfoMessage('Carregando village.txt e player.txt, aguarde...');
+      const [villages, players] = await Promise.all([
+        carregarVillageTxt(),
+        carregarPlayerTxt()
+      ]);
+
+      const player = players.find(p => p.name === game_data.player.name);
+      if (!player) {
+        UI.ErrorMessage('Não foi possível identificar seu jogador no arquivo player.txt.');
         return;
       }
 
-      const results = villages
+      const minhas = villages.filter(v => v.playerId === player.id);
+      if (!minhas.length) {
+        UI.ErrorMessage('Nenhuma aldeia sua encontrada no village.txt.');
+        return;
+      }
+
+      const results = minhas
         .map(v => ({ ...v, distance: dist(origin, v) }))
         .filter(v => v.distance <= radius && !(v.x === origin.x && v.y === origin.y))
         .sort((a, b) => a.distance - b.distance);
@@ -120,7 +160,6 @@
     });
   };
 
-  // === Atualiza resultado em formato de tabela ===
   const atualizarTabela = (results, origin, radius) => {
     const div = document.querySelector('#radiusResults');
     if (!results.length) {
