@@ -1,9 +1,8 @@
-
 // ==UserScript==
-// @name         TW - Buscar aldeias por raio
+// @name         TW - Buscar aldeias por raio (Tabela Coordenadas e Distância)
 // @namespace    https://tribalwars/
-// @version      1.0
-// @description  Encontra suas aldeias dentro de um raio (tiles) a partir da aldeia atual e exibe lista com distâncias e links.
+// @version      1.5
+// @description  Exibe em tabela as coordenadas e distância das suas aldeias dentro de um raio, com painel Dialog.show estilizado.
 // @match        *://*.tribalwars.*/*
 // @grant        none
 // ==/UserScript==
@@ -11,167 +10,40 @@
 (function () {
   'use strict';
 
+  // === Funções auxiliares ===
   const parseCoords = str => {
     const m = str.match(/(\d{1,3})\|(\d{1,3})/);
     if (!m) return null;
-    return { x: parseInt(m[1], 10), y: parseInt(m[2], 10) };
+    return { x: parseInt(m[1]), y: parseInt(m[2]) };
   };
 
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
   const getCurrentVillageCoord = () => {
-    try {
-      if (window.game_data && game_data.village && game_data.village.coord) {
-        const m = game_data.village.coord.match(/(\d{1,3})\|(\d{1,3})/);
-        if (m) return { x: parseInt(m[1], 10), y: parseInt(m[2], 10) };
-      }
-    } catch (e) {}
-
-    try {
-      const els = Array.from(document.querySelectorAll('a, span, strong, h1, h2, .village_anchor, .village_name'));
-      for (const el of els) {
-        if (!el || !el.textContent) continue;
-        const c = parseCoords(el.textContent);
-        if (c) return c;
-      }
-    } catch (e) {}
-
-    const manual = prompt('Não consegui detectar a aldeia atual automaticamente. Digite as coordenadas no formato X|Y (ex: 123|456):');
-    if (manual) {
-      const c = parseCoords(manual);
+    if (window.game_data?.village?.coord) {
+      const c = parseCoords(game_data.village.coord);
       if (c) return c;
     }
-    return null;
+    const els = Array.from(document.querySelectorAll('.village_name, .village_anchor, a, h1, h2, span, strong'));
+    for (const el of els) {
+      const c = parseCoords(el.textContent);
+      if (c) return c;
+    }
+    const manual = prompt('Não consegui detectar a aldeia atual. Digite as coordenadas (ex: 123|456):');
+    return manual ? parseCoords(manual) : null;
   };
 
   const collectPlayerVillages = () => {
     const villages = [];
-
-    try {
-      for (const key of Object.keys(window)) {
-        try {
-          const val = window[key];
-          if (!val) continue;
-          if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
-            for (const item of val) {
-              if (!item) continue;
-              if (('x' in item && 'y' in item) || ('coord' in item && item.coord)) {
-                const name = item.name || item.village_name || item.title || '';
-                const x = item.x || (item.coord && parseCoords(item.coord)?.x);
-                const y = item.y || (item.coord && parseCoords(item.coord)?.y);
-                const id = item.id || item.village_id || item.village;
-                if (x && y) villages.push({ name: name || (x+'|'+y), x, y, id, href: item.url || null });
-              }
-            }
-          }
-        } catch (e) {}
+    const links = Array.from(document.querySelectorAll('a[href*="village="]'));
+    for (const a of links) {
+      const coords = parseCoords(a.textContent.trim());
+      if (coords && !villages.some(v => v.x === coords.x && v.y === coords.y)) {
+        villages.push(coords);
       }
-    } catch (e) {}
-
-    try {
-      const links = Array.from(document.querySelectorAll('a[href*="village="]'));
-      for (const a of links) {
-        const text = a.textContent.trim();
-        const coords = parseCoords(text);
-        const href = a.getAttribute('href');
-        let id = null;
-        const idMatch = href && href.match(/[?&]village=(\d+)/);
-        if (idMatch) id = idMatch[1];
-        if (coords) {
-          if (!villages.some(v => v.x === coords.x && v.y === coords.y)) {
-            villages.push({ name: text, x: coords.x, y: coords.y, id, href });
-          }
-        }
-      }
-    } catch (e) {}
-
-    try {
-      const allTextNodes = Array.from(document.querySelectorAll('body *')).map(n => n.textContent).filter(Boolean);
-      for (const t of allTextNodes) {
-        const coords = parseCoords(t);
-        if (coords && !villages.some(v => v.x === coords.x && v.y === coords.y)) {
-          const name = t.replace(/\s*\(?\d{1,3}\|\d{1,3}\)?\s*/, '').trim().slice(0, 60) || `${coords.x}|${coords.y}`;
-          villages.push({ name, x: coords.x, y: coords.y, id: null, href: null });
-        }
-      }
-    } catch (e) {}
-
-    const unique = [];
-    for (const v of villages) {
-      if (!unique.some(u => u.x === v.x && u.y === v.y)) unique.push(v);
     }
-    return unique;
+    return villages;
   };
-
-  const makePanel = (results, origin, radius) => {
-    const existing = document.getElementById('tw-radius-search-panel');
-    if (existing) existing.remove();
-
-    const panel = document.createElement('div');
-    panel.id = 'tw-radius-search-panel';
-    panel.style.position = 'fixed';
-    panel.style.right = '20px';
-    panel.style.top = '60px';
-    panel.style.zIndex = 99999;
-    panel.style.maxHeight = '70vh';
-    panel.style.overflow = 'auto';
-    panel.style.background = '#f8f4ef';
-    panel.style.border = '2px solid #4b3d2f';
-    panel.style.padding = '10px';
-    panel.style.borderRadius = '6px';
-    panel.style.minWidth = '320px';
-    panel.style.boxShadow = '0 6px 18px rgba(0,0,0,0.35)';
-    panel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <strong>Resultados — raio ${radius} tiles</strong>
-        <div>
-          <button id="tw-radius-close" style="margin-right:6px">Fechar</button>
-          <button id="tw-radius-copy">Copiar CSV</button>
-        </div>
-      </div>
-      <div style="font-size:12px;color:#333;margin-bottom:8px">Aldeia atual: ${origin.x}|${origin.y} — encontradas ${results.length} aldeias dentro do raio.</div>
-      <table id="tw-radius-table" style="width:100%;font-size:13px;border-collapse:collapse">
-        <thead>
-          <tr style="border-bottom:1px solid #ccc">
-            <th style="text-align:left;padding:6px">#</th>
-            <th style="text-align:left;padding:6px">Aldeia</th>
-            <th style="text-align:left;padding:6px">Coords</th>
-            <th style="text-align:left;padding:6px">Dist</th>
-            <th style="text-align:left;padding:6px">Ação</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    `;
-    document.body.appendChild(panel);
-
-    const tbody = panel.querySelector('tbody');
-    results.sort((a, b) => a.distance - b.distance);
-    results.forEach((v, i) => {
-      const tr = document.createElement('tr');
-      tr.style.borderBottom = '1px dashed #ddd';
-      tr.innerHTML = `
-        <td style="padding:6px;vertical-align:middle">${i + 1}</td>
-        <td style="padding:6px;vertical-align:middle">${escapeHtml(v.name || '')}</td>
-        <td style="padding:6px;vertical-align:middle">${v.x}|${v.y}</td>
-        <td style="padding:6px;vertical-align:middle">${v.distance.toFixed(2)}</td>
-        <td style="padding:6px;vertical-align:middle">
-          ${v.href ? `<a href="${v.href}">Ir</a>` : `<a href="?screen=map&x=${v.x}&y=${v.y}">Ver mapa</a>`}
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-    panel.querySelector('#tw-radius-close').addEventListener('click', () => panel.remove());
-    panel.querySelector('#tw-radius-copy').addEventListener('click', () => {
-      const csv = ['name,x,y,distance'];
-      for (const r of results) csv.push(`"${(r.name||'').replace(/"/g,'""')}",${r.x},${r.y},${r.distance.toFixed(2)}`);
-      copyToClipboard(csv.join('\n'));
-      alert('CSV copiado para a área de transferência.');
-    });
-  };
-
-  const escapeHtml = s => (s || '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 
   const copyToClipboard = text => {
     const ta = document.createElement('textarea');
@@ -182,32 +54,107 @@
     ta.remove();
   };
 
-  (function main() {
+  // === Painel principal ===
+  const abrirPainel = () => {
     const origin = getCurrentVillageCoord();
     if (!origin) {
-      alert('Coordenadas da aldeia atual não fornecidas. Aborting.');
+      UI.ErrorMessage('Não foi possível detectar a aldeia atual.');
       return;
     }
 
-    let radius = prompt('Digite o raio (em tiles) para buscar suas aldeias a partir da aldeia atual. Ex: 10');
-    if (radius === null) return;
-    radius = parseFloat(String(radius).replace(',', '.'));
-    if (isNaN(radius) || radius < 0) {
-      alert('Valor de raio inválido.');
+    const html = `
+      <div style="font-size:13px;color:#333;margin-bottom:10px">
+        <b>Aldeia atual:</b> ${origin.x}|${origin.y}
+      </div>
+
+      <div style="margin-bottom:10px">
+        <label><b>Raio (tiles):</b></label>
+        <input type="number" id="radiusInput" min="1" value="10" style="width:80px;margin-left:5px;text-align:center">
+        <button class="btn" id="searchBtn">Buscar</button>
+      </div>
+
+      <div id="radiusResults" style="max-height:380px;overflow:auto;border:1px solid #ccc;padding:4px;background:#fdfaf5">
+        <i>Nenhuma busca realizada ainda.</i>
+      </div>
+
+      <br>
+      <center>
+        <button class="btn" id="copyCsvBtn" disabled>Copiar coordenadas</button>
+        <button class="btn" id="closeDialogBtn">Fechar</button>
+      </center>
+    `;
+
+    Dialog.show('radius_search', html);
+
+    document.querySelector('#searchBtn').addEventListener('click', () => {
+      const radius = parseFloat(document.querySelector('#radiusInput').value);
+      if (isNaN(radius) || radius <= 0) {
+        UI.ErrorMessage('Digite um raio válido.');
+        return;
+      }
+
+      const villages = collectPlayerVillages();
+      if (!villages.length) {
+        UI.ErrorMessage('Nenhuma aldeia encontrada na página.');
+        return;
+      }
+
+      const results = villages
+        .map(v => ({ ...v, distance: dist(origin, v) }))
+        .filter(v => v.distance <= radius && !(v.x === origin.x && v.y === origin.y))
+        .sort((a, b) => a.distance - b.distance);
+
+      atualizarTabela(results, origin, radius);
+    });
+
+    document.querySelector('#copyCsvBtn').addEventListener('click', () => {
+      const coords = JSON.parse(sessionStorage.getItem('twRadiusCoords') || '[]');
+      if (!coords.length) return;
+      const list = coords.map(c => `${c.x}|${c.y}`).join('\n');
+      copyToClipboard(list);
+      UI.InfoMessage('Coordenadas copiadas para a área de transferência.');
+    });
+
+    document.querySelector('#closeDialogBtn').addEventListener('click', () => {
+      Dialog.close('radius_search');
+    });
+  };
+
+  // === Atualiza resultado em formato de tabela ===
+  const atualizarTabela = (results, origin, radius) => {
+    const div = document.querySelector('#radiusResults');
+    if (!results.length) {
+      div.innerHTML = `<i>Nenhuma aldeia encontrada dentro de ${radius} tiles.</i>`;
+      document.querySelector('#copyCsvBtn').disabled = true;
       return;
     }
 
-    const villages = collectPlayerVillages();
-    if (!villages || villages.length === 0) {
-      alert('Não encontrei nenhuma aldeia sua automaticamente na página. Tente abrir a lista de aldeias (barra lateral) e executar novamente.');
-      return;
-    }
+    let tabela = `
+      <div style="margin-bottom:6px">
+        <b>${results.length}</b> aldeias encontradas dentro de <b>${radius}</b> tiles.
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:center">
+        <thead>
+          <tr style="background:#ddd;font-weight:bold">
+            <th style="border:1px solid #aaa;padding:4px">Coordenadas</th>
+            <th style="border:1px solid #aaa;padding:4px">Distância</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${results.map(v => `
+            <tr>
+              <td style="border:1px solid #ccc;padding:3px">${v.x}|${v.y}</td>
+              <td style="border:1px solid #ccc;padding:3px">${v.distance.toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
 
-    const results = villages.map(v => Object.assign({}, v, { distance: dist(origin, { x: v.x, y: v.y }) }))
-      .filter(v => v.distance <= radius && !(v.x === origin.x && v.y === origin.y));
+    div.innerHTML = tabela;
+    document.querySelector('#copyCsvBtn').disabled = false;
+    sessionStorage.setItem('twRadiusCoords', JSON.stringify(results));
+  };
 
-    makePanel(results, origin, radius);
-    console.log('TW - Busca por raio:', { origin, radius, found: results.length, results });
-  })();
-
+  abrirPainel();
 })();
