@@ -1,3 +1,10 @@
+// ==UserScript==
+// @name         ScriptApoio (Versão idêntica ao de Ataque)
+// @namespace    https://tribalwars/
+// @version      1.0
+// @description  Envia apoio automaticamente com base nas coordenadas salvas, usando mesma lógica do ScriptAtaque.js
+// ==/UserScript==
+
 (function() {
     const tropasSalvas = localStorage.getItem("tropasSalvas");
 
@@ -23,7 +30,7 @@
 
     function calcularDistancia(a, b) {
         var dx = a.x - b.x, dy = a.y - b.y;
-        return Math.sqrt(dx*dx + dy*dy);
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     var func = {
@@ -50,7 +57,7 @@
             win.$("[name=y]").val("");
         }
 
-        if (win.$("[name=support]").length > 0) { // <-- aqui verifica se é tela de apoio
+        if (win.$("[name=support]").length > 0) {
             // Preenche tropas
             win.$.each(units, function(n, a) {
                 if (func.check(n)) a[1] ? func.insert(n, func.total(n)) : func.insert(n, a[0]);
@@ -59,16 +66,16 @@
             // Lê coordenadas salvas
             var coords = (localStorage.getItem("coordsSalvas") || "500|500").split(" ");
 
-            // Recupera coordenadas já usadas (global)
-            var atacadasKey = "coordsApoio_" + data.world;
-            var atacadas = JSON.parse(localStorage.getItem(atacadasKey) || "[]");
+            // Recupera coordenadas já apoiadas (GLOBAL)
+            var apoiadasKey = "coordsApoio_" + data.world;
+            var apoiadas = JSON.parse(localStorage.getItem(apoiadasKey) || "[]");
 
-            // Filtra coordenadas disponíveis
-            var coordsDisponiveis = coords.filter(c => !atacadas.includes(c));
+            // Filtra apenas as coordenadas ainda não apoiadas
+            var coordsDisponiveis = coords.filter(c => !apoiadas.includes(c));
             if (coordsDisponiveis.length === 0) {
                 alert("Todas as coordenadas já receberam apoio!");
 
-                // 🔽 Chama script de reset quando termina
+                // 🔽 Chama script de reset automático ao terminar
                 $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/ResetarCoord.js');
 
                 return;
@@ -77,19 +84,19 @@
             // Aldeia atual
             var aldeiaAtual = { x: data.village.x, y: data.village.y };
 
-            // Ordena coordenadas pela proximidade
+            // Ordena coordenadas disponíveis por proximidade
             var coordsObj = coordsDisponiveis.map(c => {
                 var partes = c.split("|");
                 return { x: parseInt(partes[0]), y: parseInt(partes[1]), coordString: c };
             });
-            coordsObj.sort((a,b) => calcularDistancia(a, aldeiaAtual) - calcularDistancia(b, aldeiaAtual));
+            coordsObj.sort((a, b) => calcularDistancia(a, aldeiaAtual) - calcularDistancia(b, aldeiaAtual));
 
             // Pega coordenada mais próxima
             var coord = coordsObj[0].coordString.split("|");
 
-            // Marca como usada
-            atacadas.push(coordsObj[0].coordString);
-            localStorage.setItem(atacadasKey, JSON.stringify(atacadas));
+            // Marca como apoiada
+            apoiadas.push(coordsObj[0].coordString);
+            localStorage.setItem(apoiadasKey, JSON.stringify(apoiadas));
 
             // Insere coordenadas
             func.insert("x", coord[0]);
