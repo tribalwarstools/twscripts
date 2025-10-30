@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW - Buscar aldeias por raio (Autocomplete Jogador + Reset + Link)
+// @name         TW - Buscar aldeias por raio (Autocomplete Jogador + Reset + Link Corrigido)
 // @namespace    https://tribalwars/
-// @version      3.6
-// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com autocompletar, botão resetar e link nas coordenadas.
+// @version      3.7
+// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com autocompletar, botão resetar e link direto para a aldeia.
 // @match        *://*.tribalwars.*/*
 // @grant        none
 // ==/UserScript==
@@ -100,7 +100,7 @@
 
     Dialog.show('radius_search', html);
 
-    // Carrega autocomplete de jogadores
+    // Autocomplete de jogadores
     const players = await carregarPlayerTxt();
     const dataList = document.querySelector('#playerList');
     players.forEach(p => {
@@ -196,7 +196,7 @@
           ${results.map(v => `
             <tr>
               <td style="border:1px solid #ccc;padding:3px">
-                <a href="/game.php?village=${game_data.village.id}&screen=map&x=${v.x}&y=${v.y}" target="_blank" style="text-decoration:none;color:#0055cc">
+                <a href="/game.php?village=${game_data.village.id}&screen=info_village&id=${v.id}" target="_blank" style="text-decoration:none;color:#0055cc">
                   ${v.x}|${v.y}
                 </a>
               </td>
