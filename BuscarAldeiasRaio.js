@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW - Buscar aldeias por raio (Autocomplete Jogador)
+// @name         TW - Buscar aldeias por raio (Autocomplete Jogador + Reset + Link)
 // @namespace    https://tribalwars/
-// @version      3.5
-// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com autocompletar de nome de jogador, usando village.txt e player.txt.
+// @version      3.6
+// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com autocompletar, botão resetar e link nas coordenadas.
 // @match        *://*.tribalwars.*/*
 // @grant        none
 // ==/UserScript==
@@ -92,8 +92,9 @@
 
       <br>
       <center>
-        <button class="btn" id="copyCsvBtn" disabled>Copiar coordenadas</button>
+        <button class="btn" id="copyCsvBtn" disabled>Copiar</button>
         <button class="btn" id="saveDialogBtn">Salvar</button>
+        <button class="btn" id="resetBtn" style="background:#f66;color:#fff">Resetar</button>
       </center>
     `;
 
@@ -111,6 +112,7 @@
     document.querySelector('#searchBtn').addEventListener('click', () => executarBusca(players));
     document.querySelector('#copyCsvBtn').addEventListener('click', copiarCoords);
     document.querySelector('#saveDialogBtn').addEventListener('click', salvarConfiguracao);
+    document.querySelector('#resetBtn').addEventListener('click', resetarConfiguracao);
   }
 
   function salvarConfiguracao() {
@@ -122,6 +124,15 @@
     };
     localStorage.setItem('twRadiusConfig', JSON.stringify(config));
     UI.SuccessMessage('Configurações salvas com sucesso.');
+  }
+
+  function resetarConfiguracao() {
+    localStorage.removeItem('twRadiusConfig');
+    document.querySelector('#coordInput').value = game_data.village.coord || '';
+    document.querySelector('#radiusInput').value = 10;
+    document.querySelector('input[value="minhas"]').checked = true;
+    document.querySelector('#playerNameInput').value = '';
+    UI.InfoMessage('Configuração resetada para o padrão.');
   }
 
   async function executarBusca(players) {
@@ -184,7 +195,11 @@
         <tbody>
           ${results.map(v => `
             <tr>
-              <td style="border:1px solid #ccc;padding:3px">${v.x}|${v.y}</td>
+              <td style="border:1px solid #ccc;padding:3px">
+                <a href="/game.php?village=${game_data.village.id}&screen=map&x=${v.x}&y=${v.y}" target="_blank" style="text-decoration:none;color:#0055cc">
+                  ${v.x}|${v.y}
+                </a>
+              </td>
               <td style="border:1px solid #ccc;padding:3px">${v.distance.toFixed(2)}</td>
             </tr>
           `).join('')}
