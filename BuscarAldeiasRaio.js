@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW - Buscar aldeias por raio (Autocomplete Jogador + Reset + Link + Exato)
+// @name         TW - Buscar aldeias por raio (Autocomplete Jogador + Reset + Link + Exato + Botões Laterais)
 // @namespace    https://tribalwars/
-// @version      3.8
-// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com opção de exibir apenas as que estão exatamente no raio configurado.
+// @version      3.9
+// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com opção de exibir apenas as que estão exatamente no raio configurado. Agora com botões Copiar, Salvar e Resetar ao lado do Buscar.
 // @match        *://*.tribalwars.*/*
 // @grant        none
 // ==/UserScript==
@@ -87,18 +87,18 @@
         <datalist id="playerList"></datalist>
       </div>
 
-      <button class="btn" id="searchBtn">Buscar</button>
-      <hr>
-      <div id="radiusResults" style="max-height:380px;overflow:auto;border:1px solid #ccc;padding:4px;background:#fdfaf5">
-        <i>Nenhuma busca realizada ainda.</i>
-      </div>
-
-      <br>
-      <center>
+      <div style="margin-bottom:10px; text-align:center;">
+        <button class="btn" id="searchBtn">Buscar</button>
         <button class="btn" id="copyCsvBtn" disabled>Copiar</button>
         <button class="btn" id="saveDialogBtn">Salvar</button>
         <button class="btn" id="resetBtn" style="background:#f66;color:#fff">Resetar</button>
-      </center>
+      </div>
+
+      <hr>
+
+      <div id="radiusResults" style="max-height:380px;overflow:auto;border:1px solid #ccc;padding:4px;background:#fdfaf5">
+        <i>Nenhuma busca realizada ainda.</i>
+      </div>
     `;
 
     Dialog.show('radius_search', html);
@@ -167,8 +167,7 @@
       alvo = villages.filter(v => v.playerId === player.id);
     }
 
-    let results = alvo
-      .map(v => ({ ...v, distance: dist(origin, v) }));
+    let results = alvo.map(v => ({ ...v, distance: dist(origin, v) }));
 
     if (exato)
       results = results.filter(v => Math.abs(v.distance - radius) < 0.01);
