@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW - Buscar aldeias por raio (Autocomplete Jogador + Reset + Link Corrigido)
+// @name         TW - Buscar aldeias por raio (Autocomplete Jogador + Reset + Link + Exato)
 // @namespace    https://tribalwars/
-// @version      3.7
-// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com autocompletar, botão resetar e link direto para a aldeia.
+// @version      3.8
+// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com opção de exibir apenas as que estão exatamente no raio configurado.
 // @match        *://*.tribalwars.*/*
 // @grant        none
 // ==/UserScript==
@@ -73,6 +73,9 @@
       <div style="margin-bottom:10px">
         <label><b>Raio (campos):</b></label>
         <input type="number" id="radiusInput" min="1" value="${saved.raio || 10}" style="width:70px;text-align:center;margin-left:5px">
+        <label style="margin-left:10px;">
+          <input type="checkbox" id="exatoCheck" ${saved.exato ? 'checked' : ''}> Exibir exatamente no raio
+        </label>
       </div>
 
       <div style="margin-bottom:10px">
@@ -100,7 +103,6 @@
 
     Dialog.show('radius_search', html);
 
-    // Autocomplete de jogadores
     const players = await carregarPlayerTxt();
     const dataList = document.querySelector('#playerList');
     players.forEach(p => {
@@ -120,7 +122,8 @@
       coord: document.querySelector('#coordInput').value.trim(),
       raio: document.querySelector('#radiusInput').value,
       tipo: document.querySelector('input[name="tipoBusca"]:checked').value,
-      player: document.querySelector('#playerNameInput').value.trim()
+      player: document.querySelector('#playerNameInput').value.trim(),
+      exato: document.querySelector('#exatoCheck').checked
     };
     localStorage.setItem('twRadiusConfig', JSON.stringify(config));
     UI.SuccessMessage('Configurações salvas com sucesso.');
@@ -130,6 +133,7 @@
     localStorage.removeItem('twRadiusConfig');
     document.querySelector('#coordInput').value = game_data.village.coord || '';
     document.querySelector('#radiusInput').value = 10;
+    document.querySelector('#exatoCheck').checked = false;
     document.querySelector('input[value="minhas"]').checked = true;
     document.querySelector('#playerNameInput').value = '';
     UI.InfoMessage('Configuração resetada para o padrão.');
@@ -140,6 +144,7 @@
     const radius = parseFloat(document.querySelector('#radiusInput').value);
     const tipo = document.querySelector('input[name="tipoBusca"]:checked').value;
     const playerName = document.querySelector('#playerNameInput').value.trim();
+    const exato = document.querySelector('#exatoCheck').checked;
 
     const origin = parseCoords(coordStr);
     if (!origin) return UI.ErrorMessage('Digite uma coordenada válida (ex: 500|500).');
@@ -155,35 +160,36 @@
       alvo = villages.filter(v => v.playerId === player.id);
     }
 
-    if (tipo === 'barbaras') {
-      alvo = villages.filter(v => v.playerId === '0');
-    }
-
+    if (tipo === 'barbaras') alvo = villages.filter(v => v.playerId === '0');
     if (tipo === 'jogador') {
       const player = players.find(p => p.name.toLowerCase() === playerName.toLowerCase());
       if (!player) return UI.ErrorMessage('Jogador não encontrado.');
       alvo = villages.filter(v => v.playerId === player.id);
     }
 
-    const results = alvo
-      .map(v => ({ ...v, distance: dist(origin, v) }))
-      .filter(v => v.distance <= radius)
-      .sort((a, b) => a.distance - b.distance);
+    let results = alvo
+      .map(v => ({ ...v, distance: dist(origin, v) }));
 
-    atualizarTabela(results, radius);
+    if (exato)
+      results = results.filter(v => Math.abs(v.distance - radius) < 0.01);
+    else
+      results = results.filter(v => v.distance <= radius);
+
+    results.sort((a, b) => a.distance - b.distance);
+    atualizarTabela(results, radius, exato);
   }
 
-  function atualizarTabela(results, radius) {
+  function atualizarTabela(results, radius, exato) {
     const div = document.querySelector('#radiusResults');
     if (!results.length) {
-      div.innerHTML = `<i>Nenhuma aldeia encontrada dentro de ${radius} campos.</i>`;
+      div.innerHTML = `<i>Nenhuma aldeia encontrada ${exato ? 'exatamente' : 'dentro de'} ${radius} campos.</i>`;
       document.querySelector('#copyCsvBtn').disabled = true;
       return;
     }
 
     div.innerHTML = `
       <div style="margin-bottom:6px">
-        <b>${results.length}</b> aldeias encontradas dentro de <b>${radius}</b> campos.
+        <b>${results.length}</b> aldeias encontradas ${exato ? 'exatamente' : 'dentro de'} <b>${radius}</b> campos.
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:center">
         <thead>
