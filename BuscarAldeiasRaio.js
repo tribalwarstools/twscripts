@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW - Buscar aldeias por raio (Autocomplete Jogador + Reset + Link + Exato + Botões Laterais)
+// @name         TW - Buscar aldeias por faixa de raio (Autocomplete Jogador + Reset + Link + Botões Laterais)
 // @namespace    https://tribalwars/
-// @version      3.9
-// @description  Busca aldeias dentro de um raio (suas, bárbaras ou de um jogador específico) com opção de exibir apenas as que estão exatamente no raio configurado. Agora com botões Copiar, Salvar e Resetar ao lado do Buscar.
+// @version      4.0
+// @description  Busca aldeias dentro de uma faixa de raio (mínimo e máximo), podendo filtrar por tipo, jogador, e copiar coordenadas encontradas.
 // @match        *://*.tribalwars.*/*
 // @grant        none
 // ==/UserScript==
@@ -71,11 +71,10 @@
       </div>
 
       <div style="margin-bottom:10px">
-        <label><b>Raio (campos):</b></label>
-        <input type="number" id="radiusInput" min="1" value="${saved.raio || 10}" style="width:70px;text-align:center;margin-left:5px">
-        <label style="margin-left:10px;">
-          <input type="checkbox" id="exatoCheck" ${saved.exato ? 'checked' : ''}> Exibir exatamente no raio
-        </label>
+        <label><b>Faixa de raio (campos):</b></label>
+        <input type="number" id="radiusMinInput" min="0" value="${saved.raioMin ?? 0}" style="width:60px;text-align:center;margin-left:5px">
+        até
+        <input type="number" id="radiusMaxInput" min="1" value="${saved.raioMax ?? 10}" style="width:60px;text-align:center">
       </div>
 
       <div style="margin-bottom:10px">
@@ -120,10 +119,10 @@
   function salvarConfiguracao() {
     const config = {
       coord: document.querySelector('#coordInput').value.trim(),
-      raio: document.querySelector('#radiusInput').value,
+      raioMin: document.querySelector('#radiusMinInput').value,
+      raioMax: document.querySelector('#radiusMaxInput').value,
       tipo: document.querySelector('input[name="tipoBusca"]:checked').value,
-      player: document.querySelector('#playerNameInput').value.trim(),
-      exato: document.querySelector('#exatoCheck').checked
+      player: document.querySelector('#playerNameInput').value.trim()
     };
     localStorage.setItem('twRadiusConfig', JSON.stringify(config));
     UI.SuccessMessage('Configurações salvas com sucesso.');
@@ -132,8 +131,8 @@
   function resetarConfiguracao() {
     localStorage.removeItem('twRadiusConfig');
     document.querySelector('#coordInput').value = game_data.village.coord || '';
-    document.querySelector('#radiusInput').value = 10;
-    document.querySelector('#exatoCheck').checked = false;
+    document.querySelector('#radiusMinInput').value = 0;
+    document.querySelector('#radiusMaxInput').value = 10;
     document.querySelector('input[value="minhas"]').checked = true;
     document.querySelector('#playerNameInput').value = '';
     UI.InfoMessage('Configuração resetada para o padrão.');
@@ -141,14 +140,15 @@
 
   async function executarBusca(players) {
     const coordStr = document.querySelector('#coordInput').value.trim();
-    const radius = parseFloat(document.querySelector('#radiusInput').value);
+    const radiusMin = parseFloat(document.querySelector('#radiusMinInput').value);
+    const radiusMax = parseFloat(document.querySelector('#radiusMaxInput').value);
     const tipo = document.querySelector('input[name="tipoBusca"]:checked').value;
     const playerName = document.querySelector('#playerNameInput').value.trim();
-    const exato = document.querySelector('#exatoCheck').checked;
 
     const origin = parseCoords(coordStr);
     if (!origin) return UI.ErrorMessage('Digite uma coordenada válida (ex: 500|500).');
-    if (isNaN(radius) || radius <= 0) return UI.ErrorMessage('Digite um raio válido.');
+    if (isNaN(radiusMax) || radiusMax <= 0) return UI.ErrorMessage('Digite um raio máximo válido.');
+    if (radiusMin >= radiusMax) return UI.ErrorMessage('O raio mínimo deve ser menor que o máximo.');
 
     UI.InfoMessage('Carregando aldeias...');
     const villages = await carregarVillageTxt();
@@ -168,27 +168,23 @@
     }
 
     let results = alvo.map(v => ({ ...v, distance: dist(origin, v) }));
-
-    if (exato)
-      results = results.filter(v => Math.abs(v.distance - radius) < 0.01);
-    else
-      results = results.filter(v => v.distance <= radius);
+    results = results.filter(v => v.distance >= radiusMin && v.distance <= radiusMax);
 
     results.sort((a, b) => a.distance - b.distance);
-    atualizarTabela(results, radius, exato);
+    atualizarTabela(results, radiusMin, radiusMax);
   }
 
-  function atualizarTabela(results, radius, exato) {
+  function atualizarTabela(results, min, max) {
     const div = document.querySelector('#radiusResults');
     if (!results.length) {
-      div.innerHTML = `<i>Nenhuma aldeia encontrada ${exato ? 'exatamente' : 'dentro de'} ${radius} campos.</i>`;
+      div.innerHTML = `<i>Nenhuma aldeia encontrada entre ${min} e ${max} campos.</i>`;
       document.querySelector('#copyCsvBtn').disabled = true;
       return;
     }
 
     div.innerHTML = `
       <div style="margin-bottom:6px">
-        <b>${results.length}</b> aldeias encontradas ${exato ? 'exatamente' : 'dentro de'} <b>${radius}</b> campos.
+        <b>${results.length}</b> aldeias encontradas entre <b>${min}</b> e <b>${max}</b> campos.
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:center">
         <thead>
