@@ -66,12 +66,12 @@
 
     const html = `
       <div style="font-size:13px;color:#333;margin-bottom:10px">
-        <label><b>Coordenada base:</b></label>
+        <label><b>Coord. base:</b></label>
         <input type="text" id="coordInput" placeholder="Ex: 500|500" value="${saved.coord || coordAtual}" style="width:80px;text-align:center;margin-left:5px">
       </div>
 
       <div style="margin-bottom:10px">
-        <label><b>Faixa de raio (campos):</b></label>
+        <label><b>Campos:</b></label>
         <input type="number" id="radiusMinInput" min="0" value="${saved.raioMin ?? 0}" style="width:60px;text-align:center;margin-left:5px">
         até
         <input type="number" id="radiusMaxInput" min="1" value="${saved.raioMax ?? 10}" style="width:60px;text-align:center">
