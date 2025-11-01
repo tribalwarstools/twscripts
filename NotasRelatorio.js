@@ -101,15 +101,8 @@
         // --- Data da batalha ---
         const dataBatalha = $("td:contains('Data da batalha')").next().text().trim() || "Data não encontrada";
 
-        // --- Resultado principal da batalha ---
-        let resultado = $("#attack_results h3").text().trim();
-        if (!resultado) {
-            resultado = $("#attack_results").text().match(/Explorado|Vitória total|Perdas|Derrotado.*|Explorado/g)?.[0] || "Resultado desconhecido";
-        }
-
-        // --- Montagem da nota ---
+        // --- Montagem da nota (sem resultado) ---
         let nota = "";
-        nota += "[b][size=6]" + resultado + "[/size][/b]\n\n";
         nota += "[i]Data da batalha " + dataBatalha + "[/i]\n\n";
         nota += "[b]" + titulo + "[/b]\n\n";
         nota += textoRelatorio;
