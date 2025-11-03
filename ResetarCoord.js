@@ -5,7 +5,7 @@
 
     const content = `
         <div style="text-align:center; padding:15px;">
-            <h3 style="margin-bottom:15px;">⚔️ Gerenciar Coordenadas (Atacadas + Apoio)</h3>
+            <h3 style="margin-bottom:15px;">⚔️ Gerenciar Coordenadas</h3>
             <button class="btn btn-confirm-no" id="btnResetGeral">Resetar Tudo</button>
             <button class="btn btn-confirm-yes" id="btnRestartGeral" style="margin-left:10px;">Recomeçar Tudo</button>
         </div>
