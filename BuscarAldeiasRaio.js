@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW - Buscar aldeias por faixa de raio (Autocomplete Jogador + Reset + Link + Botões Laterais)
+// @name         TW - Buscar aldeias por faixa de raio (Multiserver + Autocomplete + Reset + Link)
 // @namespace    https://tribalwars/
-// @version      4.0
-// @description  Busca aldeias dentro de uma faixa de raio (mínimo e máximo), podendo filtrar por tipo, jogador, e copiar coordenadas encontradas.
+// @version      4.1
+// @description  Busca aldeias dentro de uma faixa de raio (mínimo e máximo), podendo filtrar por tipo, jogador, e copiar coordenadas encontradas. Compatível com qualquer servidor (EN, BR, etc.).
 // @match        *://*.tribalwars.*/*
 // @grant        none
 // ==/UserScript==
@@ -26,10 +26,16 @@
     ta.remove();
   };
 
+  // === Corrigido para qualquer domínio ===
+  function getMapUrl(filename) {
+    const world = game_data.world;
+    const host = location.host; // ex: en145.tribalwars.net, br131.tribalwars.com.br
+    return `https://${host.replace(/^www\./, '')}/map/${filename}`;
+  }
+
   async function carregarVillageTxt() {
     try {
-      const world = game_data.world;
-      const res = await fetch(`https://${world}.tribalwars.com.br/map/village.txt`);
+      const res = await fetch(getMapUrl('village.txt'));
       const txt = await res.text();
       return txt.split('\n').map(l => {
         const p = l.split(',');
@@ -45,8 +51,7 @@
 
   async function carregarPlayerTxt() {
     try {
-      const world = game_data.world;
-      const res = await fetch(`https://${world}.tribalwars.com.br/map/player.txt`);
+      const res = await fetch(getMapUrl('player.txt'));
       const txt = await res.text();
       return txt.split('\n').map(l => {
         const p = l.split(',');
