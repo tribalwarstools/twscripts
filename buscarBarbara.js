@@ -1,4 +1,5 @@
 (async function () {
+    const STORAGE_KEY = 'tw_barbaras_config';
     let villages = [];
 
     function calcularDistancia(coord1, coord2) {
@@ -23,7 +24,7 @@
         const meuId = game_data.player.id;
 
         const minhasAldeias = villages
-            .filter(([id, name, x, y, player, points]) => player === meuId)
+            .filter(([id, name, x, y, player]) => player === meuId)
             .sort((a, b) => {
                 const nomeA = a[1].toLowerCase();
                 const nomeB = b[1].toLowerCase();
@@ -56,12 +57,37 @@
         }
     }
 
+    function salvarConfiguracoes() {
+        const config = {
+            coordAtual: document.getElementById('coordAtual').value,
+            campoValor: document.getElementById('campoValor').value,
+            minPontos: document.getElementById('minPontos').value,
+            maxPontos: document.getElementById('maxPontos').value
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+        UI.InfoMessage('Configurações salvas!');
+    }
+
+    function carregarConfiguracoes() {
+        const data = localStorage.getItem(STORAGE_KEY);
+        if (!data) return;
+        try {
+            const cfg = JSON.parse(data);
+            if (cfg.coordAtual) document.getElementById('coordAtual').value = cfg.coordAtual;
+            if (cfg.campoValor) document.getElementById('campoValor').value = cfg.campoValor;
+            if (cfg.minPontos) document.getElementById('minPontos').value = cfg.minPontos;
+            if (cfg.maxPontos) document.getElementById('maxPontos').value = cfg.maxPontos;
+        } catch (e) {
+            console.error('Erro ao carregar config:', e);
+        }
+    }
+
     const html = `
         <div style="font-family: Verdana, sans-serif; font-size: 10px; color: #000; line-height: 1.1; max-width: 260px; width: 100%;">
             <div style="margin-bottom: 6px;">
                 <h2>Buscar aldeias bárbaras</h2>
                 <label for="coordAtual" style="font-weight: bold; display: block; margin-bottom: 1px;">Aldeia Atual:</label>
-                <select id="coordAtual" style="width: 100%; padding: 3px 5px; font-weight: bold; border: 1px solid #603000; background: #fff3cc; color: #000; box-sizing: border-box; border-radius: 2px; font-size: 10px;">
+                <select id="coordAtual" style="width: 100%; padding: 3px 5px; font-weight: bold; border: 1px solid #603000; background: #fff3cc; color: #000; border-radius: 2px; font-size: 10px;">
                     <option>Carregando...</option>
                 </select>
             </div>
@@ -69,15 +95,15 @@
             <div style="display: flex; gap: 6px; margin-bottom: 6px;">
                 <div style="flex: 1;">
                     <label for="campoValor" style="font-weight: bold; display: block; margin-bottom: 1px;">Campo:</label>
-                    <input id="campoValor" type="number" value="50" min="1" style="width: 100%; padding: 3px 5px; font-weight: bold; border: 1px solid #603000; background: #fff3cc; color: #000; box-sizing: border-box; border-radius: 2px; font-size: 10px;">
+                    <input id="campoValor" type="number" value="50" min="1" style="width: 100%; padding: 3px 5px; border: 1px solid #603000; background: #fff3cc; font-size: 10px;">
                 </div>
                 <div style="flex: 1;">
                     <label for="minPontos" style="font-weight: bold; display: block; margin-bottom: 1px;">Pontos min.:</label>
-                    <input id="minPontos" type="number" value="26" min="0" style="width: 100%; padding: 3px 5px; font-weight: bold; border: 1px solid #603000; background: #fff3cc; color: #000; box-sizing: border-box; border-radius: 2px; font-size: 10px;">
+                    <input id="minPontos" type="number" value="26" min="0" style="width: 100%; padding: 3px 5px; border: 1px solid #603000; background: #fff3cc; font-size: 10px;">
                 </div>
                 <div style="flex: 1;">
                     <label for="maxPontos" style="font-weight: bold; display: block; margin-bottom: 1px;">Pontos max.:</label>
-                    <input id="maxPontos" type="number" value="12154" min="0" style="width: 100%; padding: 3px 5px; font-weight: bold; border: 1px solid #603000; background: #fff3cc; color: #000; box-sizing: border-box; border-radius: 2px; font-size: 10px;">
+                    <input id="maxPontos" type="number" value="12154" min="0" style="width: 100%; padding: 3px 5px; border: 1px solid #603000; background: #fff3cc; font-size: 10px;">
                 </div>
             </div>
 
@@ -85,7 +111,7 @@
                 <button id="btnFiltro" class="btn btn-confirm-yes" style="margin-right: 6px; font-size: 10px; padding: 2px 6px;">Filtro</button>
                 <button id="btnReset" class="btn btn-confirm-no" style="margin-right: 6px; font-size: 10px; padding: 2px 6px;">Reset</button>
                 <button id="btnCopiar" class="btn" style="margin-right: 6px; font-size: 10px; padding: 2px 6px;">Copiar</button>
-                <button id="btnFechar" class="btn" style="font-size: 10px; padding: 2px 6px;">Fechar</button>
+                <button id="btnSalvar" class="btn" style="font-size: 10px; padding: 2px 6px;">Salvar</button>
             </div>
 
             <div>
@@ -97,8 +123,8 @@
     `;
 
     Dialog.show("tw_barbaras_filter_ultracompact", html);
-
     await carregarMinhasAldeias();
+    carregarConfiguracoes();
 
     function atualizarContador(qtd) {
         document.getElementById('contadorCoords').textContent =
@@ -112,6 +138,7 @@
         document.getElementById('maxPontos').value = 12154;
         document.getElementById('coordenadas').value = '';
         atualizarContador(0);
+        localStorage.removeItem(STORAGE_KEY);
     });
 
     document.getElementById('btnFiltro').addEventListener('click', async () => {
@@ -147,13 +174,10 @@
             UI.ErrorMessage('Nada para copiar!');
             return;
         }
-
         navigator.clipboard.writeText(texto)
             .then(() => UI.InfoMessage('Coordenadas copiadas!'))
             .catch(() => UI.ErrorMessage('Erro ao copiar as coordenadas!'));
     });
 
-    document.getElementById('btnFechar').addEventListener('click', () => {
-        Dialog.close();
-    });
+    document.getElementById('btnSalvar').addEventListener('click', salvarConfiguracoes);
 })();
