@@ -85,7 +85,7 @@
                 <button id="btnFiltro" class="btn btn-confirm-yes" style="margin-right: 6px; font-size: 10px; padding: 2px 6px;">Filtro</button>
                 <button id="btnReset" class="btn btn-confirm-no" style="margin-right: 6px; font-size: 10px; padding: 2px 6px;">Reset</button>
                 <button id="btnCopiar" class="btn" style="margin-right: 6px; font-size: 10px; padding: 2px 6px;">Copiar</button>
-                <button id="btnFechar" class="btn" style="font-size: 10px; padding: 2px 6px;">Salvar</button>
+                <button id="btnSalvar" class="btn" style="font-size: 10px; padding: 2px 6px;">Salvar</button>
             </div>
 
             <div>
@@ -99,6 +99,13 @@
     Dialog.show("tw_barbaras_filter_ultracompact", html);
 
     await carregarMinhasAldeias();
+
+    // Carregar configurações salvas
+    const saved = JSON.parse(localStorage.getItem('tw_barbaras_cfg') || '{}');
+    if (saved.coordAtual) document.getElementById('coordAtual').value = saved.coordAtual;
+    if (saved.campoValor) document.getElementById('campoValor').value = saved.campoValor;
+    if (saved.minPontos) document.getElementById('minPontos').value = saved.minPontos;
+    if (saved.maxPontos) document.getElementById('maxPontos').value = saved.maxPontos;
 
     function atualizarContador(qtd) {
         document.getElementById('contadorCoords').textContent =
@@ -153,7 +160,15 @@
             .catch(() => UI.ErrorMessage('Erro ao copiar as coordenadas!'));
     });
 
-    document.getElementById('btnFechar').addEventListener('click', () => {
-        Dialog.close();
+    // Botão SALVAR → salva no localStorage
+    document.getElementById('btnSalvar').addEventListener('click', () => {
+        const cfg = {
+            coordAtual: document.getElementById('coordAtual').value,
+            campoValor: document.getElementById('campoValor').value,
+            minPontos: document.getElementById('minPontos').value,
+            maxPontos: document.getElementById('maxPontos').value,
+        };
+        localStorage.setItem('tw_barbaras_cfg', JSON.stringify(cfg));
+        UI.InfoMessage('Configuração salva!');
     });
 })();
