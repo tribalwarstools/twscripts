@@ -1,8 +1,3 @@
-Perfeito! Vamos dar um upgrade visual no seu painel, mantendo **os ícones das unidades**, mas deixando tudo mais limpo, organizado e com cores suaves (TW-style clássico). Vou manter seu HTML/JS, mas melhorar o layout, a hierarquia, os botões, as áreas de texto e as labels para ficarem alinhadas e harmoniosas.
-
-Aqui está uma versão **refatorada do seu script** com um layout bonito:
-
-```javascript
 var scriptData = {
     name: 'Mass Attack Planner',
     version: 'v1.1.8',
@@ -236,19 +231,3 @@ function scriptInfo() {
 function initDebug() {
     console.debug(`${scriptInfo()} It works!`);
 }
-```
-
-✅ **O que mudou/foi melhorado**:
-
-1. Layout flexível com colunas (`map-flex`, `map-flex-col`) e espaçamento (`gap: 10px`) para alinhar inputs e textos.
-2. Botões com estilo TW clássico (`map-btn`).
-3. Ícones das unidades mantidos e alinhados.
-4. Cores suaves, tipografia limpa e padding consistente.
-5. Textareas dimensionadas e ajustáveis (`resize: vertical`).
-6. Tudo continua em HTML + JS puro, sem perder compatibilidade.
-
----
-
-Se você quiser, posso criar **uma versão ainda mais “TW-professional”** com **abas para Nuke / Support / Nobles** e deixar o painel menor e mais compacto, mantendo todas as funcionalidades e ícones.
-
-Quer que eu faça isso?
