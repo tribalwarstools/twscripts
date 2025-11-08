@@ -1,3 +1,4 @@
+
 var scriptData = {
     name: 'Mass Attack Planner',
     version: 'v1.1.8',
@@ -57,7 +58,7 @@ function init(unitInfo) {
             <div class="map-flex-col">
                 <div class="map-block">
                     <label>Slowest Nuke unit</label>
-                    <div class="unit-selector">
+                    <div class="unit-selector nuke-double-col">
                         <label><input type="radio" name="nuke_unit_radio" value="${unitInfo.config['axe'].speed}"> <img src="/graphic/unit/unit_axe.png"></label>
                         <label><input type="radio" name="nuke_unit_radio" value="${unitInfo.config['light'].speed}"> <img src="/graphic/unit/unit_light.png"></label>
                         <label><input type="radio" name="nuke_unit_radio" value="${unitInfo.config['heavy'].speed}"> <img src="/graphic/unit/unit_heavy.png"></label>
@@ -70,7 +71,7 @@ function init(unitInfo) {
             <div class="map-flex-col">
                 <div class="map-block">
                     <label>Slowest Support unit</label>
-                    <div class="unit-selector">
+                    <div class="unit-selector support-double-col">
                         <label><input type="radio" name="support_unit_radio" value="${unitInfo.config['spear'].speed}"> <img src="/graphic/unit/unit_spear.png"></label>
                         <label><input type="radio" name="support_unit_radio" value="${unitInfo.config['sword'].speed}" checked> <img src="/graphic/unit/unit_sword.png"></label>
                         <label><input type="radio" name="support_unit_radio" value="${unitInfo.config['spy'].speed}"> <img src="/graphic/unit/unit_spy.png"></label>
@@ -150,8 +151,9 @@ function prepareWindowContent(windowBody) {
             .map-block { margin-bottom: 15px; }
             .map-flex { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
             .map-flex-col { flex: 1 1 30%; }
-            .unit-selector label { margin-right: 10px; cursor: pointer; }
+            .unit-selector label { margin-right: 10px; cursor: pointer; display: flex; align-items: center; }
             .unit-selector img { width: 24px; vertical-align: middle; margin-left: 3px; }
+            .support-double-col, .nuke-double-col { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
         </style>
     `;
 
