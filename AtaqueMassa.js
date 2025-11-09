@@ -98,17 +98,24 @@ window.ScriptAPI = {
         var columns = [];
         var HTMLCollection = event.closest('tr').cells;
         Array.from(HTMLCollection).slice(1, -3).forEach((el) => columns.push(!el.className.includes('hidden') ? el.textContent : 0));
-        window.open('/game.php?village=' + window.APIUpdated.database[columns[0]] + '&screen=place', '_blank').onload = function (event) {
+
+        // --- ALTERAÇÃO SOLICITADA ---
+        var win = window.open('/game.php?village=' + window.APIUpdated.database[columns[0]] + '&screen=place', '_blank');
+        win.onload = function () {
             var units = columns.slice(2);
-            this.$('.unitsInput').each(function(i) {
-                return this.value = units[i];
+            win.$('.unitsInput').each(function(i) {
+                this.value = units[i];
             });
-            this.document.querySelector('.target-input-field').value = columns[1];
+            win.document.querySelector('.target-input-field').value = columns[1];
+            win.$("[name=attack]").click(); // <-- botão atacar automático
         };
+        // --- FIM DA ALTERAÇÃO ---
     },
+
     closeScript: function(event) {
         return document.querySelector('.vis.content-border').remove();
     },
+
     convertToValidFormat: function (timestamp) {
         var [date, time] = timestamp.split(' ');
         var [day, month, year] = date.split('/');
