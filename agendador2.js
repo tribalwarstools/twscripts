@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TW Scheduler: agendamento de ataque (origem por coordenada)
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Agenda ataques digitando coordenada da aldeia origem (busca ID via village.txt automaticamente)
 // @author       Você
 // @match        https://*.tribalwars.com.br/*
@@ -92,6 +92,7 @@
   const statusEl = document.getElementById('twsched_status');
   document.getElementById('twsched_close').onclick = () => panel.style.display = 'none';
 
+  // === salvar e carregar ===
   function saveConfig() {
     const cfg = {};
     TROOP_KEYS.forEach(k => {
@@ -133,45 +134,54 @@
     return villageMap[coordStr.trim()] || null;
   }
 
-  async function buildPlaceURL(cfg) {
-    const origemCoord = cfg.coord_origem?.trim();
-    let origemId = 0;
-    if (origemCoord) origemId = await coordToVillageId(origemCoord) || 0;
-    const [x, y] = parseCoord(cfg.coord || '');
-    const troopParams = [
-      `att_spear=${cfg.spear||0}`, `att_sword=${cfg.sword||0}`, `att_axe=${cfg.axe||0}`,
-      `att_archer=${cfg.archer||0}`, `att_spy=${cfg.spy||0}`, `att_light=${cfg.light||0}`,
-      `att_marcher=${cfg.marcher||0}`, `att_heavy=${cfg.heavy||0}`, `att_ram=${cfg.ram||0}`,
-      `att_catapult=${cfg.catapult||0}`, `att_knight=${cfg.knight||0}`, `att_snob=${cfg.snob||0}`
-    ].join('&');
-    return `${location.protocol}//${location.host}/game.php?village=${origemId}&screen=place&x=${x}&y=${y}&${troopParams}`;
-  }
-
+  // === Executa ataque ===
   async function executeAttack(cfg) {
-    const url = await buildPlaceURL(cfg);
+    const origemCoord = cfg.coord_origem?.trim();
+    const origemId = await coordToVillageId(origemCoord);
+    if (!origemId) return alert('Aldeia de origem não encontrada!');
+
+    const [x, y] = parseCoord(cfg.coord || '');
+    const url = `${location.protocol}//${location.host}/game.php?village=${origemId}&screen=place`;
+
     const win = window.open(url, '_blank');
     statusEl.textContent = 'Abrindo tela de envio...';
 
-    if (!cfg.auto_confirm) return;
-    const start = Date.now();
-    const interval = setInterval(() => {
-      if (!win || win.closed) return clearInterval(interval);
+    const checkReady = setInterval(() => {
       try {
+        if (!win || win.closed) return clearInterval(checkReady);
         const doc = win.document;
-        const attackBtn = doc.querySelector('[name=attack]');
-        if (attackBtn) {
-          attackBtn.click();
-          setTimeout(() => {
-            const confirm = doc.querySelector('[name=submit]');
-            if (confirm) confirm.click();
-          }, 500);
-          clearInterval(interval);
+        const coordInput = doc.querySelector('#inputx');
+        if (coordInput) {
+          // preencher coordenadas alvo
+          doc.querySelector('#inputx').value = x;
+          doc.querySelector('#inputy').value = y;
+
+          // preencher tropas
+          for (const t of ['spear','sword','axe','archer','spy','light','marcher','heavy','ram','catapult','knight','snob']) {
+            const val = parseInt(cfg[t]) || 0;
+            const field = doc.querySelector(`#unit_input_${t}`);
+            if (field) field.value = val;
+          }
+
+          // clicar em atacar
+          const attackBtn = doc.querySelector('[name=attack]');
+          if (attackBtn) {
+            attackBtn.click();
+
+            if (cfg.auto_confirm) {
+              setTimeout(() => {
+                const confirm = doc.querySelector('[name=submit]');
+                if (confirm) confirm.click();
+              }, 500);
+            }
+          }
+          clearInterval(checkReady);
         }
       } catch {}
-      if (Date.now() - start > 15000) clearInterval(interval);
     }, 300);
   }
 
+  // === Agendador ===
   function startScheduler() {
     const cfg = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     if (!cfg.datetime) return;
@@ -192,6 +202,7 @@
     }, 1000);
   }
 
+  // === Botões ===
   document.getElementById('twsched_save').onclick = () => {
     const dt = el('datetime').value.trim();
     if (!dt || isNaN(parseDateTimeToMs(dt))) return alert('Data/hora inválida.');
@@ -206,6 +217,7 @@
     statusEl.textContent = 'Configuração limpa.';
   };
 
+  // inicialização
   loadConfig();
   startScheduler();
   statusEl.textContent = 'Pronto. Preencha e clique em "Salvar & Agendar".';
