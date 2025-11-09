@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW Scheduler Avançado (Múltiplos Agendamentos + Tema TW + Status Detalhado)
+// @name         TW Scheduler Avançado (Select de Aldeia Origem + Limpeza de Nome)
 // @namespace    http://tampermonkey.net/
-// @version      2.1
-// @description  Agenda múltiplos ataques com contagem regressiva de todos os agendamentos ativos e visual Tribal Wars
+// @version      2.4
+// @description  Agenda múltiplos ataques com contagem regressiva, visual Tribal Wars e seletor de aldeias de origem (sem input manual), com nomes decodificados corretamente no select.
 // @author       Você
 // @match        https://*.tribalwars.com.br/*
 // @grant        none
@@ -16,18 +16,26 @@
   const world = location.hostname.split('.')[0];
   const VILLAGE_TXT_URL = `https://${world}.tribalwars.com.br/map/village.txt`;
 
-  // === carregar village.txt ===
+  // === carregar village.txt e montar mapa ===
   async function loadVillageTxt() {
     const response = await fetch(VILLAGE_TXT_URL);
     const text = await response.text();
     const map = {};
+    const myVillages = [];
     for (const line of text.trim().split('\n')) {
-      const [id, name, x, y] = line.split(',');
+      const [id, name, x, y, playerId] = line.split(',');
       map[`${x}|${y}`] = id;
+      if (playerId === game_data.player.id.toString()) {
+        // 🔹 decodifica caracteres (%20 -> espaço, %5B -> [, etc.)
+        const decodedName = decodeURIComponent(name);
+        const cleanName = decodedName.replace(/[+]/g, '').trim(); // remove apenas "+"
+        myVillages.push({ id, name: cleanName, coord: `${x}|${y}` });
+      }
     }
-    return map;
+    return { map, myVillages };
   }
-  const villageMap = await loadVillageTxt();
+
+  const { map: villageMap, myVillages } = await loadVillageTxt();
 
   // === painel ===
   const panel = document.createElement('div');
@@ -38,7 +46,7 @@
         position: fixed;
         right: 10px;
         bottom: 10px;
-        width: 430px;
+        width: 440px;
         z-index: 99999;
         font-family: 'Verdana', sans-serif;
         background: url('https://dsen.innogamescdn.com/asset/efb4e9b/graphic/background/wood.jpg') #2b1b0f;
@@ -55,7 +63,7 @@
         text-align:center;
         text-shadow: 1px 1px 2px #000;
       }
-      #tws-panel input, #tws-panel button {
+      #tws-panel input, #tws-panel select, #tws-panel button {
         border-radius: 5px;
         border: 1px solid #5c3a1e;
         background: #1e1408;
@@ -93,9 +101,7 @@
         border-radius: 4px;
         cursor: pointer;
       }
-      #tws-schedule-table td button:hover {
-        background: #e44;
-      }
+      #tws-schedule-table td button:hover { background: #e44; }
       details summary {
         cursor:pointer;
         color:#ffd700;
@@ -115,8 +121,10 @@
 
     <h3>⚔️ TW Scheduler Avançado ⚔️</h3>
 
-    <label>Aldeia Origem (coord X|Y):</label>
-    <input id="tws-origem" placeholder="500|500" style="width:100%;margin-bottom:4px"/>
+    <label for="tws-select-origem">Aldeia Origem:</label>
+    <select id="tws-select-origem" style="width:100%;margin-bottom:4px">
+      <option value="">Selecione sua aldeia...</option>
+    </select>
 
     <label>Alvo (coord X|Y):</label>
     <input id="tws-alvo" placeholder="400|500" style="width:100%;margin-bottom:4px"/>
@@ -154,6 +162,15 @@
     <div id="tws-status">Aguardando agendamentos...</div>
   `;
   document.body.appendChild(panel);
+
+  // === preencher select com aldeias do jogador ===
+  const selectOrigem = document.getElementById('tws-select-origem');
+  myVillages.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.id; // guardamos ID
+    opt.textContent = `${v.name} (${v.coord})`;
+    selectOrigem.appendChild(opt);
+  });
 
   // === utilitários ===
   const el = id => document.getElementById(id);
@@ -195,7 +212,7 @@
 
   // === executar envio ===
   async function executeAttack(cfg) {
-    const origemId = villageMap[cfg.origem];
+    const origemId = cfg.origemId || villageMap[cfg.origem];
     if (!origemId) return alert(`Origem ${cfg.origem} não encontrada!`);
     const [x, y] = cfg.alvo.split('|');
     const url = `${location.protocol}//${location.host}/game.php?village=${origemId}&screen=place`;
@@ -229,7 +246,7 @@
     }, 300);
   }
 
-  // === agendador múltiplo com listagem ===
+  // === agendador múltiplo ===
   function startScheduler() {
     setInterval(() => {
       const list = getSchedules();
@@ -250,21 +267,24 @@
       }
 
       setSchedules(list);
-
-      if (pendingLines.length)
-        statusEl.innerHTML = `<strong>Aguardando:</strong><br>${pendingLines.join('<br>')}`;
-      else
-        statusEl.textContent = 'Sem agendamentos ativos.';
+      statusEl.innerHTML = pendingLines.length
+        ? `<strong>Aguardando:</strong><br>${pendingLines.join('<br>')}`
+        : 'Sem agendamentos ativos.';
     }, 1000);
   }
 
   // === eventos ===
   el('tws-add').onclick = () => {
-    const origem = parseCoord(el('tws-origem').value);
+    const selectVal = el('tws-select-origem').value;
     const alvo = parseCoord(el('tws-alvo').value);
     const dt = el('tws-datetime').value.trim();
-    if (!origem || !alvo || isNaN(parseDateTimeToMs(dt))) return alert('Verifique coordenadas e data!');
-    const cfg = { origem, alvo, datetime: dt, open: el('tws-open').checked, auto: el('tws-auto').checked };
+
+    if (!selectVal || !alvo || isNaN(parseDateTimeToMs(dt)))
+      return alert('Selecione uma aldeia de origem válida e verifique coordenadas e data!');
+
+    const origem = myVillages.find(v => v.id === selectVal)?.coord;
+    const origemId = selectVal || villageMap[origem];
+    const cfg = { origem, origemId, alvo, datetime: dt, open: el('tws-open').checked, auto: el('tws-auto').checked };
     TROOP_LIST.forEach(u => cfg[u] = el(`tws-${u}`).value);
     const list = getSchedules();
     list.push(cfg);
