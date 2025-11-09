@@ -23,6 +23,41 @@ window.ScriptAPI = {
     formatDateTime: function ($date) {
         return ('' + $date.getDate()).padStart(2, '0') + '/' + ('' + ($date.getMonth() + 1)).padStart(2, '0') + '/' + $date.getFullYear() + ' ' + ('' + $date.getHours()).padStart(2, '0') + ':' + ('' + $date.getMinutes()).padStart(2, '0') + ':' + ('' + $date.getSeconds()).padStart(2, '0');
     },
+
+    // ------- SALVAR / RESETAR CONFIGURAÇÕES -------
+    saveConfig: function() {
+        var config = {
+            arrival: document.querySelector('.arrival').value,
+            sigil: document.querySelector('.sigil').value,
+            coordinates: document.querySelector('.coordinates').value,
+            targets: document.querySelector('.targets').value,
+            unit: document.querySelector('input[name="chosen_units"]:checked').value
+        };
+        localStorage.setItem("MassPlannerConfig", JSON.stringify(config));
+        UI.SuccessMessage("Configurações salvas!");
+    },
+
+    resetConfig: function() {
+        localStorage.removeItem("MassPlannerConfig");
+        document.querySelector('.arrival').value = "";
+        document.querySelector('.sigil').value = "";
+        document.querySelector('.coordinates').value = "";
+        document.querySelector('.targets').value = "";
+        document.querySelector('#unit_ram').checked = true;
+        UI.SuccessMessage("Configurações resetadas!");
+    },
+
+    loadConfig: function() {
+        var config = JSON.parse(localStorage.getItem("MassPlannerConfig"));
+        if(!config) return;
+        document.querySelector('.arrival').value = config.arrival;
+        document.querySelector('.sigil').value = config.sigil;
+        document.querySelector('.coordinates').value = config.coordinates;
+        document.querySelector('.targets').value = config.targets;
+        document.querySelector('#unit_' + config.unit).checked = true;
+    },
+    // ------------------------------------------------
+
     RequestAPI: function(event) {
         return new Promise(async (resolve) => {
             try {
@@ -60,7 +95,6 @@ window.ScriptAPI = {
         });
     },
     RequestXML: function(event) {
-        / ABRIR NOVA ABA COM AS UNIDADES PREENCHIDAS /;
         var columns = [];
         var HTMLCollection = event.closest('tr').cells;
         Array.from(HTMLCollection).slice(1, -3).forEach((el) => columns.push(!el.className.includes('hidden') ? el.textContent : 0));
@@ -80,8 +114,8 @@ window.ScriptAPI = {
         var [day, month, year] = date.split('/');
         return year + '-' + month + '-' + day + ' ' + time;
     },
+
     exportBBCode: function(event) {
-        / INICIAR EXPORTAÇÃO EM BB CODE /;
         var content = '[table][**]Unidade[||]Origem[||]Destino[||]Hora de Lançamento[||]Enviar[/**]';
         $('.commands-found tr').slice(1).each(function(i) {
             var columns = Array.from(this.cells), village = columns[1].textContent, target = columns[2].textContent, launchTime = columns.slice(-3)[0].textContent;
@@ -96,26 +130,28 @@ window.ScriptAPI = {
         content += '[/table]';
         return navigator.clipboard.writeText(content), UI.SuccessMessage('BB Code copiado!');
     },
+
     initCalculate: function (event) {
-        / INICIAR CÁLCULO DOS TEMPOS /;
         var unformattedTime = $('.server_info')[0].firstElementChild;
         var currentTime = new Date(this.convertToValidFormat(`${unformattedTime.nextElementSibling.innerHTML} ${unformattedTime.innerHTML}`));
         var landingTime = new Date(this.convertToValidFormat(document.querySelector('.arrival').value));
         var sigil = document.querySelector('.sigil').value;
-        / FORMATAR TEXTAREA /;
+
         document.querySelectorAll('textarea').forEach(el => /\d{1,3}\|\d{1,3}/.test(el.value) && (el.value = el.value.match(/(\d{1,3}\|\d{1,3})/g).join(' ')));
-        / ENCONTRAR TODAS AS ALDEIAS E TROPAS DISPONÍVEIS /;
+
         $.ajax({'url': game_data.link_base_pure + 'overview_villages&type=own_home&mode=units&group=0', 'method': 'GET'}).then(($xml) => {
             var realUnits = {}, realCombinations = [], realCoordinates = {};
             this.value = document.querySelector('input:checked').value;
             document.querySelector('.coordinates').value.split(' ').forEach((coord) => realCoordinates[coord] = true);
+
             $($xml).find('.quickedit-label').each(function (i, coord) {
                 if (typeof realCoordinates[coord = this.textContent.match(/(\d{1,3}\|\d{1,3})/)[0]] === 'boolean') {
                     $(this).closest('tr').find('.unit-item').each(function (i, amount) {
                         realUnits[game_data.units[i]] = Number(this.textContent);
                     });
-                    / ENCONTRAR COMBINAÇÕES POSSÍVEIS /;
+
                     const {spear, sword, axe, archer, spy, light, marcher, heavy, ram, catapult, knight, snob} = realUnits; 
+
                     document.querySelector('.targets').value.split(' ').forEach((target, index) => {
                         (launchTime = ScriptAPI.calculateTimes(landingTime, currentTime, sigil, coord, target, window.APIUpdated.units[ScriptAPI.value])) && realUnits[ScriptAPI.value] && realCombinations.push({
                             'coord': coord, 'target': target, 'spear': spear, 'sword': sword, 'axe': axe, 'archer': archer, 'spy': spy, 'light': light, 'marcher': marcher, 'heavy': heavy, 'ram': ram, 'catapult': catapult, 'knight': knight, 'snob': snob, 'launchTime': launchTime,
@@ -123,17 +159,20 @@ window.ScriptAPI = {
                     }); 
                 };
             });
+
             realCombinations.sort((a, b) => {
                 return a.launchTime - b.launchTime;
             });
+
             realCombinations = realCombinations.slice(0, 500);
+
             if (!realCombinations.length) {
                 UI.ErrorMessage('Nenhuma possibilidade encontrada!');
             } else {
-                / CRIAR TABELA DINÂMICA /;
                 var innerHTML = '<label><span>&nbsp;' + realCombinations.length + '</span>&nbsp;combinações encontradas</label><div class="container" style="max-height: 300px; overflow: auto"><table width="100%"><thead><tr><th style="text-align: center">#</th><th>Origem</th><th>Destino</th>';
                 game_data.units.slice(0, -1).forEach((unit, i) => innerHTML += '<th><label for="unit_' + unit + '"><img src="/graphic/unit/unit_' + unit + '.png"></label></th>');
                 innerHTML += '<th>Hora de Lançamento</th><th>Enviar em</th><th style="text-align: center">Enviar</th></tr></thead><tbody>';
+
                 realCombinations.forEach((village, index) => {
                     innerHTML += '<tr><td align="center">' + (index + 1) + '</td><td align="center"><a href="/game.php?village=' + window.APIUpdated.database[village.coord] + '&screen=overview" target="_blank" rel="noopener noreferrer">' + village.coord + '</a></td><td align="center"><a href="' + game_data.link_base_pure + 'info_village&id=' + window.APIUpdated.database[village.target] + '"target="_blank" rel="noopener noreferrer">' + village.target + '</a></td>';
                     game_data.units.slice(0, -1).forEach((unit, i) => {
@@ -141,22 +180,31 @@ window.ScriptAPI = {
                     });
                     innerHTML += '<td>' + this.formatDateTime(village.launchTime) + '</td><td><span class="timer">' + this.secondsToHms((village.launchTime - currentTime) / 1000) + '</span</td><td align="center"><input type="button" class="btn" style="padding: 3px" onclick="ScriptAPI.RequestXML(this)" value="ENVIAR"></td></tr>';
                 }); 
-                innerHTML += '</tbody></table></div>'; document.querySelector('.commands-found').innerHTML = innerHTML;
-                Timing.tickHandlers.timers.init(); $(window.TribalWars).on('global_tick', function (event) {
+                innerHTML += '</tbody></table></div>'; 
+                document.querySelector('.commands-found').innerHTML = innerHTML;
+
+                Timing.tickHandlers.timers.init(); 
+                $(window.TribalWars).on('global_tick', function (event) {
                     event = $('#ds_body > div.vis.content-border.ui-draggable.ui-draggable-handle > div.commands-found > div > table > tbody > tr:nth-child(1) > td:nth-child(15) > span'), event.prop('textContent') === '0:00:00' ? event.closest('tr').remove() : event.prop('textContent') === '0:00:10' && TribalWars.playSound('chat');
                 });
             }
         });
     },
 };
+
 / CONTEÚDO HTML EM STRING /;
 ScriptAPI.stringHTML = '<div class="vis content-border" style="width: 789px; border-radius: 8px 8px 8px 8px; z-index: 7; position: fixed; left: 20%; top: 20%; cursor: move"><div class="close"><a style="position: absolute; top: 5px; right: 10px; z-index: 1; font-size: large" onclick="ScriptAPI.closeScript(this)" href="#">X</a></div><div class="content-title"><table width="100%"><tbody><tr><th style="text-align: center; white-space: nowrap; padding: 6px" colspan="4"><h3 style="margin: 0px">PLANEJADOR DE ATAQUE EM MASSA</h3></th></tr><tr><td align="center"><strong>HORA DE CHEGADA:</strong></td><td><input type="text" class="arrival" style="font-size: 13pt" placeholder="DD/MM/AAAA 00:00:00"></td><td align="center"><strong>SINAL DE AFLIÇÃO:</strong></td><td><input type="text" class="sigil" style="width: 49px; font-size: 13pt" placeholder="00"></td></tr></tbody></table></div><div class="container"><table width="100%"><thead><tr>';
 game_data.units.slice(0, -1).forEach((units, i) => ScriptAPI.stringHTML += '<th><label for="unit_' + units + '"><img src="/graphic/unit/unit_' + units + '.png"></label></th>');
 ScriptAPI.stringHTML += '</tr></thead><tbody><tr>';
 game_data.units.slice(0, -1).forEach((units, i) => ScriptAPI.stringHTML += '<td><input type="radio" id="unit_' + units + '" name="chosen_units" value="' + units + '"' + (units === 'ram' ? 'checked' : '') + '></td>');
-ScriptAPI.stringHTML += '</tr></tbody></table></div><div class="textarea-content"><table width="100%"><thead><tr><th><label for="coordinates"><strong>SUAS ALDEIAS:</strong></label></th></tr></thead><tbody><tr><td><textarea class="coordinates" style="background: none; font-size: 11pt; resize: none; width: 775px; height: 50px;"></textarea></td></tr></tbody><thead><tr><th><label for="targets"><strong>ALDEIAS ALVO:</strong></label></th></tr></thead><tbody><tr><td><textarea class="targets" style="background: none; font-size: 11pt; resize: none; width: 775px; height: 50px;"></textarea></td></tr></tbody></table></div><div class="action-content"><input type="button" class="btn" style="margin: 4px; margin-top: auto" onclick="ScriptAPI.initCalculate(this)" value="CALCULAR TEMPOS"><input type="button" class="btn" style="margin: 4px; margin-top: auto" onclick="ScriptAPI.exportBBCode(this)" value="EXPORTAR BB CODE"></div><div class="commands-found"></div></div>';
+ScriptAPI.stringHTML += '</tr></tbody></table></div><div class="textarea-content"><table width="100%"><thead><tr><th><label for="coordinates"><strong>SUAS ALDEIAS:</strong></label></th></tr></thead><tbody><tr><td><textarea class="coordinates" style="background: none; font-size: 11pt; resize: none; width: 775px; height: 50px;"></textarea></td></tr></tbody><thead><tr><th><label for="targets"><strong>ALDEIAS ALVO:</strong></label></th></tr></thead><tbody><tr><td><textarea class="targets" style="background: none; font-size: 11pt; resize: none; width: 775px; height: 50px;"></textarea></td></tr></tbody></table></div><div class="action-content"><input type="button" class="btn" style="margin: 4px; margin-top: auto" onclick="ScriptAPI.initCalculate(this)" value="CALCULAR TEMPOS"><input type="button" class="btn" style="margin: 4px; margin-top: auto" onclick="ScriptAPI.exportBBCode(this)" value="EXPORTAR BB CODE"><input type="button" class="btn" style="margin: 4px; margin-top: auto" onclick="ScriptAPI.saveConfig()" value="SALVAR"><input type="button" class="btn" style="margin: 4px; margin-top: auto" onclick="ScriptAPI.resetConfig()" value="RESETAR"></div><div class="commands-found"></div></div>';
+
 $(document.body).append(ScriptAPI.stringHTML);
 $('.vis.content-border').draggable();
+
+// carregar configs ao abrir
+ScriptAPI.loadConfig();
+
 / BASE DE DADOS E UNIDADES ATUALIZADAS (1X POR HORA) /;
 var updatedTime = Date.now();
 var APIUpdated = JSON.parse(localStorage.getItem('APIUpdated'));
