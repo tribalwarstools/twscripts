@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         TW Scheduler: agendamento de ataque (origem por coordenada)
+// @name         TW Scheduler Avançado (Múltiplos Agendamentos + Tema TW + Status Detalhado)
 // @namespace    http://tampermonkey.net/
-// @version      1.5
-// @description  Agenda ataques digitando coordenada da aldeia origem (busca ID via village.txt automaticamente)
+// @version      2.1
+// @description  Agenda múltiplos ataques com contagem regressiva de todos os agendamentos ativos e visual Tribal Wars
 // @author       Você
 // @match        https://*.tribalwars.com.br/*
 // @grant        none
@@ -11,22 +11,17 @@
 (async function () {
   'use strict';
 
-  const STORAGE_KEY = 'tw_scheduler_config_v4';
-  const TROOP_KEYS = [
-    'coord_origem','coord','datetime','open_popup','auto_confirm',
-    'spear','sword','axe','archer','spy','light','marcher','heavy','ram','catapult','knight','snob'
-  ];
-
-  // === carregar village.txt ===
+  const STORAGE_KEY = 'tw_scheduler_multi_v1';
+  const TROOP_LIST = ['spear','sword','axe','archer','spy','light','marcher','heavy','ram','catapult','knight','snob'];
   const world = location.hostname.split('.')[0];
   const VILLAGE_TXT_URL = `https://${world}.tribalwars.com.br/map/village.txt`;
 
+  // === carregar village.txt ===
   async function loadVillageTxt() {
     const response = await fetch(VILLAGE_TXT_URL);
     const text = await response.text();
-    const lines = text.trim().split('\n');
     const map = {};
-    for (const line of lines) {
+    for (const line of text.trim().split('\n')) {
       const [id, name, x, y] = line.split(',');
       map[`${x}|${y}`] = id;
     }
@@ -36,189 +31,254 @@
 
   // === painel ===
   const panel = document.createElement('div');
-  panel.style = `
-    position:fixed;right:12px;bottom:12px;width:380px;z-index:999999;
-    background:#1b1b1b;color:#fff;border:1px solid #2f2f2f;border-radius:8px;
-    padding:10px;font-family:Arial,sans-serif;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,0.6);
-  `;
+  panel.id = 'tws-panel';
   panel.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <strong>TW Scheduler</strong>
-      <button id="twsched_close" style="background:#3a3a3a;color:#fff;border:none;padding:4px 6px;border-radius:4px;cursor:pointer">X</button>
-    </div>
+    <style>
+      #tws-panel {
+        position: fixed;
+        right: 10px;
+        bottom: 10px;
+        width: 430px;
+        z-index: 99999;
+        font-family: 'Verdana', sans-serif;
+        background: url('https://dsen.innogamescdn.com/asset/efb4e9b/graphic/background/wood.jpg') #2b1b0f;
+        color: #f5deb3;
+        border: 2px solid #654321;
+        border-radius: 8px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.7);
+        padding: 10px;
+      }
+      #tws-panel h3 {
+        margin: 0 0 6px 0;
+        font-size: 15px;
+        color: #ffd700;
+        text-align:center;
+        text-shadow: 1px 1px 2px #000;
+      }
+      #tws-panel input, #tws-panel button {
+        border-radius: 5px;
+        border: 1px solid #5c3a1e;
+        background: #1e1408;
+        color: #fff;
+        padding: 5px;
+        font-size: 12px;
+      }
+      #tws-panel button {
+        cursor: pointer;
+        background: #6b4c2a;
+        color: #f8e6c2;
+        transition: 0.2s;
+      }
+      #tws-panel button:hover { background: #8b652e; }
+      #tws-schedule-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 8px;
+      }
+      #tws-schedule-table th, #tws-schedule-table td {
+        border: 1px solid #3d2a12;
+        padding: 4px;
+        text-align: center;
+      }
+      #tws-schedule-table th {
+        background: #3d2a12;
+        color: #ffd700;
+      }
+      #tws-schedule-table td button {
+        background: #b33;
+        border: none;
+        color: white;
+        padding: 3px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #tws-schedule-table td button:hover {
+        background: #e44;
+      }
+      details summary {
+        cursor:pointer;
+        color:#ffd700;
+        margin-top:6px;
+      }
+      #tws-status {
+        font-size:11px;
+        margin-top:5px;
+        opacity:0.9;
+        max-height:150px;
+        overflow-y:auto;
+        background:rgba(0,0,0,0.3);
+        padding:4px;
+        border-radius:5px;
+      }
+    </style>
 
-    <div style="margin-bottom:6px;">
-      <label style="display:block;margin-bottom:4px">Aldeia origem (coordenada X|Y)</label>
-      <input id="twsched_coord_origem" type="text" placeholder="500|500" style="width:100%;padding:6px;border-radius:4px;border:1px solid #333;background:#111;color:#fff" />
-    </div>
+    <h3>⚔️ TW Scheduler Avançado ⚔️</h3>
 
-    <div style="margin-bottom:6px;">
-      <label style="display:block;margin-bottom:4px">Coordenadas do alvo (X|Y)</label>
-      <input id="twsched_coord" type="text" placeholder="400|500" style="width:100%;padding:6px;border-radius:4px;border:1px solid #333;background:#111;color:#fff" />
-    </div>
+    <label>Aldeia Origem (coord X|Y):</label>
+    <input id="tws-origem" placeholder="500|500" style="width:100%;margin-bottom:4px"/>
 
-    <details style="margin-bottom:6px">
-      <summary style="cursor:pointer;padding:6px 0">Tropas (deixe 0 se não enviar)</summary>
-      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:6px">
-        ${['spear','sword','axe','archer','spy','light','marcher','heavy','ram','catapult','knight','snob'].map(u => `
-          <div style="display:flex;flex-direction:column;align-items:center">
-            <img src="/graphic/unit/unit_${u}.png" title="${u}" style="height:20px;margin-bottom:2px;">
-            <input id="twsched_${u}" type="number" min="0" value="0" style="width:40px;padding:2px;border-radius:4px;border:1px solid #333;background:#111;color:#fff;text-align:center" />
+    <label>Alvo (coord X|Y):</label>
+    <input id="tws-alvo" placeholder="400|500" style="width:100%;margin-bottom:4px"/>
+
+    <details>
+      <summary>Selecionar tropas</summary>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:4px">
+        ${TROOP_LIST.map(u => `
+          <div style="text-align:center">
+            <img src="/graphic/unit/unit_${u}.png" title="${u}" style="height:18px;"><br>
+            <input type="number" id="tws-${u}" min="0" value="0" style="width:45px;text-align:center">
           </div>
         `).join('')}
       </div>
     </details>
 
-    <div style="margin-bottom:6px;">
-      <label>Data e hora (DD/MM/AAAA HH:MM:SS)</label>
-      <input id="twsched_datetime" type="text" placeholder="09/11/2025 15:30:00" style="width:100%;padding:6px;border-radius:4px;border:1px solid #333;background:#111;color:#fff" />
+    <label>Data e hora (DD/MM/AAAA HH:MM:SS)</label>
+    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:100%;margin-bottom:4px"/>
+
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+      <label><input id="tws-open" type="checkbox"> Nova aba</label>
+      <label><input id="tws-auto" type="checkbox"> Auto-confirmar</label>
     </div>
 
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-      <label style="display:flex;align-items:center;gap:6px"><input id="twsched_open_popup" type="checkbox" /> Abrir em nova aba</label>
-      <label style="display:flex;align-items:center;gap:6px;margin-left:auto"><input id="twsched_auto_confirm" type="checkbox" /> Confirmar auto</label>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button id="tws-add" style="flex:1">➕ Adicionar</button>
+      <button id="tws-clear" style="flex:1">🗑️ Limpar Todos</button>
     </div>
 
-    <div style="display:flex;gap:6px">
-      <button id="twsched_save" style="flex:1;padding:8px;border-radius:6px;border:none;cursor:pointer;background:#2d8cff;color:#fff">Salvar & Agendar</button>
-      <button id="twsched_clear" style="flex:1;padding:8px;border-radius:6px;border:none;cursor:pointer;background:#555;color:#fff">Limpar</button>
-    </div>
+    <table id="tws-schedule-table">
+      <thead><tr><th>Origem</th><th>Alvo</th><th>Data/Hora</th><th>Ações</th></tr></thead>
+      <tbody id="tws-tbody"></tbody>
+    </table>
 
-    <div id="twsched_status" style="margin-top:8px;font-size:12px;opacity:0.9"></div>
+    <div id="tws-status">Aguardando agendamentos...</div>
   `;
   document.body.appendChild(panel);
 
-  const el = id => document.getElementById('twsched_' + id);
-  const statusEl = document.getElementById('twsched_status');
-  document.getElementById('twsched_close').onclick = () => panel.style.display = 'none';
+  // === utilitários ===
+  const el = id => document.getElementById(id);
+  const tbody = el('tws-tbody');
+  const statusEl = el('tws-status');
 
-  // === salvar e carregar ===
-  function saveConfig() {
-    const cfg = {};
-    TROOP_KEYS.forEach(k => {
-      const input = el(k);
-      if (!input) return;
-      cfg[k] = input.type === 'checkbox' ? input.checked : input.value;
-    });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-    return cfg;
-  }
-
-  function loadConfig() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    try {
-      const cfg = JSON.parse(raw);
-      TROOP_KEYS.forEach(k => {
-        const input = el(k);
-        if (!input) return;
-        if (input.type === 'checkbox') input.checked = !!cfg[k];
-        else input.value = cfg[k] ?? '';
-      });
-    } catch {}
-  }
-
-  function parseDateTimeToMs(dtStr) {
-    const m = dtStr.trim().match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/);
+  const parseDateTimeToMs = str => {
+    const m = str.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/);
     if (!m) return NaN;
-    const [_, d, mo, y, hh, mm, ss] = m;
+    const [, d, mo, y, hh, mm, ss] = m;
     return new Date(+y, +mo - 1, +d, +hh, +mm, +ss).getTime();
+  };
+  const parseCoord = s => s.trim().match(/^(\d+)\|(\d+)$/) ? s.trim() : null;
+
+  const getSchedules = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const setSchedules = l => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(l));
+    renderTable();
+  };
+
+  // === render tabela ===
+  function renderTable() {
+    const list = getSchedules();
+    tbody.innerHTML = list.map((a, i) => `
+      <tr>
+        <td>${a.origem}</td>
+        <td>${a.alvo}</td>
+        <td>${a.datetime}${a.done ? ' ✅' : ''}</td>
+        <td><button onclick="window.twsRemove(${i})">X</button></td>
+      </tr>
+    `).join('');
   }
 
-  function parseCoord(coordStr) {
-    const m = coordStr.trim().match(/^(\d+)\|(\d+)$/);
-    return m ? [m[1], m[2]] : [0, 0];
-  }
+  window.twsRemove = i => {
+    const list = getSchedules();
+    list.splice(i, 1);
+    setSchedules(list);
+  };
 
-  async function coordToVillageId(coordStr) {
-    return villageMap[coordStr.trim()] || null;
-  }
-
-  // === Executa ataque ===
+  // === executar envio ===
   async function executeAttack(cfg) {
-    const origemCoord = cfg.coord_origem?.trim();
-    const origemId = await coordToVillageId(origemCoord);
-    if (!origemId) return alert('Aldeia de origem não encontrada!');
-
-    const [x, y] = parseCoord(cfg.coord || '');
+    const origemId = villageMap[cfg.origem];
+    if (!origemId) return alert(`Origem ${cfg.origem} não encontrada!`);
+    const [x, y] = cfg.alvo.split('|');
     const url = `${location.protocol}//${location.host}/game.php?village=${origemId}&screen=place`;
-
-    const win = window.open(url, '_blank');
-    statusEl.textContent = 'Abrindo tela de envio...';
-
-    const checkReady = setInterval(() => {
+    const win = window.open(url, cfg.open ? '_blank' : '_self');
+    const int = setInterval(() => {
       try {
-        if (!win || win.closed) return clearInterval(checkReady);
+        if (!win || win.closed) return clearInterval(int);
         const doc = win.document;
-        const coordInput = doc.querySelector('#inputx');
-        if (coordInput) {
-          // preencher coordenadas alvo
-          doc.querySelector('#inputx').value = x;
+        const xField = doc.querySelector('#inputx');
+        if (xField) {
+          xField.value = x;
           doc.querySelector('#inputy').value = y;
-
-          // preencher tropas
-          for (const t of ['spear','sword','axe','archer','spy','light','marcher','heavy','ram','catapult','knight','snob']) {
-            const val = parseInt(cfg[t]) || 0;
-            const field = doc.querySelector(`#unit_input_${t}`);
-            if (field) field.value = val;
-          }
-
-          // clicar em atacar
-          const attackBtn = doc.querySelector('[name=attack]');
-          if (attackBtn) {
-            attackBtn.click();
-
-            if (cfg.auto_confirm) {
+          TROOP_LIST.forEach(u => {
+            const val = parseInt(cfg[u]) || 0;
+            const input = doc.querySelector(`#unit_input_${u}`);
+            if (input) input.value = val;
+          });
+          const atk = doc.querySelector('[name=attack]');
+          if (atk) {
+            atk.click();
+            if (cfg.auto) {
               setTimeout(() => {
-                const confirm = doc.querySelector('[name=submit]');
-                if (confirm) confirm.click();
-              }, 500);
+                const conf = doc.querySelector('[name=submit]');
+                if (conf) conf.click();
+              }, 400);
             }
           }
-          clearInterval(checkReady);
+          clearInterval(int);
         }
       } catch {}
     }, 300);
   }
 
-  // === Agendador ===
+  // === agendador múltiplo com listagem ===
   function startScheduler() {
-    const cfg = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    if (!cfg.datetime) return;
-    const target = parseDateTimeToMs(cfg.datetime);
-    const timer = setInterval(async () => {
-      const diff = target - Date.now();
-      if (diff > 0) {
-        statusEl.textContent = `Aguardando: ${Math.ceil(diff / 1000)}s (${cfg.datetime})`;
-      } else if (diff <= 0 && diff > -15000) {
-        clearInterval(timer);
-        localStorage.removeItem(STORAGE_KEY);
-        await executeAttack(cfg);
-        statusEl.textContent = 'Envio executado!';
-      } else if (diff < -15000) {
-        clearInterval(timer);
-        statusEl.textContent = 'Tarefa expirada.';
+    setInterval(() => {
+      const list = getSchedules();
+      const now = Date.now();
+      const pendingLines = [];
+
+      for (const a of list) {
+        const t = parseDateTimeToMs(a.datetime);
+        if (!t || a.done) continue;
+        const diff = t - now;
+        if (diff <= 0 && diff > -10000) {
+          a.done = true;
+          executeAttack(a);
+          pendingLines.push(`🔥 Ataque disparado: ${a.origem} → ${a.alvo}`);
+        } else if (diff > 0) {
+          pendingLines.push(`🕒 ${a.origem} → ${a.alvo} em ${Math.ceil(diff / 1000)}s`);
+        }
       }
+
+      setSchedules(list);
+
+      if (pendingLines.length)
+        statusEl.innerHTML = `<strong>Aguardando:</strong><br>${pendingLines.join('<br>')}`;
+      else
+        statusEl.textContent = 'Sem agendamentos ativos.';
     }, 1000);
   }
 
-  // === Botões ===
-  document.getElementById('twsched_save').onclick = () => {
-    const dt = el('datetime').value.trim();
-    if (!dt || isNaN(parseDateTimeToMs(dt))) return alert('Data/hora inválida.');
-    saveConfig();
-    startScheduler();
-    statusEl.textContent = 'Tarefa agendada.';
+  // === eventos ===
+  el('tws-add').onclick = () => {
+    const origem = parseCoord(el('tws-origem').value);
+    const alvo = parseCoord(el('tws-alvo').value);
+    const dt = el('tws-datetime').value.trim();
+    if (!origem || !alvo || isNaN(parseDateTimeToMs(dt))) return alert('Verifique coordenadas e data!');
+    const cfg = { origem, alvo, datetime: dt, open: el('tws-open').checked, auto: el('tws-auto').checked };
+    TROOP_LIST.forEach(u => cfg[u] = el(`tws-${u}`).value);
+    const list = getSchedules();
+    list.push(cfg);
+    setSchedules(list);
   };
 
-  document.getElementById('twsched_clear').onclick = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    TROOP_KEYS.forEach(k => { const i = el(k); if (i) i.value = ''; });
-    statusEl.textContent = 'Configuração limpa.';
+  el('tws-clear').onclick = () => {
+    if (confirm('Apagar todos os agendamentos?')) {
+      localStorage.removeItem(STORAGE_KEY);
+      renderTable();
+      statusEl.textContent = 'Lista limpa.';
+    }
   };
 
-  // inicialização
-  loadConfig();
+  renderTable();
   startScheduler();
-  statusEl.textContent = 'Pronto. Preencha e clique em "Salvar & Agendar".';
 })();
