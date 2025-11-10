@@ -117,7 +117,7 @@
       }
     </style>
 
-    <h3>⚔️ Agendador Avançado ⚔️</h3>
+    <h3>Agendador Avançado </h3>
 
     <label for="tws-select-origem">Aldeia Origem:</label>
     <select id="tws-select-origem" style="width:100%;margin-bottom:4px">
@@ -125,7 +125,7 @@
     </select>
 
     <label>Alvo (coord X|Y):</label>
-    <input id="tws-alvo" placeholder="400|500" style="width:100%;margin-bottom:4px"/>
+    <input id="tws-alvo" placeholder="400|500" style="width:10%;margin-bottom:4px"/>
 
     <details>
       <summary>Selecionar tropas</summary>
