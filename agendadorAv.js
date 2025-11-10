@@ -127,13 +127,13 @@
     <div class="tws-toggle-tab" id="tws-toggle-tab">Painel</div>
     <h3>Agendador Avançado</h3>
 
-    <label>Aldeia Origem:</label>
-    <select id="tws-select-origem" style="width:100%;margin-bottom:4px">
+    <label>Origem:</label>
+    <select id="tws-select-origem" style="width:50%;margin-bottom:4px">
       <option value="">Selecione sua aldeia...</option>
     </select>
 
-    <label>Alvo (coord X|Y):</label>
-    <input id="tws-alvo" placeholder="400|500" style="width:80px;margin-bottom:4px"/>
+    <label>Destino:</label>
+    <input id="tws-alvo" placeholder="400|500" style="width:10%;margin-bottom:4px"/>
 
     <details>
       <summary>Selecionar tropas</summary>
@@ -147,7 +147,7 @@
     </details>
 
     <label>Data e hora (DD/MM/AAAA HH:MM:SS)</label>
-    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:60%;margin-bottom:6px"/>
+    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:50%;margin-bottom:6px"/>
 
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button id="tws-add" style="flex:1">➕ Adicionar</button>
