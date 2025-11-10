@@ -43,11 +43,11 @@
   const { map: villageMap, myVillages } = await loadVillageTxt();
 
   // === painel principal ===
-  const panel = document.createElement('div');
-  panel.id = 'tws-panel';
-  panel.innerHTML = `
+  const painelAg = document.createElement('div');
+  painelAg.id = 'tws-painelAg';
+  painelAg.innerHTML = `
     <style>
-      #tws-panel {
+      #tws-painelAg {
         position: fixed;
         right: 0;
         bottom: 10px;
@@ -83,15 +83,15 @@
       #tws-toggle-tab:hover {
         background: #7b5124;
       }
-      #tws-panel.hidden {
+      #tws-painelAg.hidden {
         transform: translateX(100%);
       }
-      #tws-panel h3 {margin:0 0 6px;text-align:center;color:#ffd700;text-shadow:1px 1px 2px #000;}
-      #tws-panel input,#tws-panel select,#tws-panel button,textarea{
+      #tws-painelAg h3 {margin:0 0 6px;text-align:center;color:#ffd700;text-shadow:1px 1px 2px #000;}
+      #tws-painelAg input,#tws-painelAg select,#tws-painelAg button,textarea{
         border-radius:5px;border:1px solid #5c3a1e;background:#1e1408;color:#fff;padding:5px;font-size:12px;
       }
-      #tws-panel button{cursor:pointer;background:#6b4c2a;color:#f8e6c2;transition:0.2s;}
-      #tws-panel button:hover{background:#8b652e;}
+      #tws-painelAg button{cursor:pointer;background:#6b4c2a;color:#f8e6c2;transition:0.2s;}
+      #tws-painelAg button:hover{background:#8b652e;}
       #tws-schedule-wrapper {
         max-height: 270px;
         overflow-y: auto;
@@ -221,17 +221,17 @@
 
     <div id="tws-status">Aguardando agendamentos...</div>
   `;
-  document.body.appendChild(panel);
+  document.body.appendChild(painelAg);
 
   // === botão para ocultar/exibir painel ===
-  const toggle = panel.querySelector('#tws-toggle-tab');
+  const toggle = painelAg.querySelector('#tws-toggle-tab');
   toggle.onclick = () => {
-    panel.classList.toggle('hidden');
-    toggle.textContent = panel.classList.contains('hidden') ? 'Abrir' : 'Fechar';
+    painelAg.classList.toggle('hidden');
+    toggle.textContent = painelAg.classList.contains('hidden') ? 'Abrir' : 'Fechar';
   };
 
   // === preencher select ===
-  const sel = panel.querySelector('#tws-select-origem');
+  const sel = painelAg.querySelector('#tws-select-origem');
   myVillages.forEach(v=>{
     const o=document.createElement('option');
     o.value=v.id; o.textContent=`${v.name} (${v.coord})`;
@@ -239,7 +239,7 @@
   });
 
   // === utilitários ===
-  const el=id=>panel.querySelector(id.startsWith('#')?id:'#'+id);
+  const el=id=>painelAg.querySelector(id.startsWith('#')?id:'#'+id);
   const parseDateTimeToMs=str=>{
     const m=str.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/);
     if(!m)return NaN;
