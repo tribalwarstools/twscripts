@@ -117,7 +117,7 @@
       .tws-tooltip .tws-tooltip-content {
         visibility: hidden;width:max-content;max-width:280px;background:#2b1b0f;color:#f5deb3;text-align:left;
         border:1px solid #7b5b2a;border-radius:5px;padding:5px;position:absolute;z-index:999999;
-        bottom:-200%;left:50%;transform:translateX(-50%);opacity:0;transition:opacity 0.2s;
+        bottom:100%;left:50%;transform:translateX(-50%);opacity:0;transition:opacity 0.2s;
         box-shadow:0 0 8px rgba(0,0,0,0.6);font-size:11px;
       }
       .tws-tooltip:hover .tws-tooltip-content {visibility:visible;opacity:1;}
