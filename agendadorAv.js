@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Agendador Avançado (Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode)
+// @name         Agendador Avançado (Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode + Tooltip de Tropas)
 // @namespace    http://tampermonkey.net/
-// @version      2.8
-// @description  Agenda múltiplos ataques com contagem regressiva (abre em nova aba, auto-confirma, envia automaticamente e permite importar tabelas BBCode do fórum).
+// @version      2.9
+// @description  Agenda múltiplos ataques com contagem regressiva (abre em nova aba, auto-confirma, envia automaticamente, importa tabelas BBCode e mostra tooltip com tropas).
 // @author       GiovaniG
 // @match        https://*.tribalwars.com.br/*
 // @grant        none
@@ -78,6 +78,41 @@
       details summary{cursor:pointer;color:#ffd700;margin-top:6px;}
       #tws-status{font-size:11px;margin-top:5px;opacity:0.9;max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:5px;}
       #tws-bbcode-area{width:100%;height:100px;margin-top:4px;}
+
+      /* Tooltip personalizado */
+      .tws-tooltip {
+        position: relative;
+        display: inline-block;
+      }
+      .tws-tooltip .tws-tooltip-content {
+        visibility: hidden;
+        width: max-content;
+        max-width: 280px;
+        background: #2b1b0f;
+        color: #f5deb3;
+        text-align: left;
+        border: 1px solid #7b5b2a;
+        border-radius: 5px;
+        padding: 5px;
+        position: absolute;
+        z-index: 100000;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.2s;
+        box-shadow: 0 0 8px rgba(0,0,0,0.6);
+        font-size: 11px;
+      }
+      .tws-tooltip:hover .tws-tooltip-content {
+        visibility: visible;
+        opacity: 1;
+      }
+      .tws-tooltip-content img {
+        height: 16px;
+        vertical-align: middle;
+        margin-right: 3px;
+      }
     </style>
 
     <h3>Agendador Avançado</h3>
@@ -144,19 +179,33 @@
   const getList=()=>JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
   const setList=l=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(l));renderTable();};
 
-  // === render tabela ===
+  // === render tabela com tooltip ===
   const tbody=el('tws-tbody');
   function renderTable(){
     const list=getList();
-    tbody.innerHTML=list.map((a,i)=>`
-      <tr><td>${a.origem}</td><td>${a.alvo}</td><td>${a.datetime}${a.done?' ✅':''}</td>
-      <td><button onclick="window.twsDel(${i})">X</button></td></tr>`).join('');
+    if(!list.length){ tbody.innerHTML='<tr><td colspan="4"><i>Nenhum agendamento</i></td></tr>'; return; }
+
+    tbody.innerHTML=list.map((a,i)=>{
+      const troops = TROOP_LIST.filter(t=>a[t]>0)
+        .map(t=>`<img src="/graphic/unit/unit_${t}.png"> ${a[t]}`)
+        .join('<br>') || 'Nenhuma tropa';
+      return `
+      <tr>
+        <td class="tws-tooltip">
+          ${a.origem}
+          <div class="tws-tooltip-content">${troops}</div>
+        </td>
+        <td>${a.alvo}</td>
+        <td>${a.datetime}${a.done?' ✅':''}</td>
+        <td><button onclick="window.twsDel(${i})">X</button></td>
+      </tr>`;
+    }).join('');
   }
   window.twsDel=i=>{
     const list=getList(); list.splice(i,1); setList(list);
   };
 
-  // === executa envio ===
+  // === envio automático ===
   async function executeAttack(cfg){
     const origemId=cfg.origemId||villageMap[cfg.origem];
     if(!origemId)return alert(`Origem ${cfg.origem} não encontrada!`);
@@ -189,7 +238,7 @@
     },300);
   }
 
-  // === agendador ===
+  // === agendador principal ===
   const status=el('tws-status');
   function startScheduler(){
     setInterval(()=>{
