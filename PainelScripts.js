@@ -3,6 +3,7 @@
 
   // === Lista de Scripts ===
   const scripts = [
+	{ nome: 'Plano de Envio', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/planoEnvio.js').done(() => UI.InfoMessage('✅ Script carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},    
 	{ nome: 'Buscar no raio', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/BuscarAldeiasRaio.js').done(() => UI.InfoMessage('✅ Script carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},  
 	{ nome: 'Comparador(Casual)', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/comparador.js').done(() => UI.InfoMessage('✅ Script carregado!', 3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
 	{ nome: 'Blindagem', func: () => { $.getScript('https://cdn.jsdelivr.net/gh/TribalWarsTools/twscripts/blindagem.js').done(() => UI.InfoMessage('✅ Script carregado!',3000,'success')).fail(() => UI.InfoMessage('❌ Erro ao carregar script.',5000,'error')); }},
@@ -72,6 +73,7 @@
     localStorage.setItem(STORAGE_KEY, painelEl.classList.contains("ativo") ? "aberto" : "fechado");
   });
 })();
+
 
 
 
