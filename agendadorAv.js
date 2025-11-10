@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agendador Avançado (Ocultar Painel + Salvar Estado + Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode + Tooltip de Tropas + Scroll em Lista)
 // @namespace    http://tampermonkey.net/
-// @version      3.2
+// @version      3.3
 // @description  Agenda múltiplos ataques com contagem regressiva (abre em nova aba, auto-confirma, envia automaticamente, importa tabelas BBCode, mostra tooltip de tropas e permite ocultar o painel lateral com estado salvo).
 // @author       GiovaniG
 // @match        https://*.tribalwars.com.br/*
@@ -46,25 +46,26 @@
   // === painel principal ===
   const panel = document.createElement('div');
   panel.id = 'tws-panel';
+  panel.className = 'tws-container';
   panel.innerHTML = `
     <style>
-      #tws-panel {
+      .tws-container {
         position: fixed;
         right: 0;
         bottom: 10px;
         width: 460px;
         z-index: 99999;
-        font-family: 'Verdana', sans-serif;
-        background: url('https://dsen.innogamescdn.com/asset/efb4e9b/graphic/background/wood.jpg') #2b1b0f;
-        color: #f5deb3;
-        border: 2px solid #654321;
-        border-right: none;
-        border-radius: 8px 0 0 8px;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.7);
-        padding: 10px;
-        transition: transform 0.4s ease;
+        font-family: Verdana, sans-serif !important;
+        background: url('https://dsen.innogamescdn.com/asset/efb4e9b/graphic/background/wood.jpg') #2b1b0f !important;
+        color: #f5deb3 !important;
+        border: 2px solid #654321 !important;
+        border-right: none !important;
+        border-radius: 8px 0 0 8px !important;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.7) !important;
+        padding: 10px !important;
+        transition: transform 0.4s ease !important;
       }
-      #tws-toggle-tab {
+      .tws-toggle-tab {
         position: absolute;
         left: -28px;
         top: 40%;
@@ -81,27 +82,41 @@
         user-select: none;
         box-shadow: -2px 0 6px rgba(0,0,0,0.5);
       }
-      #tws-toggle-tab:hover { background: #7b5124; }
-      #tws-panel.hidden { transform: translateX(100%); }
-      #tws-panel h3 {margin:0 0 6px;text-align:center;color:#ffd700;text-shadow:1px 1px 2px #000;}
-      #tws-panel input,#tws-panel select,#tws-panel button,textarea{
-        border-radius:5px;border:1px solid #5c3a1e;background:#1e1408;color:#fff;padding:5px;font-size:12px;
+      .tws-toggle-tab:hover { background: #7b5124; }
+      .tws-hidden { transform: translateX(100%); }
+      .tws-container h3 {margin:0 0 6px;text-align:center;color:#ffd700;text-shadow:1px 1px 2px #000;}
+      .tws-container input,
+      .tws-container select,
+      .tws-container button,
+      .tws-container textarea {
+        border-radius:5px;
+        border:1px solid #5c3a1e;
+        background:#1e1408;
+        color:#fff;
+        padding:5px;
+        font-size:12px;
       }
-      #tws-panel button{cursor:pointer;background:#6b4c2a;color:#f8e6c2;transition:0.2s;}
-      #tws-panel button:hover{background:#8b652e;}
-      #tws-schedule-wrapper {max-height:270px;overflow-y:auto;border:1px solid #3d2a12;border-radius:6px;margin-top:6px;}
-      #tws-schedule-table {width:100%;border-collapse:collapse;font-size:12px;}
-      #tws-schedule-table th,#tws-schedule-table td {border:1px solid #3d2a12;padding:4px;text-align:center;}
-      #tws-schedule-table th {background:#3d2a12;color:#ffd700;position:sticky;top:0;z-index:1;}
-      #tws-schedule-table td button {background:#b33;border:none;color:white;padding:3px 6px;border-radius:4px;cursor:pointer;}
-      #tws-schedule-table td button:hover{background:#e44;}
-      details summary{cursor:pointer;color:#ffd700;margin-top:6px;}
-      #tws-status {font-size:11px;margin-top:5px;opacity:0.9;max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:5px;}
-      #tws-bbcode-area {width:100%;height:100px;margin-top:4px;}
+      .tws-container button{
+        cursor:pointer;
+        background:#6b4c2a;
+        color:#f8e6c2;
+        transition:0.2s;
+      }
+      .tws-container button:hover{background:#8b652e;}
+      .tws-schedule-wrapper {max-height:270px;overflow-y:auto;border:1px solid #3d2a12;border-radius:6px;margin-top:6px;}
+      .tws-schedule-table {width:100%;border-collapse:collapse;font-size:12px;}
+      .tws-schedule-table th,
+      .tws-schedule-table td {border:1px solid #3d2a12;padding:4px;text-align:center;}
+      .tws-schedule-table th {background:#3d2a12;color:#ffd700;position:sticky;top:0;z-index:1;}
+      .tws-schedule-table td button {background:#b33;border:none;color:white;padding:3px 6px;border-radius:4px;cursor:pointer;}
+      .tws-schedule-table td button:hover{background:#e44;}
+      .tws-container details summary{cursor:pointer;color:#ffd700;margin-top:6px;}
+      .tws-status {font-size:11px;margin-top:5px;opacity:0.9;max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:5px;}
+      .tws-bbcode-area {width:100%;height:100px;margin-top:4px;}
       .tws-tooltip {position: relative;display: inline-block;}
       .tws-tooltip .tws-tooltip-content {
         visibility: hidden;width:max-content;max-width:280px;background:#2b1b0f;color:#f5deb3;text-align:left;
-        border:1px solid #7b5b2a;border-radius:5px;padding:5px;position:absolute;z-index:9999999999;
+        border:1px solid #7b5b2a;border-radius:5px;padding:5px;position:absolute;z-index:999999;
         bottom:-200%;left:50%;transform:translateX(-50%);opacity:0;transition:opacity 0.2s;
         box-shadow:0 0 8px rgba(0,0,0,0.6);font-size:11px;
       }
@@ -109,7 +124,7 @@
       .tws-tooltip-content img {height:16px;vertical-align:middle;margin-right:3px;}
     </style>
 
-    <div id="tws-toggle-tab">Painel</div>
+    <div class="tws-toggle-tab" id="tws-toggle-tab">Painel</div>
     <h3>Agendador Avançado</h3>
 
     <label>Aldeia Origem:</label>
@@ -141,44 +156,41 @@
 
     <details>
       <summary>📥 Importar BBCode</summary>
-      <textarea id="tws-bbcode-area" placeholder="Cole aqui o código [table]...[/table] do fórum"></textarea>
+      <textarea class="tws-bbcode-area" id="tws-bbcode-area" placeholder="Cole aqui o código [table]...[/table] do fórum"></textarea>
       <button id="tws-import" style="width:100%;margin-top:4px;">📤 Importar BBCode</button>
     </details>
 
-    <div id="tws-schedule-wrapper">
-      <table id="tws-schedule-table">
+    <div class="tws-schedule-wrapper" id="tws-schedule-wrapper">
+      <table class="tws-schedule-table" id="tws-schedule-table">
         <thead><tr><th>Origem</th><th>Alvo</th><th>Data/Hora</th><th>Ações</th></tr></thead>
         <tbody id="tws-tbody"></tbody>
       </table>
     </div>
 
-    <div id="tws-status">Aguardando agendamentos...</div>
+    <div class="tws-status" id="tws-status">Aguardando agendamentos...</div>
   `;
   document.body.appendChild(panel);
 
-  // === botão para ocultar/exibir painel ===
+  // === Ocultar/Exibir painel ===
   const toggle = panel.querySelector('#tws-toggle-tab');
   function updatePanelState() {
-    const hidden = panel.classList.contains('hidden');
+    const hidden = panel.classList.contains('tws-hidden');
     localStorage.setItem(PANEL_STATE_KEY, hidden ? 'hidden' : 'visible');
     toggle.textContent = hidden ? 'Abrir' : 'Fechar';
   }
 
   toggle.onclick = () => {
-    panel.classList.toggle('hidden');
+    panel.classList.toggle('tws-hidden');
     updatePanelState();
   };
 
-  // Restaurar estado salvo do painel
   const savedState = localStorage.getItem(PANEL_STATE_KEY);
   if (savedState === 'hidden') {
-    panel.classList.add('hidden');
+    panel.classList.add('tws-hidden');
     toggle.textContent = 'Abrir';
-  } else {
-    toggle.textContent = 'Fechar';
-  }
+  } else toggle.textContent = 'Fechar';
 
-  // === preencher select ===
+  // === Preencher aldeias ===
   const sel = panel.querySelector('#tws-select-origem');
   myVillages.forEach(v=>{
     const o=document.createElement('option');
@@ -186,7 +198,7 @@
     sel.appendChild(o);
   });
 
-  // === utilitários e funções auxiliares (inalteradas) ===
+  // === Funções auxiliares ===
   const el=id=>panel.querySelector(id.startsWith('#')?id:'#'+id);
   const parseDateTimeToMs=str=>{
     const m=str.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/);
