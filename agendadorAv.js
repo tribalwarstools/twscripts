@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Agendador Avançado (Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode + Tooltip de Tropas)
+// @name         Agendador Avançado (Ocultar Painel + Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode + Tooltip de Tropas + Scroll em Lista)
 // @namespace    http://tampermonkey.net/
-// @version      2.9
-// @description  Agenda múltiplos ataques com contagem regressiva (abre em nova aba, auto-confirma, envia automaticamente, importa tabelas BBCode e mostra tooltip com tropas).
+// @version      3.1
+// @description  Agenda múltiplos ataques com contagem regressiva (abre em nova aba, auto-confirma, envia automaticamente, importa tabelas BBCode, mostra tooltip de tropas e permite ocultar o painel lateral).
 // @author       GiovaniG
 // @match        https://*.tribalwars.com.br/*
 // @grant        none
@@ -14,10 +14,7 @@
   // === Envio automático na tela de confirmação ===
   if (location.href.includes('screen=place&try=confirm')) {
     const btn = document.querySelector('#troop_confirm_submit');
-    if (btn) {
-      console.log('[Agendador] Enviando ataque automaticamente...');
-      setTimeout(() => btn.click(), 300);
-    }
+    if (btn) setTimeout(() => btn.click(), 300);
     return;
   }
 
@@ -45,14 +42,14 @@
 
   const { map: villageMap, myVillages } = await loadVillageTxt();
 
-  // === painel ===
+  // === painel principal ===
   const panel = document.createElement('div');
   panel.id = 'tws-panel';
   panel.innerHTML = `
     <style>
       #tws-panel {
         position: fixed;
-        right: 10px;
+        right: 0;
         bottom: 10px;
         width: 460px;
         z-index: 99999;
@@ -60,9 +57,34 @@
         background: url('https://dsen.innogamescdn.com/asset/efb4e9b/graphic/background/wood.jpg') #2b1b0f;
         color: #f5deb3;
         border: 2px solid #654321;
-        border-radius: 8px;
+        border-right: none;
+        border-radius: 8px 0 0 8px;
         box-shadow: 0 4px 18px rgba(0,0,0,0.7);
         padding: 10px;
+        transition: transform 0.4s ease;
+      }
+      #tws-toggle-tab {
+        position: absolute;
+        left: -28px;
+        top: 40%;
+        background: #5c3a1e;
+        border: 2px solid #654321;
+        border-right: none;
+        border-radius: 6px 0 0 6px;
+        padding: 6px 4px;
+        font-size: 14px;
+        color: #ffd700;
+        cursor: pointer;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        user-select: none;
+        box-shadow: -2px 0 6px rgba(0,0,0,0.5);
+      }
+      #tws-toggle-tab:hover {
+        background: #7b5124;
+      }
+      #tws-panel.hidden {
+        transform: translateX(100%);
       }
       #tws-panel h3 {margin:0 0 6px;text-align:center;color:#ffd700;text-shadow:1px 1px 2px #000;}
       #tws-panel input,#tws-panel select,#tws-panel button,textarea{
@@ -70,16 +92,55 @@
       }
       #tws-panel button{cursor:pointer;background:#6b4c2a;color:#f8e6c2;transition:0.2s;}
       #tws-panel button:hover{background:#8b652e;}
-      #tws-schedule-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
-      #tws-schedule-table th,#tws-schedule-table td{border:1px solid #3d2a12;padding:4px;text-align:center;}
-      #tws-schedule-table th{background:#3d2a12;color:#ffd700;}
-      #tws-schedule-table td button{background:#b33;border:none;color:white;padding:3px 6px;border-radius:4px;cursor:pointer;}
+      #tws-schedule-wrapper {
+        max-height: 270px;
+        overflow-y: auto;
+        border: 1px solid #3d2a12;
+        border-radius: 6px;
+        margin-top: 6px;
+      }
+      #tws-schedule-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      #tws-schedule-table th,#tws-schedule-table td {
+        border: 1px solid #3d2a12;
+        padding: 4px;
+        text-align: center;
+      }
+      #tws-schedule-table th {
+        background:#3d2a12;
+        color:#ffd700;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+      #tws-schedule-table td button {
+        background:#b33;
+        border:none;
+        color:white;
+        padding:3px 6px;
+        border-radius:4px;
+        cursor:pointer;
+      }
       #tws-schedule-table td button:hover{background:#e44;}
       details summary{cursor:pointer;color:#ffd700;margin-top:6px;}
-      #tws-status{font-size:11px;margin-top:5px;opacity:0.9;max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:5px;}
-      #tws-bbcode-area{width:100%;height:100px;margin-top:4px;}
-
-      /* Tooltip personalizado */
+      #tws-status {
+        font-size:11px;
+        margin-top:5px;
+        opacity:0.9;
+        max-height:150px;
+        overflow-y:auto;
+        background:rgba(0,0,0,0.3);
+        padding:4px;
+        border-radius:5px;
+      }
+      #tws-bbcode-area {
+        width:100%;
+        height:100px;
+        margin-top:4px;
+      }
       .tws-tooltip {
         position: relative;
         display: inline-block;
@@ -115,6 +176,7 @@
       }
     </style>
 
+    <div id="tws-toggle-tab">Painel</div>
     <h3>Agendador Avançado</h3>
 
     <label>Aldeia Origem:</label>
@@ -150,14 +212,23 @@
       <button id="tws-import" style="width:100%;margin-top:4px;">📤 Importar BBCode</button>
     </details>
 
-    <table id="tws-schedule-table">
-      <thead><tr><th>Origem</th><th>Alvo</th><th>Data/Hora</th><th>Ações</th></tr></thead>
-      <tbody id="tws-tbody"></tbody>
-    </table>
+    <div id="tws-schedule-wrapper">
+      <table id="tws-schedule-table">
+        <thead><tr><th>Origem</th><th>Alvo</th><th>Data/Hora</th><th>Ações</th></tr></thead>
+        <tbody id="tws-tbody"></tbody>
+      </table>
+    </div>
 
     <div id="tws-status">Aguardando agendamentos...</div>
   `;
   document.body.appendChild(panel);
+
+  // === botão para ocultar/exibir painel ===
+  const toggle = panel.querySelector('#tws-toggle-tab');
+  toggle.onclick = () => {
+    panel.classList.toggle('hidden');
+    toggle.textContent = panel.classList.contains('hidden') ? 'Abrir' : 'Fechar';
+  };
 
   // === preencher select ===
   const sel = panel.querySelector('#tws-select-origem');
@@ -184,28 +255,19 @@
   function renderTable(){
     const list=getList();
     if(!list.length){ tbody.innerHTML='<tr><td colspan="4"><i>Nenhum agendamento</i></td></tr>'; return; }
-
     tbody.innerHTML=list.map((a,i)=>{
-      const troops = TROOP_LIST.filter(t=>a[t]>0)
-        .map(t=>`<img src="/graphic/unit/unit_${t}.png"> ${a[t]}`)
-        .join('<br>') || 'Nenhuma tropa';
-      return `
-      <tr>
-        <td class="tws-tooltip">
-          ${a.origem}
-          <div class="tws-tooltip-content">${troops}</div>
-        </td>
+      const troops=TROOP_LIST.filter(t=>a[t]>0).map(t=>`<img src="/graphic/unit/unit_${t}.png"> ${a[t]}`).join('<br>')||'Nenhuma tropa';
+      return `<tr>
+        <td class="tws-tooltip">${a.origem}<div class="tws-tooltip-content">${troops}</div></td>
         <td>${a.alvo}</td>
         <td>${a.datetime}${a.done?' ✅':''}</td>
         <td><button onclick="window.twsDel(${i})">X</button></td>
       </tr>`;
     }).join('');
   }
-  window.twsDel=i=>{
-    const list=getList(); list.splice(i,1); setList(list);
-  };
+  window.twsDel=i=>{const list=getList(); list.splice(i,1); setList(list);};
 
-  // === envio automático ===
+  // === execução automática ===
   async function executeAttack(cfg){
     const origemId=cfg.origemId||villageMap[cfg.origem];
     if(!origemId)return alert(`Origem ${cfg.origem} não encontrada!`);
@@ -227,10 +289,7 @@
           const atk=doc.querySelector('[name=attack]');
           if(atk){
             atk.click();
-            setTimeout(()=>{
-              const conf=doc.querySelector('[name=submit]');
-              if(conf)conf.click();
-            },400);
+            setTimeout(()=>{const conf=doc.querySelector('[name=submit]'); if(conf)conf.click();},400);
           }
           clearInterval(int);
         }
@@ -242,18 +301,13 @@
   const status=el('tws-status');
   function startScheduler(){
     setInterval(()=>{
-      const list=getList();
-      const now=Date.now(); const msgs=[];
+      const list=getList(); const now=Date.now(); const msgs=[];
       for(const a of list){
         const t=parseDateTimeToMs(a.datetime);
         if(!t||a.done)continue;
         const diff=t-now;
-        if(diff<=0&&diff>-10000){
-          a.done=true; executeAttack(a);
-          msgs.push(`🔥 ${a.origem} → ${a.alvo}`);
-        } else if(diff>0){
-          msgs.push(`🕒 ${a.origem} → ${a.alvo} em ${Math.ceil(diff/1000)}s`);
-        }
+        if(diff<=0&&diff>-10000){a.done=true; executeAttack(a); msgs.push(`🔥 ${a.origem} → ${a.alvo}`);}
+        else if(diff>0){msgs.push(`🕒 ${a.origem} → ${a.alvo} em ${Math.ceil(diff/1000)}s`);}
       }
       setList(list);
       status.innerHTML=msgs.length?msgs.join('<br>'):'Sem agendamentos ativos.';
