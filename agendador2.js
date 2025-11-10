@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         TW Scheduler Avançado (Select de Aldeia Origem + Limpeza de Nome)
+// @name         Agendador Avançado
 // @namespace    http://tampermonkey.net/
 // @version      2.5
-// @description  Agenda múltiplos ataques com contagem regressiva, visual Tribal Wars e seletor de aldeias de origem (sem input manual), com nomes decodificados corretamente no select.
-// @author       Você
+// @description  Agenda múltiplos ataques com contagem regressiva.
+// @author       GiovaniG
 // @match        https://*.tribalwars.com.br/*
 // @grant        none
 // ==/UserScript==
@@ -118,7 +118,7 @@
       }
     </style>
 
-    <h3>⚔️ TW Scheduler Avançado ⚔️</h3>
+    <h3>⚔️ Agendador Avançado ⚔️</h3>
 
     <label for="tws-select-origem">Aldeia Origem:</label>
     <select id="tws-select-origem" style="width:100%;margin-bottom:4px">
