@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Agendador Avançado (Painel Isolado + Ocultar + Salvar Estado + Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode + Tooltip + Scroll)
+// @name         Agendador Avançado (Ocultar Painel + Salvar Estado + Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode + Tooltip de Tropas + Scroll em Lista)
 // @namespace    http://tampermonkey.net/
-// @version      3.3
-// @description  Agenda múltiplos ataques com contagem regressiva (com painel isolado e sem conflitos com o jogo).
+// @version      3.2
+// @description  Agenda múltiplos ataques com contagem regressiva (abre em nova aba, auto-confirma, envia automaticamente, importa tabelas BBCode, mostra tooltip de tropas e permite ocultar o painel lateral com estado salvo).
 // @author       GiovaniG
 // @match        https://*.tribalwars.com.br/*
 // @grant        none
@@ -11,6 +11,7 @@
 (async function () {
   'use strict';
 
+  // === Envio automático na tela de confirmação ===
   if (location.href.includes('screen=place&try=confirm')) {
     const btn = document.querySelector('#troop_confirm_submit');
     if (btn) setTimeout(() => btn.click(), 300);
@@ -23,6 +24,7 @@
   const world = location.hostname.split('.')[0];
   const VILLAGE_TXT_URL = `https://${world}.tribalwars.com.br/map/village.txt`;
 
+  // === carregar village.txt ===
   async function loadVillageTxt() {
     const res = await fetch(VILLAGE_TXT_URL);
     const text = await res.text();
@@ -41,215 +43,150 @@
 
   const { map: villageMap, myVillages } = await loadVillageTxt();
 
+  // === painel principal ===
   const panel = document.createElement('div');
   panel.id = 'tws-panel';
   panel.innerHTML = `
     <style>
-      #tws-panel * { box-sizing: border-box; font-family: Verdana, sans-serif !important; }
-
       #tws-panel {
-        position: fixed !important;
-        right: 0 !important;
-        bottom: 10px !important;
-        width: 460px !important;
-        z-index: 99999 !important;
-        background: url('https://dsen.innogamescdn.com/asset/efb4e9b/graphic/background/wood.jpg') #2b1b0f !important;
-        color: #f5deb3 !important;
-        border: 2px solid #654321 !important;
-        border-right: none !important;
-        border-radius: 8px 0 0 8px !important;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.7) !important;
-        padding: 10px !important;
-        transition: transform 0.4s ease !important;
+        position: fixed;
+        right: 0;
+        bottom: 10px;
+        width: 460px;
+        z-index: 99999;
+        font-family: 'Verdana', sans-serif;
+        background: url('https://dsen.innogamescdn.com/asset/efb4e9b/graphic/background/wood.jpg') #2b1b0f;
+        color: #f5deb3;
+        border: 2px solid #654321;
+        border-right: none;
+        border-radius: 8px 0 0 8px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.7);
+        padding: 10px;
+        transition: transform 0.4s ease;
       }
-
-      #tws-panel.hidden { transform: translateX(100%) !important; }
-
       #tws-toggle-tab {
-        position: absolute !important;
-        left: -28px !important;
-        top: 40% !important;
-        background: #5c3a1e !important;
-        border: 2px solid #654321 !important;
-        border-right: none !important;
-        border-radius: 6px 0 0 6px !important;
-        padding: 6px 4px !important;
-        font-size: 14px !important;
-        color: #ffd700 !important;
-        cursor: pointer !important;
-        writing-mode: vertical-rl !important;
-        text-orientation: mixed !important;
-        user-select: none !important;
-        box-shadow: -2px 0 6px rgba(0,0,0,0.5) !important;
+        position: absolute;
+        left: -28px;
+        top: 40%;
+        background: #5c3a1e;
+        border: 2px solid #654321;
+        border-right: none;
+        border-radius: 6px 0 0 6px;
+        padding: 6px 4px;
+        font-size: 14px;
+        color: #ffd700;
+        cursor: pointer;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        user-select: none;
+        box-shadow: -2px 0 6px rgba(0,0,0,0.5);
       }
-      #tws-toggle-tab:hover { background: #7b5124 !important; }
-
-      #tws-panel h3 {
-        margin: 0 0 6px !important;
-        text-align: center !important;
-        color: #ffd700 !important;
-        text-shadow: 1px 1px 2px #000 !important;
+      #tws-toggle-tab:hover { background: #7b5124; }
+      #tws-panel.hidden { transform: translateX(100%); }
+      #tws-panel h3 {margin:0 0 6px;text-align:center;color:#ffd700;text-shadow:1px 1px 2px #000;}
+      #tws-panel input,#tws-panel select,#tws-panel button,textarea{
+        border-radius:5px;border:1px solid #5c3a1e;background:#1e1408;color:#fff;padding:5px;font-size:12px;
       }
-
-      #tws-panel input,
-      #tws-panel select,
-      #tws-panel button,
-      #tws-panel textarea {
-        border-radius: 5px !important;
-        border: 1px solid #5c3a1e !important;
-        background: #1e1408 !important;
-        color: #fff !important;
-        padding: 5px !important;
-        font-size: 12px !important;
+      #tws-panel button{cursor:pointer;background:#6b4c2a;color:#f8e6c2;transition:0.2s;}
+      #tws-panel button:hover{background:#8b652e;}
+      #tws-schedule-wrapper {max-height:270px;overflow-y:auto;border:1px solid #3d2a12;border-radius:6px;margin-top:6px;}
+      #tws-schedule-table {width:100%;border-collapse:collapse;font-size:12px;}
+      #tws-schedule-table th,#tws-schedule-table td {border:1px solid #3d2a12;padding:4px;text-align:center;}
+      #tws-schedule-table th {background:#3d2a12;color:#ffd700;position:sticky;top:0;z-index:1;}
+      #tws-schedule-table td button {background:#b33;border:none;color:white;padding:3px 6px;border-radius:4px;cursor:pointer;}
+      #tws-schedule-table td button:hover{background:#e44;}
+      details summary{cursor:pointer;color:#ffd700;margin-top:6px;}
+      #tws-status {font-size:11px;margin-top:5px;opacity:0.9;max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:5px;}
+      #tws-bbcode-area {width:100%;height:100px;margin-top:4px;}
+      .tws-tooltip {position: relative;display: inline-block;}
+      .tws-tooltip .tws-tooltip-content {
+        visibility: hidden;width:max-content;max-width:280px;background:#2b1b0f;color:#f5deb3;text-align:left;
+        border:1px solid #7b5b2a;border-radius:5px;padding:5px;position:absolute;z-index:9999999999;
+        bottom:-200%;left:50%;transform:translateX(-50%);opacity:0;transition:opacity 0.2s;
+        box-shadow:0 0 8px rgba(0,0,0,0.6);font-size:11px;
       }
-
-      #tws-panel button {
-        cursor: pointer !important;
-        background: #6b4c2a !important;
-        color: #f8e6c2 !important;
-        transition: 0.2s !important;
-      }
-      #tws-panel button:hover { background: #8b652e !important; }
-
-      #tws-schedule-wrapper {
-        max-height: 270px !important;
-        overflow-y: auto !important;
-        border: 1px solid #3d2a12 !important;
-        border-radius: 6px !important;
-        margin-top: 6px !important;
-      }
-
-      #tws-schedule-table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        font-size: 12px !important;
-      }
-
-      #tws-schedule-table th,
-      #tws-schedule-table td {
-        border: 1px solid #3d2a12 !important;
-        padding: 4px !important;
-        text-align: center !important;
-      }
-
-      #tws-schedule-table th {
-        background: #3d2a12 !important;
-        color: #ffd700 !important;
-        position: sticky !important;
-        top: 0 !important;
-        z-index: 1 !important;
-      }
-
-      #tws-schedule-table td button {
-        background: #b33 !important;
-        border: none !important;
-        color: white !important;
-        padding: 3px 6px !important;
-        border-radius: 4px !important;
-      }
-      #tws-schedule-table td button:hover { background: #e44 !important; }
-
-      #tws-panel details summary {
-        cursor: pointer !important;
-        color: #ffd700 !important;
-        margin-top: 6px !important;
-      }
-
-      #tws-status {
-        font-size: 11px !important;
-        margin-top: 5px !important;
-        opacity: 0.9 !important;
-        max-height: 150px !important;
-        overflow-y: auto !important;
-        background: rgba(0,0,0,0.3) !important;
-        padding: 4px !important;
-        border-radius: 5px !important;
-      }
-
-      #tws-bbcode-area {
-        width: 100% !important;
-        height: 100px !important;
-        margin-top: 4px !important;
-      }
-
-      #tws-panel img { pointer-events: none; }
-
-      #tws-panel .tws-tooltip { position: relative !important; display: inline-block !important; }
-      #tws-panel .tws-tooltip .tws-tooltip-content {
-        visibility: hidden !important;
-        width: max-content !important;
-        max-width: 280px !important;
-        background: #2b1b0f !important;
-        color: #f5deb3 !important;
-        text-align: left !important;
-        border: 1px solid #7b5b2a !important;
-        border-radius: 5px !important;
-        padding: 5px !important;
-        position: absolute !important;
-        z-index: 999999 !important;
-        bottom: -200% !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        opacity: 0 !important;
-        transition: opacity 0.2s !important;
-        box-shadow: 0 0 8px rgba(0,0,0,0.6) !important;
-        font-size: 11px !important;
-      }
-      #tws-panel .tws-tooltip:hover .tws-tooltip-content {
-        visibility: visible !important;
-        opacity: 1 !important;
-      }
-      #tws-panel .tws-tooltip-content img { height: 16px !important; vertical-align: middle !important; margin-right: 3px !important; }
+      .tws-tooltip:hover .tws-tooltip-content {visibility:visible;opacity:1;}
+      .tws-tooltip-content img {height:16px;vertical-align:middle;margin-right:3px;}
     </style>
 
     <div id="tws-toggle-tab">Painel</div>
     <h3>Agendador Avançado</h3>
+
     <label>Aldeia Origem:</label>
-    <select id="tws-select-origem"><option value="">Selecione sua aldeia...</option></select>
+    <select id="tws-select-origem" style="width:100%;margin-bottom:4px">
+      <option value="">Selecione sua aldeia...</option>
+    </select>
+
     <label>Alvo (coord X|Y):</label>
-    <input id="tws-alvo" placeholder="400|500" />
+    <input id="tws-alvo" placeholder="400|500" style="width:80px;margin-bottom:4px"/>
+
     <details>
       <summary>Selecionar tropas</summary>
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:4px">
         ${TROOP_LIST.map(u=>`
           <div style="text-align:center">
-            <img src="/graphic/unit/unit_${u}.png" title="${u}"><br>
+            <img src="/graphic/unit/unit_${u}.png" title="${u}" style="height:18px;"><br>
             <input type="number" id="tws-${u}" min="0" value="0" style="width:45px;text-align:center">
           </div>`).join('')}
       </div>
     </details>
+
     <label>Data e hora (DD/MM/AAAA HH:MM:SS)</label>
-    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" />
+    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:60%;margin-bottom:6px"/>
+
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button id="tws-add" style="flex:1">➕ Adicionar</button>
       <button id="tws-clear" style="flex:1">🗑️ Limpar</button>
     </div>
+
     <details>
       <summary>📥 Importar BBCode</summary>
       <textarea id="tws-bbcode-area" placeholder="Cole aqui o código [table]...[/table] do fórum"></textarea>
       <button id="tws-import" style="width:100%;margin-top:4px;">📤 Importar BBCode</button>
     </details>
+
     <div id="tws-schedule-wrapper">
       <table id="tws-schedule-table">
         <thead><tr><th>Origem</th><th>Alvo</th><th>Data/Hora</th><th>Ações</th></tr></thead>
         <tbody id="tws-tbody"></tbody>
       </table>
     </div>
+
     <div id="tws-status">Aguardando agendamentos...</div>
   `;
   document.body.appendChild(panel);
 
-  // Funções inalteradas a partir daqui (painel, toggle, agendamento etc.)
+  // === botão para ocultar/exibir painel ===
   const toggle = panel.querySelector('#tws-toggle-tab');
   function updatePanelState() {
     const hidden = panel.classList.contains('hidden');
     localStorage.setItem(PANEL_STATE_KEY, hidden ? 'hidden' : 'visible');
     toggle.textContent = hidden ? 'Abrir' : 'Fechar';
   }
-  toggle.onclick = () => { panel.classList.toggle('hidden'); updatePanelState(); };
-  const savedState = localStorage.getItem(PANEL_STATE_KEY);
-  if (savedState === 'hidden') panel.classList.add('hidden');
 
+  toggle.onclick = () => {
+    panel.classList.toggle('hidden');
+    updatePanelState();
+  };
+
+  // Restaurar estado salvo do painel
+  const savedState = localStorage.getItem(PANEL_STATE_KEY);
+  if (savedState === 'hidden') {
+    panel.classList.add('hidden');
+    toggle.textContent = 'Abrir';
+  } else {
+    toggle.textContent = 'Fechar';
+  }
+
+  // === preencher select ===
+  const sel = panel.querySelector('#tws-select-origem');
+  myVillages.forEach(v=>{
+    const o=document.createElement('option');
+    o.value=v.id; o.textContent=`${v.name} (${v.coord})`;
+    sel.appendChild(o);
+  });
+
+  // === utilitários e funções auxiliares (inalteradas) ===
   const el=id=>panel.querySelector(id.startsWith('#')?id:'#'+id);
   const parseDateTimeToMs=str=>{
     const m=str.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/);
@@ -260,13 +197,6 @@
   const parseCoord=s=>s.trim().match(/^(\d+)\|(\d+)$/)?s.trim():null;
   const getList=()=>JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
   const setList=l=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(l));renderTable();};
-
-  const sel = el('tws-select-origem');
-  myVillages.forEach(v=>{
-    const o=document.createElement('option');
-    o.value=v.id; o.textContent=`${v.name} (${v.coord})`;
-    sel.appendChild(o);
-  });
 
   const tbody=el('tws-tbody');
   function renderTable(){
