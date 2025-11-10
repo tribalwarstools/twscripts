@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TW Scheduler Avançado (Select de Aldeia Origem + Limpeza de Nome)
 // @namespace    http://tampermonkey.net/
-// @version      2.4
+// @version      2.5
 // @description  Agenda múltiplos ataques com contagem regressiva, visual Tribal Wars e seletor de aldeias de origem (sem input manual), com nomes decodificados corretamente no select.
 // @author       Você
 // @match        https://*.tribalwars.com.br/*
@@ -26,9 +26,8 @@
       const [id, name, x, y, playerId] = line.split(',');
       map[`${x}|${y}`] = id;
       if (playerId === game_data.player.id.toString()) {
-        // 🔹 decodifica caracteres (%20 -> espaço, %5B -> [, etc.)
-        const decodedName = decodeURIComponent(name);
-        const cleanName = decodedName.replace(/[+]/g, '').trim(); // remove apenas "+"
+        // ✅ Corrigido: decodifica + substitui "+" por espaço
+        const cleanName = decodeURIComponent(name.replace(/\+/g, ' ')).trim();
         myVillages.push({ id, name: cleanName, coord: `${x}|${y}` });
       }
     }
