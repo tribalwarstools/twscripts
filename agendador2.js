@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Agendador Avançado
+// @name         Agendador Avançado (Nova Aba + Auto-Confirmar fixos)
 // @namespace    http://tampermonkey.net/
-// @version      2.5
-// @description  Agenda múltiplos ataques com contagem regressiva.
+// @version      2.6
+// @description  Agenda múltiplos ataques com contagem regressiva (sempre abre em nova aba e auto-confirma).
 // @author       GiovaniG
 // @match        https://*.tribalwars.com.br/*
 // @grant        none
@@ -26,7 +26,6 @@
       const [id, name, x, y, playerId] = line.split(',');
       map[`${x}|${y}`] = id;
       if (playerId === game_data.player.id.toString()) {
-        // ✅ Corrigido: decodifica + substitui "+" por espaço
         const cleanName = decodeURIComponent(name.replace(/\+/g, ' ')).trim();
         myVillages.push({ id, name: cleanName, coord: `${x}|${y}` });
       }
@@ -141,12 +140,7 @@
     </details>
 
     <label>Data e hora (DD/MM/AAAA HH:MM:SS)</label>
-    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:100%;margin-bottom:4px"/>
-
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-      <label><input id="tws-open" type="checkbox"> Nova aba</label>
-      <label><input id="tws-auto" type="checkbox"> Auto-confirmar</label>
-    </div>
+    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:100%;margin-bottom:6px"/>
 
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button id="tws-add" style="flex:1">➕ Adicionar</button>
@@ -166,7 +160,7 @@
   const selectOrigem = document.getElementById('tws-select-origem');
   myVillages.forEach(v => {
     const opt = document.createElement('option');
-    opt.value = v.id; // guardamos ID
+    opt.value = v.id;
     opt.textContent = `${v.name} (${v.coord})`;
     selectOrigem.appendChild(opt);
   });
@@ -215,7 +209,7 @@
     if (!origemId) return alert(`Origem ${cfg.origem} não encontrada!`);
     const [x, y] = cfg.alvo.split('|');
     const url = `${location.protocol}//${location.host}/game.php?village=${origemId}&screen=place`;
-    const win = window.open(url, cfg.open ? '_blank' : '_self');
+    const win = window.open(url, '_blank'); // sempre nova aba
     const int = setInterval(() => {
       try {
         if (!win || win.closed) return clearInterval(int);
@@ -232,12 +226,10 @@
           const atk = doc.querySelector('[name=attack]');
           if (atk) {
             atk.click();
-            if (cfg.auto) {
-              setTimeout(() => {
-                const conf = doc.querySelector('[name=submit]');
-                if (conf) conf.click();
-              }, 400);
-            }
+            setTimeout(() => {
+              const conf = doc.querySelector('[name=submit]');
+              if (conf) conf.click();
+            }, 400); // sempre auto-confirmar
           }
           clearInterval(int);
         }
@@ -283,7 +275,7 @@
 
     const origem = myVillages.find(v => v.id === selectVal)?.coord;
     const origemId = selectVal || villageMap[origem];
-    const cfg = { origem, origemId, alvo, datetime: dt, open: el('tws-open').checked, auto: el('tws-auto').checked };
+    const cfg = { origem, origemId, alvo, datetime: dt, open: true, auto: true };
     TROOP_LIST.forEach(u => cfg[u] = el(`tws-${u}`).value);
     const list = getSchedules();
     list.push(cfg);
