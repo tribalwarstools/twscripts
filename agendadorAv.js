@@ -156,7 +156,7 @@
         border-radius: 5px;
         padding: 5px;
         position: absolute;
-        z-index: 100000;
+        z-index: 1200000;
         bottom: 120%;
         left: 50%;
         transform: translateX(-50%);
