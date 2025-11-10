@@ -140,7 +140,7 @@
     </details>
 
     <label>Data e hora (DD/MM/AAAA HH:MM:SS)</label>
-    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:100%;margin-bottom:6px"/>
+    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:50%;margin-bottom:6px"/>
 
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button id="tws-add" style="flex:1">➕ Adicionar</button>
