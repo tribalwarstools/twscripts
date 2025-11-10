@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Agendador Avançado (Ocultar Painel + Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode + Tooltip de Tropas + Scroll em Lista)
+// @name         Agendador Avançado (Ocultar Painel + Salvar Estado + Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode + Tooltip de Tropas + Scroll em Lista)
 // @namespace    http://tampermonkey.net/
-// @version      3.1
-// @description  Agenda múltiplos ataques com contagem regressiva (abre em nova aba, auto-confirma, envia automaticamente, importa tabelas BBCode, mostra tooltip de tropas e permite ocultar o painel lateral).
+// @version      3.2
+// @description  Agenda múltiplos ataques com contagem regressiva (abre em nova aba, auto-confirma, envia automaticamente, importa tabelas BBCode, mostra tooltip de tropas e permite ocultar o painel lateral com estado salvo).
 // @author       GiovaniG
 // @match        https://*.tribalwars.com.br/*
 // @grant        none
@@ -19,6 +19,7 @@
   }
 
   const STORAGE_KEY = 'tw_scheduler_multi_v1';
+  const painelAg_STATE_KEY = 'tws_painelAg_state';
   const TROOP_LIST = ['spear','sword','axe','archer','spy','light','marcher','heavy','ram','catapult','knight','snob'];
   const world = location.hostname.split('.')[0];
   const VILLAGE_TXT_URL = `https://${world}.tribalwars.com.br/map/village.txt`;
@@ -80,100 +81,32 @@
         user-select: none;
         box-shadow: -2px 0 6px rgba(0,0,0,0.5);
       }
-      #tws-toggle-tab:hover {
-        background: #7b5124;
-      }
-      #tws-painelAg.hidden {
-        transform: translateX(100%);
-      }
+      #tws-toggle-tab:hover { background: #7b5124; }
+      #tws-painelAg.hidden { transform: translateX(100%); }
       #tws-painelAg h3 {margin:0 0 6px;text-align:center;color:#ffd700;text-shadow:1px 1px 2px #000;}
       #tws-painelAg input,#tws-painelAg select,#tws-painelAg button,textarea{
         border-radius:5px;border:1px solid #5c3a1e;background:#1e1408;color:#fff;padding:5px;font-size:12px;
       }
       #tws-painelAg button{cursor:pointer;background:#6b4c2a;color:#f8e6c2;transition:0.2s;}
       #tws-painelAg button:hover{background:#8b652e;}
-      #tws-schedule-wrapper {
-        max-height: 270px;
-        overflow-y: auto;
-        border: 1px solid #3d2a12;
-        border-radius: 6px;
-        margin-top: 6px;
-      }
-      #tws-schedule-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-      }
-      #tws-schedule-table th,#tws-schedule-table td {
-        border: 1px solid #3d2a12;
-        padding: 4px;
-        text-align: center;
-      }
-      #tws-schedule-table th {
-        background:#3d2a12;
-        color:#ffd700;
-        position: sticky;
-        top: 0;
-        z-index: 1;
-      }
-      #tws-schedule-table td button {
-        background:#b33;
-        border:none;
-        color:white;
-        padding:3px 6px;
-        border-radius:4px;
-        cursor:pointer;
-      }
+      #tws-schedule-wrapper {max-height:270px;overflow-y:auto;border:1px solid #3d2a12;border-radius:6px;margin-top:6px;}
+      #tws-schedule-table {width:100%;border-collapse:collapse;font-size:12px;}
+      #tws-schedule-table th,#tws-schedule-table td {border:1px solid #3d2a12;padding:4px;text-align:center;}
+      #tws-schedule-table th {background:#3d2a12;color:#ffd700;position:sticky;top:0;z-index:1;}
+      #tws-schedule-table td button {background:#b33;border:none;color:white;padding:3px 6px;border-radius:4px;cursor:pointer;}
       #tws-schedule-table td button:hover{background:#e44;}
       details summary{cursor:pointer;color:#ffd700;margin-top:6px;}
-      #tws-status {
-        font-size:11px;
-        margin-top:5px;
-        opacity:0.9;
-        max-height:150px;
-        overflow-y:auto;
-        background:rgba(0,0,0,0.3);
-        padding:4px;
-        border-radius:5px;
-      }
-      #tws-bbcode-area {
-        width:100%;
-        height:100px;
-        margin-top:4px;
-      }
-      .tws-tooltip {
-        position: relative;
-        display: inline-block;
-      }
+      #tws-status {font-size:11px;margin-top:5px;opacity:0.9;max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:5px;}
+      #tws-bbcode-area {width:100%;height:100px;margin-top:4px;}
+      .tws-tooltip {position: relative;display: inline-block;}
       .tws-tooltip .tws-tooltip-content {
-        visibility: hidden;
-        width: max-content;
-        max-width: 280px;
-        background: #2b1b0f;
-        color: #f5deb3;
-        text-align: left;
-        border: 1px solid #7b5b2a;
-        border-radius: 5px;
-        padding: 5px;
-        position: absolute;
-        z-index: 1200000;
-        bottom: 120%;
-        left: 50%;
-        transform: translateX(-50%);
-        opacity: 0;
-        transition: opacity 0.2s;
-        box-shadow: 0 0 8px rgba(0,0,0,0.6);
-        font-size: 11px;
+        visibility: hidden;width:max-content;max-width:280px;background:#2b1b0f;color:#f5deb3;text-align:left;
+        border:1px solid #7b5b2a;border-radius:5px;padding:5px;position:absolute;z-index:9999999999;
+        bottom:-200%;left:50%;transform:translateX(-50%);opacity:0;transition:opacity 0.2s;
+        box-shadow:0 0 8px rgba(0,0,0,0.6);font-size:11px;
       }
-      .tws-tooltip:hover .tws-tooltip-content {
-        visibility: visible;
-        opacity: 1;
-      }
-      .tws-tooltip-content img {
-        height: 16px;
-        vertical-align: middle;
-        margin-right: 3px;
-      }
+      .tws-tooltip:hover .tws-tooltip-content {visibility:visible;opacity:1;}
+      .tws-tooltip-content img {height:16px;vertical-align:middle;margin-right:3px;}
     </style>
 
     <div id="tws-toggle-tab">Painel</div>
@@ -225,10 +158,25 @@
 
   // === botão para ocultar/exibir painel ===
   const toggle = painelAg.querySelector('#tws-toggle-tab');
+  function updatepainelAgState() {
+    const hidden = painelAg.classList.contains('hidden');
+    localStorage.setItem(painelAg_STATE_KEY, hidden ? 'hidden' : 'visible');
+    toggle.textContent = hidden ? 'Abrir' : 'Fechar';
+  }
+
   toggle.onclick = () => {
     painelAg.classList.toggle('hidden');
-    toggle.textContent = painelAg.classList.contains('hidden') ? 'Abrir' : 'Fechar';
+    updatepainelAgState();
   };
+
+  // Restaurar estado salvo do painel
+  const savedState = localStorage.getItem(painelAg_STATE_KEY);
+  if (savedState === 'hidden') {
+    painelAg.classList.add('hidden');
+    toggle.textContent = 'Abrir';
+  } else {
+    toggle.textContent = 'Fechar';
+  }
 
   // === preencher select ===
   const sel = painelAg.querySelector('#tws-select-origem');
@@ -238,7 +186,7 @@
     sel.appendChild(o);
   });
 
-  // === utilitários ===
+  // === utilitários e funções auxiliares (inalteradas) ===
   const el=id=>painelAg.querySelector(id.startsWith('#')?id:'#'+id);
   const parseDateTimeToMs=str=>{
     const m=str.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/);
@@ -250,7 +198,6 @@
   const getList=()=>JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
   const setList=l=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(l));renderTable();};
 
-  // === render tabela com tooltip ===
   const tbody=el('tws-tbody');
   function renderTable(){
     const list=getList();
@@ -267,7 +214,6 @@
   }
   window.twsDel=i=>{const list=getList(); list.splice(i,1); setList(list);};
 
-  // === execução automática ===
   async function executeAttack(cfg){
     const origemId=cfg.origemId||villageMap[cfg.origem];
     if(!origemId)return alert(`Origem ${cfg.origem} não encontrada!`);
@@ -297,7 +243,6 @@
     },300);
   }
 
-  // === agendador principal ===
   const status=el('tws-status');
   function startScheduler(){
     setInterval(()=>{
@@ -314,7 +259,6 @@
     },1000);
   }
 
-  // === adicionar manual ===
   el('tws-add').onclick=()=>{
     const selVal=sel.value;
     const alvo=parseCoord(el('tws-alvo').value);
@@ -335,7 +279,6 @@
     }
   };
 
-  // === importar BBCode ===
   el('tws-import').onclick=()=>{
     const bb=el('tws-bbcode-area').value.trim();
     if(!bb)return alert('Cole o código BB primeiro!');
