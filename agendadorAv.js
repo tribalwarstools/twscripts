@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Agendador Avançado (Nova Aba + Auto-Confirmar fixos)
+// @name         Agendador Avançado (Nova Aba + Auto-Confirmar + Envio Final + Importar BBCode)
 // @namespace    http://tampermonkey.net/
-// @version      2.6
-// @description  Agenda múltiplos ataques com contagem regressiva (sempre abre em nova aba e auto-confirma).
+// @version      2.8
+// @description  Agenda múltiplos ataques com contagem regressiva (abre em nova aba, auto-confirma, envia automaticamente e permite importar tabelas BBCode do fórum).
 // @author       GiovaniG
 // @match        https://*.tribalwars.com.br/*
 // @grant        none
@@ -11,23 +11,33 @@
 (async function () {
   'use strict';
 
+  // === Envio automático na tela de confirmação ===
+  if (location.href.includes('screen=place&try=confirm')) {
+    const btn = document.querySelector('#troop_confirm_submit');
+    if (btn) {
+      console.log('[Agendador] Enviando ataque automaticamente...');
+      setTimeout(() => btn.click(), 300);
+    }
+    return;
+  }
+
   const STORAGE_KEY = 'tw_scheduler_multi_v1';
   const TROOP_LIST = ['spear','sword','axe','archer','spy','light','marcher','heavy','ram','catapult','knight','snob'];
   const world = location.hostname.split('.')[0];
   const VILLAGE_TXT_URL = `https://${world}.tribalwars.com.br/map/village.txt`;
 
-  // === carregar village.txt e montar mapa ===
+  // === carregar village.txt ===
   async function loadVillageTxt() {
-    const response = await fetch(VILLAGE_TXT_URL);
-    const text = await response.text();
+    const res = await fetch(VILLAGE_TXT_URL);
+    const text = await res.text();
     const map = {};
     const myVillages = [];
     for (const line of text.trim().split('\n')) {
       const [id, name, x, y, playerId] = line.split(',');
       map[`${x}|${y}`] = id;
       if (playerId === game_data.player.id.toString()) {
-        const cleanName = decodeURIComponent(name.replace(/\+/g, ' ')).trim();
-        myVillages.push({ id, name: cleanName, coord: `${x}|${y}` });
+        const clean = decodeURIComponent(name.replace(/\+/g, ' '));
+        myVillages.push({ id, name: clean, coord: `${x}|${y}` });
       }
     }
     return { map, myVillages };
@@ -44,7 +54,7 @@
         position: fixed;
         right: 10px;
         bottom: 10px;
-        width: 440px;
+        width: 460px;
         z-index: 99999;
         font-family: 'Verdana', sans-serif;
         background: url('https://dsen.innogamescdn.com/asset/efb4e9b/graphic/background/wood.jpg') #2b1b0f;
@@ -54,98 +64,56 @@
         box-shadow: 0 4px 18px rgba(0,0,0,0.7);
         padding: 10px;
       }
-      #tws-panel h3 {
-        margin: 0 0 6px 0;
-        font-size: 15px;
-        color: #ffd700;
-        text-align:center;
-        text-shadow: 1px 1px 2px #000;
+      #tws-panel h3 {margin:0 0 6px;text-align:center;color:#ffd700;text-shadow:1px 1px 2px #000;}
+      #tws-panel input,#tws-panel select,#tws-panel button,textarea{
+        border-radius:5px;border:1px solid #5c3a1e;background:#1e1408;color:#fff;padding:5px;font-size:12px;
       }
-      #tws-panel input, #tws-panel select, #tws-panel button {
-        border-radius: 5px;
-        border: 1px solid #5c3a1e;
-        background: #1e1408;
-        color: #fff;
-        padding: 5px;
-        font-size: 12px;
-      }
-      #tws-panel button {
-        cursor: pointer;
-        background: #6b4c2a;
-        color: #f8e6c2;
-        transition: 0.2s;
-      }
-      #tws-panel button:hover { background: #8b652e; }
-      #tws-schedule-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-        margin-top: 8px;
-      }
-      #tws-schedule-table th, #tws-schedule-table td {
-        border: 1px solid #3d2a12;
-        padding: 4px;
-        text-align: center;
-      }
-      #tws-schedule-table th {
-        background: #3d2a12;
-        color: #ffd700;
-      }
-      #tws-schedule-table td button {
-        background: #b33;
-        border: none;
-        color: white;
-        padding: 3px 6px;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      #tws-schedule-table td button:hover { background: #e44; }
-      details summary {
-        cursor:pointer;
-        color:#ffd700;
-        margin-top:6px;
-      }
-      #tws-status {
-        font-size:11px;
-        margin-top:5px;
-        opacity:0.9;
-        max-height:150px;
-        overflow-y:auto;
-        background:rgba(0,0,0,0.3);
-        padding:4px;
-        border-radius:5px;
-      }
+      #tws-panel button{cursor:pointer;background:#6b4c2a;color:#f8e6c2;transition:0.2s;}
+      #tws-panel button:hover{background:#8b652e;}
+      #tws-schedule-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+      #tws-schedule-table th,#tws-schedule-table td{border:1px solid #3d2a12;padding:4px;text-align:center;}
+      #tws-schedule-table th{background:#3d2a12;color:#ffd700;}
+      #tws-schedule-table td button{background:#b33;border:none;color:white;padding:3px 6px;border-radius:4px;cursor:pointer;}
+      #tws-schedule-table td button:hover{background:#e44;}
+      details summary{cursor:pointer;color:#ffd700;margin-top:6px;}
+      #tws-status{font-size:11px;margin-top:5px;opacity:0.9;max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:4px;border-radius:5px;}
+      #tws-bbcode-area{width:100%;height:100px;margin-top:4px;}
     </style>
 
-    <h3>Agendador Avançado </h3>
+    <h3>Agendador Avançado</h3>
 
-    <label for="tws-select-origem">Aldeia Origem:</label>
+    <label>Aldeia Origem:</label>
     <select id="tws-select-origem" style="width:100%;margin-bottom:4px">
       <option value="">Selecione sua aldeia...</option>
     </select>
 
     <label>Alvo (coord X|Y):</label>
-    <input id="tws-alvo" placeholder="400|500" style="width:10%;margin-bottom:4px"/>
+    <input id="tws-alvo" placeholder="400|500" style="width:80px;margin-bottom:4px"/>
 
     <details>
       <summary>Selecionar tropas</summary>
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:4px">
-        ${TROOP_LIST.map(u => `
+        ${TROOP_LIST.map(u=>`
           <div style="text-align:center">
             <img src="/graphic/unit/unit_${u}.png" title="${u}" style="height:18px;"><br>
             <input type="number" id="tws-${u}" min="0" value="0" style="width:45px;text-align:center">
-          </div>
-        `).join('')}
+          </div>`).join('')}
       </div>
     </details>
 
     <label>Data e hora (DD/MM/AAAA HH:MM:SS)</label>
-    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:50%;margin-bottom:6px"/>
+    <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:60%;margin-bottom:6px"/>
 
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button id="tws-add" style="flex:1">➕ Adicionar</button>
-      <button id="tws-clear" style="flex:1">🗑️ Limpar Todos</button>
+      <button id="tws-clear" style="flex:1">🗑️ Limpar</button>
     </div>
+
+    <details>
+      <summary>📥 Importar BBCode</summary>
+      <textarea id="tws-bbcode-area" placeholder="Cole aqui o código [table]...[/table] do fórum"></textarea>
+      <button id="tws-import" style="width:100%;margin-top:4px;">📤 Importar BBCode</button>
+    </details>
 
     <table id="tws-schedule-table">
       <thead><tr><th>Origem</th><th>Alvo</th><th>Data/Hora</th><th>Ações</th></tr></thead>
@@ -156,139 +124,148 @@
   `;
   document.body.appendChild(panel);
 
-  // === preencher select com aldeias do jogador ===
-  const selectOrigem = document.getElementById('tws-select-origem');
-  myVillages.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v.id;
-    opt.textContent = `${v.name} (${v.coord})`;
-    selectOrigem.appendChild(opt);
+  // === preencher select ===
+  const sel = panel.querySelector('#tws-select-origem');
+  myVillages.forEach(v=>{
+    const o=document.createElement('option');
+    o.value=v.id; o.textContent=`${v.name} (${v.coord})`;
+    sel.appendChild(o);
   });
 
   // === utilitários ===
-  const el = id => document.getElementById(id);
-  const tbody = el('tws-tbody');
-  const statusEl = el('tws-status');
-
-  const parseDateTimeToMs = str => {
-    const m = str.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/);
-    if (!m) return NaN;
-    const [, d, mo, y, hh, mm, ss] = m;
-    return new Date(+y, +mo - 1, +d, +hh, +mm, +ss).getTime();
+  const el=id=>panel.querySelector(id.startsWith('#')?id:'#'+id);
+  const parseDateTimeToMs=str=>{
+    const m=str.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/);
+    if(!m)return NaN;
+    const[,d,mo,y,hh,mm,ss]=m;
+    return new Date(+y,+mo-1,+d,+hh,+mm,+ss).getTime();
   };
-  const parseCoord = s => s.trim().match(/^(\d+)\|(\d+)$/) ? s.trim() : null;
-
-  const getSchedules = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  const setSchedules = l => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(l));
-    renderTable();
-  };
+  const parseCoord=s=>s.trim().match(/^(\d+)\|(\d+)$/)?s.trim():null;
+  const getList=()=>JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
+  const setList=l=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(l));renderTable();};
 
   // === render tabela ===
-  function renderTable() {
-    const list = getSchedules();
-    tbody.innerHTML = list.map((a, i) => `
-      <tr>
-        <td>${a.origem}</td>
-        <td>${a.alvo}</td>
-        <td>${a.datetime}${a.done ? ' ✅' : ''}</td>
-        <td><button onclick="window.twsRemove(${i})">X</button></td>
-      </tr>
-    `).join('');
+  const tbody=el('tws-tbody');
+  function renderTable(){
+    const list=getList();
+    tbody.innerHTML=list.map((a,i)=>`
+      <tr><td>${a.origem}</td><td>${a.alvo}</td><td>${a.datetime}${a.done?' ✅':''}</td>
+      <td><button onclick="window.twsDel(${i})">X</button></td></tr>`).join('');
   }
-
-  window.twsRemove = i => {
-    const list = getSchedules();
-    list.splice(i, 1);
-    setSchedules(list);
+  window.twsDel=i=>{
+    const list=getList(); list.splice(i,1); setList(list);
   };
 
-  // === executar envio ===
-  async function executeAttack(cfg) {
-    const origemId = cfg.origemId || villageMap[cfg.origem];
-    if (!origemId) return alert(`Origem ${cfg.origem} não encontrada!`);
-    const [x, y] = cfg.alvo.split('|');
-    const url = `${location.protocol}//${location.host}/game.php?village=${origemId}&screen=place`;
-    const win = window.open(url, '_blank'); // sempre nova aba
-    const int = setInterval(() => {
-      try {
-        if (!win || win.closed) return clearInterval(int);
-        const doc = win.document;
-        const xField = doc.querySelector('#inputx');
-        if (xField) {
-          xField.value = x;
-          doc.querySelector('#inputy').value = y;
-          TROOP_LIST.forEach(u => {
-            const val = parseInt(cfg[u]) || 0;
-            const input = doc.querySelector(`#unit_input_${u}`);
-            if (input) input.value = val;
+  // === executa envio ===
+  async function executeAttack(cfg){
+    const origemId=cfg.origemId||villageMap[cfg.origem];
+    if(!origemId)return alert(`Origem ${cfg.origem} não encontrada!`);
+    const[x,y]=cfg.alvo.split('|');
+    const url=`${location.protocol}//${location.host}/game.php?village=${origemId}&screen=place`;
+    const win=window.open(url,'_blank');
+    const int=setInterval(()=>{
+      try{
+        if(!win||win.closed)return clearInterval(int);
+        const doc=win.document;
+        const xField=doc.querySelector('#inputx');
+        if(xField){
+          xField.value=x; doc.querySelector('#inputy').value=y;
+          TROOP_LIST.forEach(u=>{
+            const val=parseInt(cfg[u])||0;
+            const input=doc.querySelector('#unit_input_'+u);
+            if(input)input.value=val;
           });
-          const atk = doc.querySelector('[name=attack]');
-          if (atk) {
+          const atk=doc.querySelector('[name=attack]');
+          if(atk){
             atk.click();
-            setTimeout(() => {
-              const conf = doc.querySelector('[name=submit]');
-              if (conf) conf.click();
-            }, 400); // sempre auto-confirmar
+            setTimeout(()=>{
+              const conf=doc.querySelector('[name=submit]');
+              if(conf)conf.click();
+            },400);
           }
           clearInterval(int);
         }
-      } catch {}
-    }, 300);
+      }catch{}
+    },300);
   }
 
-  // === agendador múltiplo ===
-  function startScheduler() {
-    setInterval(() => {
-      const list = getSchedules();
-      const now = Date.now();
-      const pendingLines = [];
-
-      for (const a of list) {
-        const t = parseDateTimeToMs(a.datetime);
-        if (!t || a.done) continue;
-        const diff = t - now;
-        if (diff <= 0 && diff > -10000) {
-          a.done = true;
-          executeAttack(a);
-          pendingLines.push(`🔥 Ataque disparado: ${a.origem} → ${a.alvo}`);
-        } else if (diff > 0) {
-          pendingLines.push(`🕒 ${a.origem} → ${a.alvo} em ${Math.ceil(diff / 1000)}s`);
+  // === agendador ===
+  const status=el('tws-status');
+  function startScheduler(){
+    setInterval(()=>{
+      const list=getList();
+      const now=Date.now(); const msgs=[];
+      for(const a of list){
+        const t=parseDateTimeToMs(a.datetime);
+        if(!t||a.done)continue;
+        const diff=t-now;
+        if(diff<=0&&diff>-10000){
+          a.done=true; executeAttack(a);
+          msgs.push(`🔥 ${a.origem} → ${a.alvo}`);
+        } else if(diff>0){
+          msgs.push(`🕒 ${a.origem} → ${a.alvo} em ${Math.ceil(diff/1000)}s`);
         }
       }
-
-      setSchedules(list);
-      statusEl.innerHTML = pendingLines.length
-        ? `<strong>Aguardando:</strong><br>${pendingLines.join('<br>')}`
-        : 'Sem agendamentos ativos.';
-    }, 1000);
+      setList(list);
+      status.innerHTML=msgs.length?msgs.join('<br>'):'Sem agendamentos ativos.';
+    },1000);
   }
 
-  // === eventos ===
-  el('tws-add').onclick = () => {
-    const selectVal = el('tws-select-origem').value;
-    const alvo = parseCoord(el('tws-alvo').value);
-    const dt = el('tws-datetime').value.trim();
-
-    if (!selectVal || !alvo || isNaN(parseDateTimeToMs(dt)))
-      return alert('Selecione uma aldeia de origem válida e verifique coordenadas e data!');
-
-    const origem = myVillages.find(v => v.id === selectVal)?.coord;
-    const origemId = selectVal || villageMap[origem];
-    const cfg = { origem, origemId, alvo, datetime: dt, open: true, auto: true };
-    TROOP_LIST.forEach(u => cfg[u] = el(`tws-${u}`).value);
-    const list = getSchedules();
-    list.push(cfg);
-    setSchedules(list);
+  // === adicionar manual ===
+  el('tws-add').onclick=()=>{
+    const selVal=sel.value;
+    const alvo=parseCoord(el('tws-alvo').value);
+    const dt=el('tws-datetime').value.trim();
+    if(!selVal||!alvo||isNaN(parseDateTimeToMs(dt)))
+      return alert('Verifique origem, coordenadas e data!');
+    const origem=myVillages.find(v=>v.id===selVal)?.coord;
+    const origemId=selVal;
+    const cfg={origem,origemId,alvo,datetime:dt};
+    TROOP_LIST.forEach(u=>cfg[u]=el('tws-'+u).value);
+    const list=getList(); list.push(cfg); setList(list);
   };
 
-  el('tws-clear').onclick = () => {
-    if (confirm('Apagar todos os agendamentos?')) {
+  el('tws-clear').onclick=()=>{
+    if(confirm('Apagar todos os agendamentos?')){
       localStorage.removeItem(STORAGE_KEY);
-      renderTable();
-      statusEl.textContent = 'Lista limpa.';
+      renderTable(); status.textContent='Lista limpa.';
     }
   };
+
+  // === importar BBCode ===
+  el('tws-import').onclick=()=>{
+    const bb=el('tws-bbcode-area').value.trim();
+    if(!bb)return alert('Cole o código BB primeiro!');
+    const ag=importarDeBBCode(bb);
+    const list=getList(); list.push(...ag); setList(list);
+    alert(`${ag.length} agendamentos importados com sucesso!`);
+  };
+
+  function importarDeBBCode(bbcode){
+    const linhas=bbcode.split('[*]').filter(l=>l.trim()!=='');
+    const agendamentos=[];
+    for(const linha of linhas){
+      const origem=linha.match(/(\d{3}\|\d{3})/g)?.[0]||'';
+      const destino=linha.match(/(\d{3}\|\d{3})/g)?.[1]||'';
+      const dataHora=linha.match(/(\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}:\d{2})/)?.[1]||'';
+      const url=linha.match(/\[url=(.*?)\]/)?.[1]||'';
+      const params={};
+      if(url){
+        const query=url.split('?')[1];
+        if(query){
+          query.split('&').forEach(p=>{
+            const[k,v]=p.split('=');
+            params[k]=decodeURIComponent(v||'');
+          });
+        }
+      }
+      const origemId=params.village||villageMap[origem];
+      const cfg={origem,origemId,alvo:destino,datetime:dataHora};
+      TROOP_LIST.forEach(u=>cfg[u]=params['att_'+u]||0);
+      if(origem&&destino&&dataHora)agendamentos.push(cfg);
+    }
+    return agendamentos;
+  }
 
   renderTable();
   startScheduler();
