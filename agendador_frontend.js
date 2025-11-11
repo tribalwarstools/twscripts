@@ -1,11 +1,3 @@
-// ==UserScript==
-// @name         Agendador Avançado (Frontend Integrado com Auto-Tropas)
-// @namespace    https://tribalwars.com.br/
-// @version      1.9
-// @description  Painel avançado do agendador com preenchimento automático de tropas disponíveis ao selecionar a aldeia de origem.
-// @author       Giovani
-// ==/UserScript==
-
 (async function () {
   'use strict';
 
