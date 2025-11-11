@@ -1,12 +1,3 @@
-// ==UserScript==
-// @name         Agendador Avançado - Backend
-// @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Backend com funções de envio, importação BBCode, parsing e scheduler para o Agendador Avançado.
-// @match        https://*.tribalwars.com.br/*
-// @grant        none
-// ==/UserScript==
-
 (function () {
   'use strict';
 
