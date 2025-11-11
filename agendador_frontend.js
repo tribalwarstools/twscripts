@@ -1,12 +1,3 @@
-// ==UserScript==
-// @name         Agendador Avançado - Painel (Frontend)
-// @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Painel visual do Agendador Avançado (carrega backend dinamicamente via $.getScript())
-// @match        https://*.tribalwars.com.br/*
-// @grant        none
-// ==/UserScript==
-
 (async function () {
   'use strict';
 
