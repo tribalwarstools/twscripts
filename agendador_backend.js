@@ -271,22 +271,57 @@
     return agendamentos;
   }
 
-  // === Expor API global ===
-  window.TWS_Backend = {
-    loadVillageTxt,
-    parseDateTimeToMs,
-    parseCoord,
-    getList,
-    setList,
-    startScheduler,
-    importarDeBBCode,
-    executeAttack,
-    TROOP_LIST,
-    STORAGE_KEY,
-    PANEL_STATE_KEY,
-    // para debug
-    _internal: { _villageMap, _myVillages }
-  };
+
+//incio
+  // === getVillageTroops: busca as tropas disponíveis de uma aldeia ===
+  async function getVillageTroops(villageId) {
+    try {
+      const placeUrl = `${location.protocol}//${location.host}/game.php?village=${villageId}&screen=place`;
+      const res = await fetch(placeUrl, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('Falha ao carregar página /place: ' + res.status);
+      const html = await res.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      const troops = {};
+      TROOP_LIST.forEach(u => {
+        const el = doc.querySelector(`#unit_input_${u}`) || doc.querySelector(`input[name="${u}"]`);
+        const availableEl = doc.querySelector(`#units_entry_all_${u}`) || doc.querySelector(`#units_home_${u}`);
+        const available = availableEl ? parseInt(availableEl.textContent.match(/\d+/)?.[0] || '0', 10) : 0;
+        const value = el ? parseInt(el.value || '0', 10) : 0;
+        troops[u] = available || value || 0;
+      });
+
+      return troops;
+    } catch (err) {
+      console.error('[TWS_Backend] getVillageTroops error', err);
+      return null;
+    }
+  }
+
+//fim
+  
+
+
+
+  
+window.TWS_Backend = {
+  loadVillageTxt,
+  parseDateTimeToMs,
+  parseCoord,
+  getList,
+  setList,
+  startScheduler,
+  importarDeBBCode,
+  executeAttack,
+  TROOP_LIST,
+  STORAGE_KEY,
+  PANEL_STATE_KEY,
+  getVillageTroops, // <-- ADICIONE ESTA LINHA
+  // para debug
+  _internal: { _villageMap, _myVillages }
+};
+
 
   console.log('[TWS_Backend] backend loaded.');
 })();
