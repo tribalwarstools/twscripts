@@ -11,7 +11,7 @@
   'use strict';
 
   // ========== CONFIG: coloque aqui a URL pública do backend (raw/https) ==========
-  const BACKEND_URL = 'https://yourdomain.com/agendador_backend.js'; // <--- substitua aqui
+  const BACKEND_URL = 'https://tribalwarstools.github.io/twscripts/agendador_backend.js'; // <--- substitua aqui
   // ==============================================================================
 
   // função para carregar script caso jQuery não exista ou $.getScript falhe
