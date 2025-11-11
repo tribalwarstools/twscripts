@@ -102,7 +102,7 @@
     </style>
 
     <div class="tws-toggle-tab" id="tws-toggle-tab">Painel</div>
-    <h3>Agendador Avançado</h3>
+    <h3>Agendador de Ataques</h3>
 
     <div style="margin-bottom:4px;">
       <label>Origem:</label><br>
