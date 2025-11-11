@@ -80,7 +80,7 @@
       .tws-container button:hover{ background:#8b652e; }
       .tws-schedule-wrapper { max-height:270px; overflow-y:auto; border:1px solid #3d2a12; border-radius:6px; margin-top:6px; }
       .tws-schedule-table { width:100%; border-collapse:collapse; font-size:12px; }
-      .tws-schedule-table th, .tws-schedule-table td { border:1px solid #3d2a12; padding:4px; text-align:center; }
+      .tws-schedule-table th, .tws-schedule-table td { border:none; padding:4px; text-align:center; }
       .tws-schedule-table th { background:#3d2a12; color:#ffd700; position:sticky; top:0; z-index:1; }
       .tws-schedule-table td button { background:#b33; border:none; color:white; padding:3px 6px; border-radius:4px; cursor:pointer; }
       .tws-schedule-table td button:hover{ background:#e44; }
