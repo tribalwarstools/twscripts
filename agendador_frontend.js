@@ -55,15 +55,22 @@
   panel.innerHTML = `
     <style>
       .tws-container {
-        position: fixed; right: 0; bottom: 10px; width: 460px; z-index: 99999;
+        position: fixed; 
+        right: 0; 
+        bottom: 10px; 
+        width: 460px; 
+        z-index: 99999;
         font-family: Verdana, sans-serif !important;
-        background: url('https://dsen.innogamescdn.com/asset/efb4e9b/graphic/background/wood.jpg') #2b1b0f !important;
+        background: #2b1b0f !important; /* ← só a cor sólida */
         color: #f5deb3 !important;
-        border: 2px solid #654321 !important; border-right: none !important;
+        border: 2px solid #654321 !important; 
+        border-right: none !important;
         border-radius: 8px 0 0 8px !important;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.7) !important; padding: 10px !important;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.7) !important; 
+        padding: 10px !important;
         transition: transform 0.4s ease !important;
-      }
+}
+
       .tws-toggle-tab {
         position: absolute; left: -28px; top: 40%;
         background: #5c3a1e; border: 2px solid #654321; border-right: none;
