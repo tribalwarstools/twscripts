@@ -1,30 +1,36 @@
+// ==UserScript==
+// @name         Agendador Avançado (Frontend Integrado com Auto-Tropas)
+// @namespace    https://tribalwars.com.br/
+// @version      1.9
+// @description  Painel avançado do agendador com preenchimento automático de tropas disponíveis ao selecionar a aldeia de origem.
+// @author       Giovani
+// ==/UserScript==
+
 (async function () {
   'use strict';
 
-  // ========== CONFIG: coloque aqui a URL pública do backend (raw/https) ==========
-  const BACKEND_URL = 'https://tribalwarstools.github.io/twscripts/agendador_backend.js'; // <--- substitua aqui
-  // ==============================================================================
+  // ======== CONFIG: URL do backend =========
+  const BACKEND_URL = 'https://tribalwarstools.github.io/twscripts/agendador_backend.js';
+  // =========================================
 
-  // função para carregar script caso jQuery não exista ou $.getScript falhe
   function loadScript(url) {
     return new Promise((resolve, reject) => {
       try {
         if (window.jQuery && typeof window.jQuery.getScript === 'function') {
-          window.jQuery.getScript(url).done(() => {
-            // pequeno delay para garantir execução
-            setTimeout(() => resolve(), 150);
-          }).fail((jqx, status, err) => {
-            console.warn('$.getScript failed:', status, err);
-            // fallback para tag script
-            const s = document.createElement('script');
-            s.src = url; s.async = true;
-            s.onload = () => setTimeout(resolve, 120);
-            s.onerror = e => reject(e);
-            document.head.appendChild(s);
-          });
+          window.jQuery.getScript(url)
+            .done(() => setTimeout(resolve, 150))
+            .fail(() => {
+              const s = document.createElement('script');
+              s.src = url;
+              s.async = true;
+              s.onload = () => setTimeout(resolve, 120);
+              s.onerror = e => reject(e);
+              document.head.appendChild(s);
+            });
         } else {
           const s = document.createElement('script');
-          s.src = url; s.async = true;
+          s.src = url;
+          s.async = true;
           s.onload = () => setTimeout(resolve, 120);
           s.onerror = e => reject(e);
           document.head.appendChild(s);
@@ -42,12 +48,15 @@
   }
 
   const backend = window.TWS_Backend;
-  if (!backend) { alert('Backend não inicializou corretamente. Verifique console.'); return; }
+  if (!backend) {
+    alert('Backend não inicializou corretamente. Verifique console.');
+    return;
+  }
 
-  // Carrega village.txt via backend e inicia painel
+  // === Carrega village.txt via backend e inicia painel ===
   const { map: villageMap, myVillages } = await backend.loadVillageTxt();
 
-  // === Criar painel (HTML + CSS do seu estilo) ===
+  // === Criação do painel ===
   const panel = document.createElement('div');
   panel.id = 'tws-panel';
   panel.className = 'tws-container';
@@ -96,70 +105,69 @@
     <div class="tws-toggle-tab" id="tws-toggle-tab">Painel</div>
     <h3>Agendador Avançado</h3>
 
-  <div style="margin-bottom:4px;">
-    <label>Origem:</label><br>
-    <select id="tws-select-origem" style="width:100%">
-      <option value="">Selecione sua aldeia...</option>
-    </select>
-  </div>
+    <div style="margin-bottom:4px;">
+      <label>Origem:</label><br>
+      <select id="tws-select-origem" style="width:100%">
+        <option value="">Selecione sua aldeia...</option>
+      </select>
+    </div>
 
-  <div style="margin-bottom:4px;">
-    <label>Tropa:</label>
-    <details>
-      <summary>Selecionar tropas</summary>
-      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:4px">
-        ${backend.TROOP_LIST.map(u=>`
-          <div style="text-align:center">
-            <img src="/graphic/unit/unit_${u}.png" title="${u}" style="height:18px;"><br>
-            <input type="number" id="tws-${u}" min="0" value="0" style="width:45px;text-align:center">
-          </div>`).join('')}
-      </div>
-    </details>
-  </div>
-
-      <div style="display:flex; gap:6px; margin-bottom:4px;">
-        <div style="flex:1">
-          <label>Destino:</label>
-          <input id="tws-alvo" placeholder="400|500" style="width:50%"/>
-        </div>
-        <div style="flex:1">
-          <label>Data/Hora:</label>
-          <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:50%"/>
-        </div>
-      </div>
-
-      <div style="display:flex; gap:6px; margin-bottom:6px;">
-        <button id="tws-add" style="flex:1">➕ Acionar</button>
-        <button id="tws-clear" style="flex:1">🗑️ Limpar</button>
-      </div>
-
+    <div style="margin-bottom:4px;">
+      <label>Tropa:</label>
       <details>
-        <summary>📥 Importar BBCode</summary>
-        <textarea class="tws-bbcode-area" id="tws-bbcode-area" placeholder="Cole aqui o código [table]...[/table] do fórum"></textarea>
-        <button id="tws-import" style="width:100%;margin-top:4px;">📤 Importar BBCode</button>
+        <summary>Selecionar tropas</summary>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:4px">
+          ${backend.TROOP_LIST.map(u=>`
+            <div style="text-align:center">
+              <img src="/graphic/unit/unit_${u}.png" title="${u}" style="height:18px;"><br>
+              <input type="number" id="tws-${u}" min="0" value="0" style="width:45px;text-align:center">
+            </div>`).join('')}
+        </div>
       </details>
+    </div>
 
-      <div class="tws-schedule-wrapper" id="tws-schedule-wrapper">
-        <table class="tws-schedule-table" id="tws-schedule-table">
-          <thead>
-            <tr>
-              <th>Origem</th>
-              <th>Destino</th>
-              <th>Data/Hora</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tws-tbody"></tbody>
-        </table>
+    <div style="display:flex; gap:6px; margin-bottom:4px;">
+      <div style="flex:1">
+        <label>Destino:</label>
+        <input id="tws-alvo" placeholder="400|500" style="width:50%"/>
       </div>
+      <div style="flex:1">
+        <label>Data/Hora:</label>
+        <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:50%"/>
+      </div>
+    </div>
 
-      <div class="tws-status" id="tws-status">Aguardando agendamentos...</div>
-    `;
+    <div style="display:flex; gap:6px; margin-bottom:6px;">
+      <button id="tws-add" style="flex:1">➕ Acionar</button>
+      <button id="tws-clear" style="flex:1">🗑️ Limpar</button>
+    </div>
+
+    <details>
+      <summary>📥 Importar BBCode</summary>
+      <textarea class="tws-bbcode-area" id="tws-bbcode-area" placeholder="Cole aqui o código [table]...[/table] do fórum"></textarea>
+      <button id="tws-import" style="width:100%;margin-top:4px;">📤 Importar BBCode</button>
+    </details>
+
+    <div class="tws-schedule-wrapper" id="tws-schedule-wrapper">
+      <table class="tws-schedule-table" id="tws-schedule-table">
+        <thead>
+          <tr>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th>Data/Hora</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tws-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="tws-status" id="tws-status">Aguardando agendamentos...</div>
+  `;
 
   document.body.appendChild(panel);
 
-  // === Toggle painel ===
   const toggle = panel.querySelector('#tws-toggle-tab');
   function updatePanelState() {
     const hidden = panel.classList.contains('tws-hidden');
@@ -175,20 +183,45 @@
   const sel = panel.querySelector('#tws-select-origem');
   myVillages.forEach(v => {
     const o = document.createElement('option');
-    o.value = v.id; o.textContent = `${v.name} (${v.coord})`;
+    o.value = v.id;
+    o.textContent = `${v.name} (${v.coord})`;
     sel.appendChild(o);
   });
 
-  // === Helpers locais ===
+  // === Preenchimento automático de tropas ===
+  sel.addEventListener('change', async () => {
+    const villageId = sel.value;
+    if (!villageId) return;
+    try {
+      UI.InfoMessage('Carregando tropas da aldeia...', 3000, 'success');
+      const troops = await backend.getVillageTroops(villageId);
+      if (troops) {
+        for (const [unit, val] of Object.entries(troops)) {
+          const input = document.getElementById('tws-' + unit);
+          if (input) input.value = val;
+        }
+        UI.InfoMessage('Tropas preenchidas com sucesso!', 3000, 'success');
+      } else {
+        UI.ErrorMessage('Não foi possível carregar as tropas da aldeia.');
+      }
+    } catch (e) {
+      console.error('Erro ao obter tropas:', e);
+      UI.ErrorMessage('Erro ao carregar tropas da aldeia.');
+    }
+  });
+
+  // === Funções auxiliares e eventos ===
   const el = id => panel.querySelector(id.startsWith('#') ? id : '#' + id);
 
-  // === renderTable: pega lista do backend e monta tabela ===
   window.renderTable = function renderTable() {
     const list = backend.getList();
     const tbody = el('tws-tbody');
-    if (!list.length){ tbody.innerHTML = '<tr><td colspan="5"><i>Nenhum agendamento</i></td></tr>'; return; }
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><i>Nenhum agendamento</i></td></tr>';
+      return;
+    }
     const now = Date.now();
-    tbody.innerHTML = list.map((a,i) => {
+    tbody.innerHTML = list.map((a, i) => {
       const troops = backend.TROOP_LIST.filter(t => a[t] > 0).map(t => `<img src="/graphic/unit/unit_${t}.png"> ${a[t]}`).join('<br>') || 'Nenhuma tropa';
       const status = a.done ? '✅ Enviado' : (backend.parseDateTimeToMs(a.datetime) - now > 0 ? `🕒 ${Math.ceil((backend.parseDateTimeToMs(a.datetime)-now)/1000)}s` : '🔥 Enviando...');
       return `<tr>
@@ -199,43 +232,44 @@
         <td><button data-idx="${i}" class="tws-del-btn">X</button></td>
       </tr>`;
     }).join('');
-    // hook deleta
     tbody.querySelectorAll('.tws-del-btn').forEach(btn => {
-      btn.onclick = (ev) => {
+      btn.onclick = () => {
         const i = +btn.dataset.idx;
-        const l = backend.getList(); l.splice(i,1); backend.setList(l);
+        const l = backend.getList(); l.splice(i, 1); backend.setList(l);
       };
     });
   };
 
-  // === Start scheduler (backend) ===
   backend.startScheduler();
 
-  // === Botões e eventos ===
   el('tws-add').onclick = () => {
     const selVal = sel.value;
     const alvo = backend.parseCoord(el('tws-alvo').value);
     const dt = el('tws-datetime').value.trim();
-    if(!selVal || !alvo || isNaN(backend.parseDateTimeToMs(dt))) return alert('Verifique origem, coordenadas e data!');
+    if (!selVal || !alvo || isNaN(backend.parseDateTimeToMs(dt))) return alert('Verifique origem, coordenadas e data!');
     const origem = myVillages.find(v => v.id === selVal)?.coord || '';
     const origemId = selVal;
     const cfg = { origem, origemId, alvo, datetime: dt };
-    backend.TROOP_LIST.forEach(u => cfg[u] = el('tws-'+u).value || 0);
+    backend.TROOP_LIST.forEach(u => cfg[u] = el('tws-' + u).value || 0);
     const list = backend.getList(); list.push(cfg); backend.setList(list);
   };
 
-  el('tws-clear').onclick = () => { if(confirm('Apagar todos os agendamentos?')){ localStorage.removeItem(backend.STORAGE_KEY); renderTable(); el('tws-status').textContent='Lista limpa.'; } };
+  el('tws-clear').onclick = () => {
+    if (confirm('Apagar todos os agendamentos?')) {
+      localStorage.removeItem(backend.STORAGE_KEY);
+      renderTable();
+      el('tws-status').textContent = 'Lista limpa.';
+    }
+  };
 
   el('tws-import').onclick = () => {
     const bb = el('tws-bbcode-area').value.trim();
-    if(!bb) return alert('Cole o código BB primeiro!');
+    if (!bb) return alert('Cole o código BB primeiro!');
     const ag = backend.importarDeBBCode(bb);
     const list = backend.getList(); list.push(...ag); backend.setList(list);
     alert(`${ag.length} agendamentos importados com sucesso!`);
   };
 
-  // === inicial render ===
   renderTable();
-
-  console.log('[TWS_Frontend] painel carregado.');
+  console.log('[TWS_Frontend] painel carregado com auto-tropas.');
 })();
