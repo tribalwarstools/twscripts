@@ -51,468 +51,132 @@
   // === Criação do painel ===
   const panel = document.createElement('div');
   panel.id = 'tws-panel';
-  panel.className = 'tws-tribal-theme scrollbar-custom';
+  panel.className = 'tws-container';
   panel.innerHTML = `
     <style>
-      .tws-tribal-theme {
-        --color-primary: #8b4513;
-        --color-secondary: #654321;
-        --color-accent: #cd853f;
-        --color-dark: #3e2723;
-        --color-light: #f5deb3;
-        --color-success: #8fbc8f;
-        --color-warning: #daa520;
-        --color-error: #cd5c5c;
-        --border-radius: 8px;
-        --shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-      }
-
-      #tws-panel {
-        position: fixed;
-        right: -480px;
-        bottom: 50px;
-        width: 460px;
-        background: linear-gradient(145deg, var(--color-dark), #2c1e17);
-        color: var(--color-light);
-        border: 3px solid var(--color-accent);
-        font-family: 'Trebuchet MS', sans-serif;
-        font-size: 13px;
-        padding: 15px;
-        z-index: 9999;
-        border-radius: var(--border-radius) 0 0 var(--border-radius);
-        box-shadow: var(--shadow);
-        transition: right 0.4s ease-in-out;
-        max-height: 80vh;
-        overflow-y: auto;
-      }
-
-      #tws-panel.panel-visible {
-        right: 0;
-      }
-
-      #tws-panel.panel-hidden {
-        right: -500px;
-      }
+      .tws-container {
+        position: fixed; 
+        right: 0; 
+        bottom: 10px; 
+        width: 460px; 
+        z-index: 99999;
+        font-family: Verdana, sans-serif !important;
+        background: #2b1b0f !important; /* ← só a cor sólida */
+        color: #f5deb3 !important;
+        border: 2px solid #654321 !important; 
+        border-right: none !important;
+        border-radius: 8px 0 0 8px !important;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.7) !important; 
+        padding: 10px !important;
+        transition: transform 0.4s ease !important;
+}
 
       .tws-toggle-tab {
-        position: fixed;
-        right: 0;
-        top: 30%;
-        transform: translateY(-50%);
-        background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-        color: var(--color-light);
-        padding: 15px 8px;
-        border-radius: var(--border-radius) 0 0 var(--border-radius);
-        cursor: pointer;
-        z-index: 10000;
-        font-family: 'Trebuchet MS', sans-serif;
-        font-weight: bold;
-        font-size: 14px;
-        writing-mode: vertical-rl;
-        text-orientation: mixed;
-        box-shadow: var(--shadow);
-        border: 2px solid var(--color-accent);
-        border-right: none;
-        transition: all 0.3s ease;
+        position: absolute; left: -28px; top: 40%;
+        background: #5c3a1e; border: 2px solid #654321; border-right: none;
+        border-radius: 6px 0 0 6px; padding: 6px 4px; font-size: 14px;
+        color: #ffd700; cursor: pointer; writing-mode: vertical-rl;
+        text-orientation: mixed; user-select: none; box-shadow: -2px 0 6px rgba(0,0,0,0.5);
       }
-
-      .tws-toggle-tab:hover {
-        background: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
-        padding-right: 12px;
+      .tws-toggle-tab:hover { background: #7b5124; }
+      .tws-hidden { transform: translateX(100%); }
+      .tws-container h3 { margin:0 0 6px;text-align:center;color:#ffd700;text-shadow:1px 1px 2px #000;}
+      .tws-container input, .tws-container select, .tws-container button, .tws-container textarea {
+        border-radius:5px; border:1px solid #5c3a1e; background:#1e1408; color:#fff; padding:5px; font-size:12px;
       }
-
-      .tws-header {
-        text-align: center;
-        margin: 0 0 12px 0;
-        font-size: 16px;
-        color: var(--color-light);
-        background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
-        padding: 8px;
-        border-radius: var(--border-radius);
-        border: 1px solid var(--color-accent);
-        position: relative;
-      }
-
-      .tws-header::before {
-        content: '🏹';
-        margin-right: 8px;
-      }
-
-      .tws-header::after {
-        content: '🏹';
-        margin-left: 8px;
-      }
-
-      .tws-controls-section {
-        background: rgba(139, 69, 19, 0.2);
-        border: 1px solid var(--color-primary);
-        border-radius: var(--border-radius);
-        padding: 12px;
-        margin-bottom: 12px;
-      }
-
-      .tws-section-title {
-        font-weight: bold;
-        color: var(--color-accent);
-        margin-bottom: 8px;
-        font-size: 14px;
-        border-bottom: 1px solid var(--color-primary);
-        padding-bottom: 4px;
-      }
-
-      .tws-input-group {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 8px 0;
-      }
-
-      .tws-input-group label {
-        font-weight: bold;
-        color: var(--color-accent);
-        flex-shrink: 0;
-      }
-
-      #tws-select-origem, #tws-alvo, #tws-datetime {
-        width: 100%;
-        text-align: center;
-        background: var(--color-dark);
-        border: 1px solid var(--color-primary);
-        color: var(--color-light);
-        border-radius: 4px;
-        padding: 6px;
-        font-family: 'Trebuchet MS', sans-serif;
-      }
-
-      .tws-troops-grid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 8px;
-        margin-top: 8px;
-        padding: 8px;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 6px;
-        border: 1px solid var(--color-primary);
-      }
-
-      .tws-troop-item {
-        text-align: center;
-      }
-
-      .tws-troop-item img {
-        height: 20px;
-        margin-bottom: 4px;
-      }
-
-      .tws-troop-input {
-        width: 45px;
-        text-align: center;
-        background: var(--color-dark);
-        border: 1px solid var(--color-primary);
-        color: var(--color-light);
-        border-radius: 4px;
-        padding: 2px;
-      }
-
-      .tws-buttons-row {
-        display: flex;
-        gap: 8px;
-        margin: 12px 0;
-      }
-
-      .tws-button {
-        flex: 1;
-        background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-        border: 1px solid var(--color-accent);
-        color: var(--color-light);
-        padding: 8px 12px;
-        border-radius: var(--border-radius);
-        cursor: pointer;
-        font-family: 'Trebuchet MS', sans-serif;
-        font-weight: bold;
-        font-size: 12px;
-        transition: all 0.2s;
-      }
-
-      .tws-button:hover {
-        background: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-      }
-
-      .tws-button:active {
-        transform: translateY(0);
-      }
-
-      .tws-button-add {
-        background: linear-gradient(135deg, #2e8b57, #3cb371);
-      }
-
-      .tws-button-clear {
-        background: linear-gradient(135deg, #b22222, #dc143c);
-      }
-
-      .tws-button-import {
-        background: linear-gradient(135deg, #daa520, #ffd700);
-        color: var(--color-dark);
-        width: 100%;
-        margin-top: 8px;
-      }
-
-      .tws-bbcode-area {
-        width: 100%;
-        height: 80px;
-        background: var(--color-dark);
-        border: 1px solid var(--color-primary);
-        color: var(--color-light);
-        border-radius: 4px;
-        padding: 6px;
-        font-family: 'Courier New', monospace;
-        font-size: 11px;
-        margin-top: 8px;
-        resize: vertical;
-      }
-
-      .tws-schedule-wrapper {
-        max-height: 270px;
-        overflow-y: auto;
-        border: 1px solid var(--color-primary);
-        border-radius: var(--border-radius);
-        margin-top: 8px;
-        background: rgba(0, 0, 0, 0.3);
-      }
-
-      .tws-schedule-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 11px;
-      }
-
-      .tws-schedule-table th {
-        background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-        color: var(--color-light);
-        padding: 6px;
-        text-align: center;
-        position: sticky;
-        top: 0;
-        z-index: 1;
-        border: 1px solid var(--color-accent);
-      }
-
-      .tws-schedule-table td {
-        padding: 4px;
-        text-align: center;
-        border: 1px solid var(--color-primary);
-      }
-
-      .tws-schedule-table tr:nth-child(even) {
-        background: rgba(139, 69, 19, 0.1);
-      }
-
-      .tws-schedule-table tr:hover {
-        background: rgba(205, 133, 63, 0.2);
-      }
-
-      .tws-del-btn {
-        background: linear-gradient(135deg, #b22222, #dc143c);
-        border: none;
-        color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: bold;
-      }
-
-      .tws-del-btn:hover {
-        background: linear-gradient(135deg, #dc143c, #ff4444);
-        transform: scale(1.05);
-      }
-
-      .tws-status {
-        font-size: 11px;
-        margin-top: 8px;
-        padding: 6px;
-        background: rgba(0, 0, 0, 0.4);
-        border: 1px solid var(--color-primary);
-        border-radius: var(--border-radius);
-        color: var(--color-accent);
-        max-height: 80px;
-        overflow-y: auto;
-      }
-
-      .tws-tooltip {
-        position: relative;
-        display: inline-block;
-        cursor: help;
-      }
-
-      .tws-tooltip .tws-tooltip-content {
-        visibility: hidden;
-        width: max-content;
-        max-width: 280px;
-        background: var(--color-dark);
-        color: var(--color-light);
-        text-align: left;
-        border: 1px solid var(--color-accent);
-        border-radius: var(--border-radius);
-        padding: 8px;
-        position: absolute;
-        z-index: 999999;
-        bottom: 125%;
-        left: 50%;
-        transform: translateX(-50%);
-        opacity: 0;
-        transition: opacity 0.3s;
-        box-shadow: var(--shadow);
-        font-size: 11px;
-      }
-
-      .tws-tooltip:hover .tws-tooltip-content {
-        visibility: visible;
-        opacity: 1;
-      }
-
-      .tws-tooltip-content img {
-        height: 16px;
-        vertical-align: middle;
-        margin-right: 3px;
-      }
-
-      .scrollbar-custom::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      .scrollbar-custom::-webkit-scrollbar-track {
-        background: var(--color-dark);
-        border-radius: 4px;
-      }
-
-      .scrollbar-custom::-webkit-scrollbar-thumb {
-        background: var(--color-primary);
-        border-radius: 4px;
-      }
-
-      .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-        background: var(--color-accent);
-      }
-
-      details summary {
-        cursor: pointer;
-        color: var(--color-accent);
-        font-weight: bold;
-        margin-bottom: 6px;
-      }
-
-      details[open] summary {
-        margin-bottom: 8px;
-      }
+      .tws-container button{ cursor:pointer; background:#6b4c2a; color:#f8e6c2; transition:0.2s; }
+      .tws-container button:hover{ background:#8b652e; }
+      .tws-schedule-wrapper { max-height:270px; overflow-y:auto; border:1px solid #3d2a12; border-radius:6px; margin-top:6px; }
+      .tws-schedule-table { width:100%; border-collapse:collapse; font-size:12px; }
+      .tws-schedule-table th, .tws-schedule-table td { border:none; padding:4px; text-align:center; }
+      .tws-schedule-table th { background:#3d2a12; color:#ffd700; position:sticky; top:0; z-index:1; }
+      .tws-schedule-table td button { background:#b33; border:none; color:white; padding:3px 6px; border-radius:4px; cursor:pointer; }
+      .tws-schedule-table td button:hover{ background:#e44; }
+      .tws-container details summary{ cursor:pointer; color:#ffd700; margin-top:6px; }
+      .tws-status { font-size:11px; margin-top:5px; opacity:0.9; max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.3); padding:4px; border-radius:5px; }
+      .tws-bbcode-area { width:100%; height:100px; margin-top:4px; }
+      .tws-tooltip { position: relative; display: inline-block; }
+      .tws-tooltip .tws-tooltip-content { visibility: hidden; width:max-content; max-width:280px; background:#2b1b0f; color:#f5deb3; text-align:left; border:1px solid #7b5b2a; border-radius:5px; padding:5px; position:absolute; z-index:999999; bottom:-200%; left:50%; transform:translateX(-50%); opacity:0; transition:opacity 0.2s; box-shadow:0 0 8px rgba(0,0,0,0.6); font-size:11px; }
+      .tws-tooltip:hover .tws-tooltip-content { visibility:visible; opacity:1; }
+      .tws-tooltip-content img { height:16px; vertical-align:middle; margin-right:3px; }
     </style>
 
-    <div class="tws-toggle-tab" id="tws-toggle-tab">AGENDADOR TRIBAL</div>
-    
-    <div class="tws-header">🏹 Agendador de Ataques Tribal</div>
+    <div class="tws-toggle-tab" id="tws-toggle-tab">Painel</div>
+    <h3>Agendador de Ataques</h3>
 
-    <div class="tws-controls-section">
-      <div class="tws-section-title">📍 Aldeia de Origem</div>
-      <select id="tws-select-origem">
+    <div style="margin-bottom:4px;">
+      <label>Origem:</label><br>
+      <select id="tws-select-origem" style="width:100%">
         <option value="">Selecione sua aldeia...</option>
       </select>
     </div>
 
-    <div class="tws-controls-section">
-      <div class="tws-section-title">⚔️ Composição do Exército</div>
+    <div style="margin-bottom:4px;">
+      <label>Tropa:</label>
       <details>
-        <summary>Selecionar tropas para a batalha</summary>
-        <div class="tws-troops-grid">
-          ${backend.TROOP_LIST.map(u => `
-            <div class="tws-troop-item">
-              <img src="/graphic/unit/unit_${u}.png" title="${u}"><br>
-              <input type="number" id="tws-${u}" min="0" value="0" class="tws-troop-input">
-            </div>
-          `).join('')}
+        <summary>Selecionar tropas</summary>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:4px">
+          ${backend.TROOP_LIST.map(u=>`
+            <div style="text-align:center">
+              <img src="/graphic/unit/unit_${u}.png" title="${u}" style="height:18px;"><br>
+              <input type="number" id="tws-${u}" min="0" value="0" style="width:45px;text-align:center">
+            </div>`).join('')}
         </div>
       </details>
     </div>
 
-    <div class="tws-controls-section">
-      <div class="tws-section-title">🎯 Alvo e Tempo</div>
-      <div class="tws-input-group">
-        <label for="tws-alvo">Coordenadas do Alvo:</label>
-        <input id="tws-alvo" placeholder="400|500">
+    <div style="display:flex; gap:6px; margin-bottom:4px;">
+      <div style="flex:1">
+        <label>Destino:</label>
+        <input id="tws-alvo" placeholder="400|500" style="width:50%"/>
       </div>
-      <div class="tws-input-group">
-        <label for="tws-datetime">Data/Hora do Ataque:</label>
-        <input id="tws-datetime" placeholder="09/11/2025 21:30:00">
-      </div>
-    </div>
-
-    <div class="tws-controls-section">
-      <div class="tws-section-title">⚙️ Comandos</div>
-      <div class="tws-buttons-row">
-        <button id="tws-add" class="tws-button tws-button-add">🎯 Agendar Ataque</button>
-        <button id="tws-clear" class="tws-button tws-button-clear">🗑️ Limpar Tudo</button>
+      <div style="flex:1">
+        <label>Data/Hora:</label>
+        <input id="tws-datetime" placeholder="09/11/2025 21:30:00" style="width:50%"/>
       </div>
     </div>
 
-    <div class="tws-controls-section">
-      <div class="tws-section-title">📥 Importação Rápida</div>
-      <details>
-        <summary>Importar plano de batalha (BBCode)</summary>
-        <textarea class="tws-bbcode-area" id="tws-bbcode-area" placeholder="Cole aqui o código [table]...[/table] do fórum tribal"></textarea>
-        <button id="tws-import" class="tws-button tws-button-import">📤 Importar BBCode</button>
-      </details>
+    <div style="display:flex; gap:6px; margin-bottom:6px;">
+      <button id="tws-add" style="flex:1">➕ Acionar</button>
+      <button id="tws-clear" style="flex:1">🗑️ Limpar</button>
     </div>
 
-    <div class="tws-controls-section">
-      <div class="tws-section-title">📋 Missões Agendadas</div>
-      <div class="tws-schedule-wrapper scrollbar-custom">
-        <table class="tws-schedule-table">
-          <thead>
-            <tr>
-              <th>Origem</th>
-              <th>Destino</th>
-              <th>Data/Hora</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tws-tbody"></tbody>
-        </table>
-      </div>
+    <details>
+      <summary>📥 Importar BBCode</summary>
+      <textarea class="tws-bbcode-area" id="tws-bbcode-area" placeholder="Cole aqui o código [table]...[/table] do fórum"></textarea>
+      <button id="tws-import" style="width:100%;margin-top:4px;">📤 Importar BBCode</button>
+    </details>
+
+    <div class="tws-schedule-wrapper" id="tws-schedule-wrapper">
+      <table class="tws-schedule-table" id="tws-schedule-table">
+        <thead>
+          <tr>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th>Data/Hora</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tws-tbody"></tbody>
+      </table>
     </div>
 
-    <div class="tws-controls-section">
-      <div class="tws-section-title">📊 Status do Campo de Batalha</div>
-      <div class="tws-status scrollbar-custom" id="tws-status">⚔️ Aguardando agendamentos de batalha...</div>
-    </div>
+    <div class="tws-status" id="tws-status">Aguardando agendamentos...</div>
   `;
 
   document.body.appendChild(panel);
 
-  // === Controle de visibilidade do painel ===
   const toggle = panel.querySelector('#tws-toggle-tab');
-  let panelVisible = localStorage.getItem('tws_panel_visible') === 'true';
-  
   function updatePanelState() {
-    if (panelVisible) {
-      panel.classList.remove('panel-hidden');
-      panel.classList.add('panel-visible');
-      toggle.textContent = '⬅️ OCULTAR';
-    } else {
-      panel.classList.remove('panel-visible');
-      panel.classList.add('panel-hidden');
-      toggle.textContent = 'AGENDADOR TRIBAL';
-    }
-    localStorage.setItem('tws_panel_visible', panelVisible.toString());
+    const hidden = panel.classList.contains('tws-hidden');
+    localStorage.setItem(backend.PANEL_STATE_KEY, hidden ? 'hidden' : 'visible');
+    toggle.textContent = hidden ? 'Abrir' : 'Fechar';
   }
-  
-  toggle.onclick = () => {
-    panelVisible = !panelVisible;
-    updatePanelState();
-  };
-
-  // Inicializar visibilidade
-  updatePanelState();
+  toggle.onclick = () => { panel.classList.toggle('tws-hidden'); updatePanelState(); };
+  const savedState = localStorage.getItem(backend.PANEL_STATE_KEY);
+  if (savedState === 'hidden') { panel.classList.add('tws-hidden'); toggle.textContent = 'Abrir'; }
+  else toggle.textContent = 'Fechar';
 
   // === Preencher select de aldeias ===
   const sel = panel.querySelector('#tws-select-origem');
@@ -528,147 +192,83 @@
     const villageId = sel.value;
     if (!villageId) return;
     try {
-      showStatusMessage('⚔️ Carregando exército da aldeia...', 'info');
+      UI.InfoMessage('Carregando tropas da aldeia...', 3000, 'success');
       const troops = await backend.getVillageTroops(villageId);
       if (troops) {
         for (const [unit, val] of Object.entries(troops)) {
           const input = document.getElementById('tws-' + unit);
           if (input) input.value = val;
         }
-        showStatusMessage('✅ Exército carregado com sucesso!', 'success');
+        UI.InfoMessage('Tropas preenchidas com sucesso!', 3000, 'success');
       } else {
-        showStatusMessage('⚠️ Não foi possível carregar o exército da aldeia.', 'warning');
+        UI.ErrorMessage('Não foi possível carregar as tropas da aldeia.');
       }
     } catch (e) {
       console.error('Erro ao obter tropas:', e);
-      showStatusMessage('❌ Erro ao carregar exército da aldeia.', 'error');
+      UI.ErrorMessage('Erro ao carregar tropas da aldeia.');
     }
   });
 
-  // === Funções auxiliares ===
+  // === Funções auxiliares e eventos ===
   const el = id => panel.querySelector(id.startsWith('#') ? id : '#' + id);
-
-  function showStatusMessage(message, type = 'info') {
-    const statusEl = el('tws-status');
-    const timestamp = new Date().toLocaleTimeString();
-    const icon = type === 'success' ? '✅' : type === 'warning' ? '⚠️' : type === 'error' ? '❌' : '⚔️';
-    statusEl.innerHTML = `<strong>${icon} [${timestamp}]</strong> ${message}`;
-  }
 
   window.renderTable = function renderTable() {
     const list = backend.getList();
     const tbody = el('tws-tbody');
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5"><i>⚔️ Nenhuma missão agendada</i></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5"><i>Nenhum agendamento</i></td></tr>';
       return;
     }
     const now = Date.now();
     tbody.innerHTML = list.map((a, i) => {
-      const troops = backend.TROOP_LIST.filter(t => a[t] > 0).map(t => `<img src="/graphic/unit/unit_${t}.png"> ${a[t]}`).join('<br>') || '🏃 Nenhuma tropa';
-      const timeDiff = backend.parseDateTimeToMs(a.datetime) - now;
-      let status = '';
-      
-      if (a.done) {
-        status = '✅ Missão Concluída';
-      } else if (timeDiff > 0) {
-        const minutes = Math.ceil(timeDiff / 60000);
-        status = `🕒 ${minutes}min`;
-      } else {
-        status = '🔥 Executando...';
-      }
-      
+      const troops = backend.TROOP_LIST.filter(t => a[t] > 0).map(t => `<img src="/graphic/unit/unit_${t}.png"> ${a[t]}`).join('<br>') || 'Nenhuma tropa';
+      const status = a.done ? '✅ Enviado' : (backend.parseDateTimeToMs(a.datetime) - now > 0 ? `🕒 ${Math.ceil((backend.parseDateTimeToMs(a.datetime)-now)/1000)}s` : '🔥 Enviando...');
       return `<tr>
-        <td class="tws-tooltip">${a.origem || a.origemId}
-          <div class="tws-tooltip-content">${troops}</div>
-        </td>
+        <td class="tws-tooltip">${a.origem || a.origemId}<div class="tws-tooltip-content">${troops}</div></td>
         <td>${a.alvo}</td>
         <td>${a.datetime}</td>
         <td>${status}</td>
         <td><button data-idx="${i}" class="tws-del-btn">X</button></td>
       </tr>`;
     }).join('');
-    
     tbody.querySelectorAll('.tws-del-btn').forEach(btn => {
       btn.onclick = () => {
         const i = +btn.dataset.idx;
-        const l = backend.getList(); 
-        l.splice(i, 1); 
-        backend.setList(l);
-        renderTable();
-        showStatusMessage('🗑️ Missão removida do planejamento.', 'warning');
+        const l = backend.getList(); l.splice(i, 1); backend.setList(l);
       };
     });
   };
 
-  // === Inicializar scheduler ===
   backend.startScheduler();
 
-  // === Event Listeners ===
   el('tws-add').onclick = () => {
     const selVal = sel.value;
     const alvo = backend.parseCoord(el('tws-alvo').value);
     const dt = el('tws-datetime').value.trim();
-    
-    if (!selVal || !alvo) {
-      showStatusMessage('❌ Verifique origem e coordenadas do alvo!', 'error');
-      return;
-    }
-    
-    if (isNaN(backend.parseDateTimeToMs(dt))) {
-      showStatusMessage('❌ Data/hora inválida! Use formato: DD/MM/AAAA HH:MM:SS', 'error');
-      return;
-    }
-    
+    if (!selVal || !alvo || isNaN(backend.parseDateTimeToMs(dt))) return alert('Verifique origem, coordenadas e data!');
     const origem = myVillages.find(v => v.id === selVal)?.coord || '';
     const origemId = selVal;
     const cfg = { origem, origemId, alvo, datetime: dt };
-    
-    backend.TROOP_LIST.forEach(u => cfg[u] = parseInt(el('tws-' + u).value) || 0);
-    
-    const list = backend.getList(); 
-    list.push(cfg); 
-    backend.setList(list);
-    renderTable();
-    
-    showStatusMessage(`✅ Missão agendada! ${origem} → ${alvo} às ${dt}`, 'success');
-    
-    // Limpar campos
-    el('tws-alvo').value = '';
-    el('tws-datetime').value = '';
+    backend.TROOP_LIST.forEach(u => cfg[u] = el('tws-' + u).value || 0);
+    const list = backend.getList(); list.push(cfg); backend.setList(list);
   };
 
   el('tws-clear').onclick = () => {
-    if (confirm('⚔️ Tem certeza que deseja apagar TODAS as missões agendadas?')) {
+    if (confirm('Apagar todos os agendamentos?')) {
       localStorage.removeItem(backend.STORAGE_KEY);
       renderTable();
-      showStatusMessage('🗑️ Todas as missões foram removidas.', 'warning');
+      el('tws-status').textContent = 'Lista limpa.';
     }
   };
 
   el('tws-import').onclick = () => {
     const bb = el('tws-bbcode-area').value.trim();
-    if (!bb) {
-      showStatusMessage('❌ Cole o código BB primeiro!', 'error');
-      return;
-    }
-    
-    try {
-      const ag = backend.importarDeBBCode(bb);
-      const list = backend.getList(); 
-      list.push(...ag); 
-      backend.setList(list);
-      renderTable();
-      
-      showStatusMessage(`✅ ${ag.length} missões importadas com sucesso!`, 'success');
-      el('tws-bbcode-area').value = '';
-    } catch (e) {
-      showStatusMessage('❌ Erro ao importar BBCode. Verifique o formato.', 'error');
-    }
+    if (!bb) return alert('Cole o código BB primeiro!');
+    const ag = backend.importarDeBBCode(bb);
+    const list = backend.getList(); list.push(...ag); backend.setList(list);
+    alert(`${ag.length} agendamentos importados com sucesso!`);
   };
 
-  // === Inicialização ===
   renderTable();
-  showStatusMessage('🏹 Agendador Tribal carregado e pronto para batalha!', 'success');
-  console.log('[TWS_Frontend] Agendador Tribal carregado com sucesso.');
-
+  console.log('[TWS_Frontend] painel carregado com auto-tropas.');
 })();
