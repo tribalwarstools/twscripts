@@ -116,26 +116,17 @@ class TWAutoBuilder {
     // CRIAR DROPDOWN DE ALDEIAS
     createVillageSelector() {
         if (!this.villagesLoaded) {
-            return '<div style="color: #f39c12; font-size: 11px;">Carregando aldeias...</div>';
+            return '<div class="twc-log-entry log-warning">Carregando aldeias...</div>';
         }
 
         if (this.myVillages.length === 0) {
-            return '<div style="color: #e74c3c; font-size: 11px;">Nenhuma aldeia encontrada</div>';
+            return '<div class="twc-log-entry log-error">Nenhuma aldeia encontrada</div>';
         }
 
         let html = `
-            <div style="margin-bottom: 10px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #3498db;">🏘️ Aldeia para Construir:</label>
-                <select id="village-selector" style="
-                    width: 100%; 
-                    padding: 6px 8px; 
-                    border: 1px solid #34495e; 
-                    background: #2c3e50; 
-                    color: white; 
-                    border-radius: 4px; 
-                    font-size: 11px;
-                    cursor: pointer;
-                " onchange="window.builder.changeVillage(this.value)">
+            <div class="twc-controls-section">
+                <div class="twc-section-title">🏘️ Aldeia para Construir</div>
+                <select id="village-selector" class="twc-select" onchange="window.builder.changeVillage(this.value)">
                     <option value="">-- Selecione uma aldeia --</option>
         `;
 
@@ -506,115 +497,97 @@ class TWAutoBuilder {
             return;
         }
 
+        // Adicionar CSS do tema Tribal Wars
+        this.injectStyles();
+
         const panel = document.createElement('div');
         panel.id = 'tw-auto-builder-panel';
+        panel.className = 'twc-tribal-theme';
         panel.innerHTML = `
-            <div style="
-                position: fixed;
-                top: 50px;
-                right: 20px;
-                width: 450px;
-                background: #2c3e50;
-                color: white;
-                padding: 15px;
-                border-radius: 8px;
-                font-family: Arial;
-                font-size: 12px;
-                z-index: 10000;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                max-height: 90vh;
-                overflow-y: auto;
-            ">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <strong>🏗️ TW Building Controller</strong>
-                    <button onclick="window.builder.toggle()" style="padding: 4px 8px; font-size: 10px; cursor: pointer;">
+            <div class="twc-header">🏹 Construtor Tribal</div>
+            
+            <!-- SELETOR DE ALDEIAS -->
+            ${this.createVillageSelector()}
+            
+            <!-- BOTÃO SALVAR -->
+            <div class="twc-controls-section">
+                <button onclick="window.builder.saveVillageSettings()" class="twc-button twc-button-start">
+                    💾 Salvar Configurações para esta Aldeia
+                </button>
+            </div>
+            
+            <!-- CONFIGURAÇÕES GERAIS -->
+            <div class="twc-controls-section">
+                <div class="twc-section-title">⚙️ Configurações Gerais</div>
+                <div class="twc-input-group">
+                    <label>
+                        <input type="checkbox" ${this.settings.enabled ? 'checked' : ''} 
+                               onchange="window.builder.settings.enabled = this.checked"> Ativado
+                    </label>
+                    <label>
+                        <input type="checkbox" ${this.settings.allowQueue ? 'checked' : ''} 
+                               onchange="window.builder.settings.allowQueue = this.checked"> Permitir fila
+                    </label>
+                </div>
+                <div class="twc-input-group">
+                    <label>
+                        Slots: <input type="number" value="${this.settings.maxQueueSlots}" min="1" max="10"
+                               class="twc-input-small" 
+                               onchange="window.builder.settings.maxQueueSlots = parseInt(this.value)">
+                    </label>
+                    <label>
+                        Check: <input type="number" value="${this.settings.checkInterval / 1000}" 
+                               class="twc-input-small" 
+                               onchange="window.builder.settings.checkInterval = this.value * 1000">s
+                    </label>
+                </div>
+                <div class="twc-buttons">
+                    <button onclick="window.builder.toggleAllBuildings(true)" class="twc-button twc-button-start">✅ Ativar Todos</button>
+                    <button onclick="window.builder.toggleAllBuildings(false)" class="twc-button twc-button-stop">❌ Desativar Todos</button>
+                </div>
+            </div>
+            
+            <!-- LISTA DE EDIFFÍCIOS -->
+            <div class="twc-controls-section">
+                <div class="twc-section-title">🏗️ Edifícios para Construir</div>
+                <div id="twc-edificios" class="scrollbar-custom">
+                    ${Object.entries(this.buildingsList).map(([id, name]) => `
+                        <label>
+                            <input type="checkbox" id="tw-build-${id}" 
+                                   ${this.settings.enabledBuildings[id] !== false ? 'checked' : ''}
+                                   onchange="window.builder.saveBuildingSettings()">
+                            ${name}
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <!-- STATUS -->
+            <div class="twc-controls-section">
+                <div class="twc-section-title">📊 Status</div>
+                <div id="builder-status" class="twc-status-item">
+                    Status: ${this.isRunning ? '🟢 Rodando' : '🔴 Parado'}
+                </div>
+                
+                <div id="builder-action" class="twc-status-item">
+                    Ação: <span id="current-action">Pronto</span>
+                </div>
+                
+                <div id="builder-last-build" class="twc-status-item">
+                    Última: <span id="last-build-info">Nenhuma</span>
+                </div>
+                
+                <div class="twc-buttons">
+                    <button id="toggle-button" onclick="window.builder.toggle()" class="twc-button ${this.isRunning ? 'twc-button-stop' : 'twc-button-start'}">
                         ${this.isRunning ? '⏸️ Parar' : '▶️ Iniciar'}
                     </button>
                 </div>
-                
-                <!-- SELETOR DE ALDEIAS -->
-                ${this.createVillageSelector()}
-                
-                <!-- BOTÃO SALVAR -->
-                <div style="margin-bottom: 10px;">
-                    <button onclick="window.builder.saveVillageSettings()" style="
-                        width: 100%; 
-                        padding: 8px 12px; 
-                        background: #27ae60; 
-                        color: white; 
-                        border: none; 
-                        border-radius: 4px; 
-                        font-size: 12px; 
-                        cursor: pointer;
-                        font-weight: bold;
-                    ">💾 Salvar Configurações para esta Aldeia</button>
-                </div>
-                
-                <!-- CONFIGURAÇÕES GERAIS -->
-                <div style="background: #34495e; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
-                    <div style="display: flex; gap: 15px; margin-bottom: 8px;">
-                        <label style="display: flex; align-items: center;">
-                            <input type="checkbox" ${this.settings.enabled ? 'checked' : ''} 
-                                   onchange="window.builder.settings.enabled = this.checked"> Ativado
-                        </label>
-                        <label style="display: flex; align-items: center;">
-                            <input type="checkbox" ${this.settings.allowQueue ? 'checked' : ''} 
-                                   onchange="window.builder.settings.allowQueue = this.checked"> Permitir fila
-                        </label>
-                    </div>
-                    <div style="display: flex; gap: 15px;">
-                        <label style="display: flex; align-items: center;">
-                            Slots: <input type="number" value="${this.settings.maxQueueSlots}" min="1" max="10"
-                                   style="width: 40px; padding: 2px; margin-left: 5px;" 
-                                   onchange="window.builder.settings.maxQueueSlots = parseInt(this.value)">
-                        </label>
-                        <label style="display: flex; align-items: center;">
-                            Check: <input type="number" value="${this.settings.checkInterval / 1000}" 
-                                   style="width: 40px; padding: 2px; margin-left: 5px;" 
-                                   onchange="window.builder.settings.checkInterval = this.value * 1000">s
-                        </label>
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 8px;">
-                        <button onclick="window.builder.toggleAllBuildings(true)" style="padding: 4px 8px; font-size: 10px; background: #27ae60; border: none; color: white; border-radius: 4px; cursor: pointer;">✅ Ativar Todos</button>
-                        <button onclick="window.builder.toggleAllBuildings(false)" style="padding: 4px 8px; font-size: 10px; background: #e74c3c; border: none; color: white; border-radius: 4px; cursor: pointer;">❌ Desativar Todos</button>
-                    </div>
-                </div>
-                
-                <!-- LISTA DE EDIFFÍCIOS -->
-                <div style="background: #34495e; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
-                    <div style="font-weight: bold; margin-bottom: 8px; color: #3498db;">🏗️ Edifícios para Construir:</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; max-height: 200px; overflow-y: auto;">
-                        ${Object.entries(this.buildingsList).map(([id, name]) => `
-                            <label style="display: flex; align-items: center; padding: 3px 5px; border-radius: 3px; background: rgba(255,255,255,0.1);">
-                                <input type="checkbox" id="tw-build-${id}" 
-                                       ${this.settings.enabledBuildings[id] !== false ? 'checked' : ''}
-                                       onchange="window.builder.saveBuildingSettings()">
-                                <span style="margin-left: 6px; font-size: 11px;">${name}</span>
-                            </label>
-                        `).join('')}
-                    </div>
-                </div>
-                
-                <!-- STATUS -->
-                <div style="background: #34495e; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
-                    <div id="builder-status" style="font-size: 11px; color: #ecf0f1; margin-bottom: 5px;">
-                        Status: ${this.isRunning ? '🟢 Rodando' : '🔴 Parado'}
-                    </div>
-                    
-                    <div id="builder-action" style="font-size: 11px; margin: 5px 0; color: #3498db;">
-                        Ação: <span id="current-action">Pronto</span>
-                    </div>
-                    
-                    <div id="builder-last-build" style="font-size: 11px; margin: 5px 0; color: #f39c12;">
-                        Última: <span id="last-build-info">Nenhuma</span>
-                    </div>
-                </div>
-                
-                <!-- LOGS -->
-                <div style="background: #34495e; padding: 10px; border-radius: 6px;">
-                    <div style="font-weight: bold; margin-bottom: 5px; color: #3498db;">📜 Logs:</div>
-                    <div id="builder-logs" style="max-height: 150px; overflow-y: auto; font-size: 10px; background: #2c3e50; padding: 5px; border-radius: 4px;"></div>
-                </div>
+            </div>
+            
+            <!-- LOGS -->
+            <div class="twc-controls-section">
+                <div class="twc-section-title">📜 Logs</div>
+                <div id="builder-logs" class="twc-log-container scrollbar-custom"></div>
             </div>
         `;
 
@@ -631,9 +604,246 @@ class TWAutoBuilder {
         }
     }
 
+    // INJETAR CSS DO TEMA
+    injectStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .twc-tribal-theme {
+                --color-primary: #8b4513;
+                --color-secondary: #654321;
+                --color-accent: #cd853f;
+                --color-dark: #3e2723;
+                --color-light: #f5deb3;
+                --color-success: #8fbc8f;
+                --color-warning: #daa520;
+                --color-error: #cd5c5c;
+                --border-radius: 8px;
+                --shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            }
+
+            #tw-auto-builder-panel {
+                position: fixed;
+                top: 50px;
+                right: 20px;
+                width: 450px;
+                background: linear-gradient(145deg, var(--color-dark), #2c1e17);
+                color: var(--color-light);
+                border: 3px solid var(--color-accent);
+                font-family: 'Trebuchet MS', sans-serif;
+                font-size: 13px;
+                padding: 15px;
+                z-index: 10000;
+                border-radius: var(--border-radius);
+                box-shadow: var(--shadow);
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+
+            .twc-header {
+                text-align: center;
+                margin: 0 0 12px 0;
+                font-size: 16px;
+                color: var(--color-light);
+                background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+                padding: 8px;
+                border-radius: var(--border-radius);
+                border: 1px solid var(--color-accent);
+                position: relative;
+            }
+
+            .twc-header::before {
+                content: '⚔️';
+                margin-right: 8px;
+            }
+
+            .twc-header::after {
+                content: '⚔️';
+                margin-left: 8px;
+            }
+
+            .twc-controls-section {
+                background: rgba(139, 69, 19, 0.2);
+                border: 1px solid var(--color-primary);
+                border-radius: var(--border-radius);
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+
+            .twc-section-title {
+                font-weight: bold;
+                color: var(--color-accent);
+                margin-bottom: 8px;
+                font-size: 14px;
+                border-bottom: 1px solid var(--color-primary);
+                padding-bottom: 4px;
+            }
+
+            #twc-edificios {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                max-height: 200px;
+                overflow-y: auto;
+                padding: 8px;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 6px;
+                border: 1px solid var(--color-primary);
+            }
+
+            #twc-edificios label {
+                display: flex;
+                align-items: center;
+                margin: 2px 0;
+                cursor: pointer;
+                padding: 4px 8px;
+                border-radius: 4px;
+                transition: background 0.2s;
+                font-size: 11px;
+            }
+
+            #twc-edificios label:hover {
+                background: rgba(205, 133, 63, 0.2);
+            }
+
+            #twc-edificios input[type="checkbox"] {
+                margin-right: 8px;
+                accent-color: var(--color-accent);
+                transform: scale(1.1);
+            }
+
+            .twc-input-group {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                margin: 8px 0;
+                flex-wrap: wrap;
+            }
+
+            .twc-input-group label {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-weight: bold;
+                color: var(--color-accent);
+                font-size: 12px;
+            }
+
+            .twc-input-small {
+                width: 40px;
+                text-align: center;
+                background: var(--color-dark);
+                border: 1px solid var(--color-primary);
+                color: var(--color-light);
+                border-radius: 4px;
+                padding: 4px;
+            }
+
+            .twc-select {
+                width: 100%;
+                padding: 6px 8px;
+                background: var(--color-dark);
+                border: 1px solid var(--color-primary);
+                color: var(--color-light);
+                border-radius: 4px;
+                font-size: 11px;
+                cursor: pointer;
+            }
+
+            .twc-buttons {
+                display: flex;
+                gap: 8px;
+                margin: 12px 0;
+            }
+
+            .twc-button {
+                flex: 1;
+                background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+                border: 1px solid var(--color-accent);
+                color: var(--color-light);
+                padding: 8px 12px;
+                border-radius: var(--border-radius);
+                cursor: pointer;
+                font-family: 'Trebuchet MS', sans-serif;
+                font-weight: bold;
+                font-size: 12px;
+                transition: all 0.2s;
+            }
+
+            .twc-button:hover {
+                background: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
+                transform: translateY(-1px);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            }
+
+            .twc-button:active {
+                transform: translateY(0);
+            }
+
+            .twc-button-start {
+                background: linear-gradient(135deg, #2e8b57, #3cb371);
+            }
+
+            .twc-button-stop {
+                background: linear-gradient(135deg, #b22222, #dc143c);
+            }
+
+            .twc-status-item {
+                font-size: 11px;
+                margin: 5px 0;
+                padding: 4px 8px;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 4px;
+                border-left: 3px solid var(--color-accent);
+            }
+
+            .twc-log-container {
+                height: 120px;
+                overflow: auto;
+                background: rgba(0, 0, 0, 0.4);
+                border: 1px solid var(--color-primary);
+                padding: 8px;
+                color: var(--color-light);
+                border-radius: var(--border-radius);
+                font-size: 11px;
+                font-family: 'Courier New', monospace;
+            }
+
+            .twc-log-entry {
+                margin: 2px 0;
+                padding: 2px 4px;
+                border-radius: 3px;
+                font-size: 10px;
+            }
+
+            .log-success { background: rgba(143, 188, 143, 0.2); }
+            .log-warning { background: rgba(218, 165, 32, 0.2); }
+            .log-error { background: rgba(205, 92, 92, 0.2); }
+            .log-info { background: rgba(205, 133, 63, 0.2); }
+
+            .scrollbar-custom::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            .scrollbar-custom::-webkit-scrollbar-track {
+                background: var(--color-dark);
+                border-radius: 4px;
+            }
+
+            .scrollbar-custom::-webkit-scrollbar-thumb {
+                background: var(--color-primary);
+                border-radius: 4px;
+            }
+
+            .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+                background: var(--color-accent);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
     // Função para atualizar o seletor de aldeias após carregamento
     updateVillageSelector() {
-        const villageContainer = document.querySelector('#tw-auto-builder-panel div:has(#village-selector)');
+        const villageContainer = document.querySelector('#tw-auto-builder-panel .twc-controls-section:has(#village-selector)');
         if (villageContainer && this.villagesLoaded) {
             villageContainer.outerHTML = this.createVillageSelector();
         }
@@ -643,7 +853,12 @@ class TWAutoBuilder {
         const logs = document.getElementById('builder-logs');
         if (logs) {
             const timestamp = new Date().toLocaleTimeString();
-            logs.innerHTML = `<div>[${timestamp}] ${message}</div>` + logs.innerHTML;
+            let type = 'info';
+            if (message.includes('✅') || message.includes('sucesso')) type = 'success';
+            if (message.includes('❌') || message.includes('Erro')) type = 'error';
+            if (message.includes('⚠️') || message.includes('atenção')) type = 'warning';
+            
+            logs.innerHTML = `<div class="twc-log-entry log-${type}">[${timestamp}] ${message}</div>` + logs.innerHTML;
             
             const logEntries = logs.getElementsByTagName('div');
             if (logEntries.length > 15) {
@@ -709,13 +924,14 @@ class TWAutoBuilder {
 
     updateStatus() {
         const status = document.getElementById('builder-status');
-        const button = document.querySelector('#tw-auto-builder-panel button');
+        const button = document.getElementById('toggle-button');
         
         if (status) {
             status.innerHTML = `Status: ${this.isRunning ? '🟢 Rodando' : '🔴 Parado'}`;
         }
         if (button) {
             button.textContent = this.isRunning ? '⏸️ Parar' : '▶️ Iniciar';
+            button.className = this.isRunning ? 'twc-button twc-button-stop' : 'twc-button twc-button-start';
         }
     }
 
