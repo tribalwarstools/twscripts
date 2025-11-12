@@ -97,7 +97,7 @@
       .tws-toggle-tab {
         position: fixed;
         right: 0;
-        top: 20%;
+        top: 30%;
         transform: translateY(-50%);
         background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
         color: var(--color-light);
