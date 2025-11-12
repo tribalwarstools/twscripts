@@ -1,218 +1,222 @@
-(function () {
-    'use strict';
+// ==UserScript==
+// @name         TW - Gerenciador Global de Construção (Verificação Real + Retomar Auto)
+// @namespace    http://tampermonkey.net/
+// @version      1.5
+// @description  Percorre todas as aldeias e constrói automaticamente via iframe invisível. Verifica fila cheia, nível máximo e retoma após reload.
+// @match        *://*.tribalwars.com.br/*game.php*
+// @grant        none
+// ==/UserScript==
 
-    if (!window.game_data || game_data.screen !== "main") {
-        Dialog.show("erro_build", `
-            <h3 style="text-align:center;">⚒️ Script de Construção</h3>
-            <p style="margin:10px 0; text-align:center; color:#b00;">
-                Este script só funciona na tela de <b>Construções</b>.
-            </p>
-            <div style="text-align:center; margin-top:15px;">
-                <a href="game.php?village=${game_data.village.id}&screen=main" 
-                   class="btn btn-confirm-yes">Ir para Construções</a>
-            </div>
-        `);
-        return;
+(async function () {
+  'use strict';
+
+  const ESTILO = `
+    #twc-panel {
+      position: fixed; bottom: 10px; right: 10px; width: 380px;
+      background: rgba(15,10,5,0.95); color: #f4e2be; border: 2px solid #8b5a2b;
+      font-family: Verdana, sans-serif; font-size: 12px; padding: 10px; z-index: 99999;
+      border-radius: 10px; box-shadow: 0 0 8px #000;
     }
-
-    const STORAGE_KEY = "twBuildState_" + game_data.village.id;   // estado dos checkboxes
-    const ORDER_KEY   = "twBuildOrder_" + game_data.village.id;   // ordem da lista
-    const BTN_KEY     = "twBuildBtn_" + game_data.village.id;     // estado do botão iniciar/parar
-
-    let intervalo = null;
-
-    // ========= ESTILO =========
-    function aplicarEstiloPainel() {
-        const style = document.createElement('style');
-        style.textContent = `
-            #tw-build-painel { 
-                position: fixed; top: 50px; right: 0; background: #2b2b2b; 
-                border: 2px solid #654321; border-right: none; border-radius: 10px 0 0 10px; 
-                box-shadow: -2px 2px 8px #000; font-family: Verdana, sans-serif; color: #f1e1c1; 
-                z-index: 9999999; transition: transform 0.3s ease-in-out; transform: translateX(220px); 
-            }
-            #tw-build-toggle { 
-                position: absolute; top: 0; left: -28px; width: 28px; height: 40px; 
-                background: #5c4023; border: 2px solid #654321; border-right: none; 
-                border-radius: 6px 0 0 6px; color: #f1e1c1; display: flex; align-items: center; 
-                justify-content: center; cursor: pointer; font-size: 16px; box-shadow: -2px 2px 6px #000; 
-            }
-            #tw-build-conteudo { padding: 8px; width: 200px; }
-            #tw-build-conteudo h4 { 
-                margin: 0 0 6px 0; font-size: 13px; text-align: center; 
-                border-bottom: 1px solid #654321; padding-bottom: 4px; 
-            }
-            #tw-build-lista { 
-                margin: 8px 0; 
-                max-height: 300px; overflow-y: auto;
-            }
-            .tw-build-item { 
-                display: flex; align-items: center; justify-content: flex-start;
-                margin: 3px 0; padding: 3px; background: #3a2f23; border: 1px solid #654321;
-                border-radius: 4px; cursor: grab;
-            }
-            .tw-build-item.dragging { opacity: 0.5; }
-            .tw-build-label { margin-left: 6px; font-size: 12px; cursor: pointer; }
-            #tw-build-btn-executar {
-                display: block; width: 100%; margin-top: 10px; background: #5c4023; 
-                border: 1px solid #3c2f2f; border-radius: 6px; color: #f1e1c1; 
-                padding: 6px; cursor: pointer; font-size: 12px; text-align: center;
-            }
-            #tw-build-painel.ativo { transform: translateX(0); }
-        `;
-        document.head.appendChild(style);
+    #twc-panel h3 { text-align:center; margin:0 0 6px 0; font-size:14px; color:#f4e2be; }
+    #twc-panel label { display:block; margin:3px 0; cursor:pointer; }
+    #twc-panel input[type=checkbox] { margin-right:6px; }
+    #twc-panel button {
+      background:#8b5a2b; border:none; color:#fff; padding:5px 10px;
+      margin:4px; border-radius:6px; cursor:pointer;
     }
-    aplicarEstiloPainel();
-
-    // ========= PAINEL =========
-    const painel = document.createElement("div");
-    painel.id = "tw-build-painel";
-
-    const toggle = document.createElement("div");
-    toggle.id = "tw-build-toggle";
-    toggle.textContent = "⚒️";
-    toggle.onclick = () => painel.classList.toggle("ativo");
-    painel.appendChild(toggle);
-
-    const conteudo = document.createElement("div");
-    conteudo.id = "tw-build-conteudo";
-    conteudo.innerHTML = `<h4>🏗️ Construção</h4>`;
-    painel.appendChild(conteudo);
-    document.body.appendChild(painel);
-
-    // ========= LISTA DE EDIFÍCIOS =========
-    const listaEdificios = {
-        main: "Edifício Principal",
-        barracks: "Quartel",
-        stable: "Estábulo",
-        garage: "Oficina",
-        smith: "Ferreiro",
-        place: "Praça de Reunião",
-        statue: "Estátua",
-        market: "Mercado",
-        wood: "Bosque",
-        stone: "Poço de Argila",
-        iron: "Mina de Ferro",
-        farm: "Fazenda",
-        storage: "Armazém",
-        wall: "Muralha",
-        snob: "Academia",
-        church_f: "Primeira Igreja",
-        church: "Igreja",
-        watchtower: "Torre de Vigia",
-        hide: "Esconderijo"
-    };
-
-    const listaContainer = document.createElement("div");
-    listaContainer.id = "tw-build-lista";
-    conteudo.appendChild(listaContainer);
-
-    const checks = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    let ordem = JSON.parse(localStorage.getItem(ORDER_KEY) || "[]");
-    if (ordem.length === 0) ordem = Object.keys(listaEdificios);
-
-    function montarLista() {
-        listaContainer.innerHTML = "";
-        for (const cod of ordem) {
-            const nome = listaEdificios[cod];
-            if (!nome) continue;
-            const item = document.createElement("div");
-            item.className = "tw-build-item";
-            item.draggable = true;
-            item.dataset.cod = cod;
-
-            const chk = document.createElement("input");
-            chk.type = "checkbox";
-            chk.checked = !!checks[cod];
-            chk.onchange = () => {
-                checks[cod] = chk.checked;
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(checks));
-            };
-
-            const lbl = document.createElement("label");
-            lbl.className = "tw-build-label";
-            lbl.textContent = nome + " (0)";
-
-            item.appendChild(chk);
-            item.appendChild(lbl);
-            listaContainer.appendChild(item);
-
-            item.addEventListener("dragstart", () => item.classList.add("dragging"));
-            item.addEventListener("dragend", () => {
-                item.classList.remove("dragging");
-                salvarOrdem();
-            });
-        }
+    #twc-panel button:hover { background:#a9713a; }
+    #twc-log {
+      height:120px; overflow:auto; background:#1a1207; border:1px solid #704214;
+      padding:5px; color:#d9b98c; border-radius:5px; font-size:11px;
     }
-
-    function salvarOrdem() {
-        const nova = [...listaContainer.querySelectorAll(".tw-build-item")].map(el => el.dataset.cod);
-        ordem = nova;
-        localStorage.setItem(ORDER_KEY, JSON.stringify(ordem));
+    #twc-delay { width:50px; text-align:center; }
+    #twc-progress {
+      width:100%; height:10px; background:#3a2a12; border-radius:6px; margin-top:5px;
     }
+    #twc-bar {
+      height:10px; width:0%; background:#d9b98c; border-radius:6px;
+      transition:width 0.3s;
+    }
+    #twc-iframe { display:none; width:0; height:0; border:none; }
+  `;
 
-    listaContainer.addEventListener("dragover", e => {
-        e.preventDefault();
-        const dragging = listaContainer.querySelector(".dragging");
-        const after = [...listaContainer.querySelectorAll(".tw-build-item:not(.dragging)")].find(el => {
-            const box = el.getBoundingClientRect();
-            return e.clientY < box.top + box.height / 2;
-        });
-        if (after) {
-            listaContainer.insertBefore(dragging, after);
-        } else {
-            listaContainer.appendChild(dragging);
-        }
+  const edificios = {
+    main: 'Edifício Principal',
+    barracks: 'Quartel',
+    stable: 'Estábulo',
+    garage: 'Oficina',
+    smith: 'Ferreiro',
+    market: 'Mercado',
+    farm: 'Fazenda',
+    storage: 'Armazém',
+    wall: 'Muralha',
+    wood: 'Bosque',
+    stone: 'Poço de Argila',
+    iron: 'Mina de Ferro',
+    snob: 'Academia',
+    statue: 'Estátua',
+    church: 'Igreja',
+    watchtower: 'Torre de Vigia'
+  };
+
+  if (!document.querySelector('#twc-panel')) {
+    const style = document.createElement('style');
+    style.textContent = ESTILO;
+    document.head.appendChild(style);
+
+    const div = document.createElement('div');
+    div.id = 'twc-panel';
+    div.innerHTML = `
+      <h3>🏗️ Construtor Global (Verificação Real)</h3>
+      <div id="twc-edificios">
+        ${Object.entries(edificios).map(([k,v])=>`
+          <label><input type="checkbox" data-ed="${k}" ${localStorage.getItem('twc_'+k)==='1'?'checked':''}>${v}</label>
+        `).join('')}
+      </div>
+      <hr>
+      Delay: <input id="twc-delay" type="number" min="1" max="30" value="${localStorage.getItem('twc_delay')||5}">s
+      <div style="margin-top:5px;text-align:center;">
+        <button id="twc-start">▶️ Iniciar Global</button>
+        <button id="twc-stop">⏹️ Parar</button>
+      </div>
+      <div id="twc-progress"><div id="twc-bar"></div></div>
+      <div id="twc-log"></div>
+      <iframe id="twc-iframe"></iframe>
+    `;
+    document.body.appendChild(div);
+  }
+
+  const logBox = document.querySelector('#twc-log');
+  const iframe = document.querySelector('#twc-iframe');
+  let interromper = false;
+  const ultimoErro = {}; // {villageId: timestamp}
+
+  const log = msg => {
+    logBox.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+    logBox.scrollTop = logBox.scrollHeight;
+  };
+
+  const salvarConfig = () => {
+    document.querySelectorAll('#twc-edificios input[type=checkbox]').forEach(ch=>{
+      localStorage.setItem('twc_'+ch.dataset.ed, ch.checked?'1':'0');
     });
+    localStorage.setItem('twc_delay', document.querySelector('#twc-delay').value);
+  };
 
-    montarLista();
+  document.querySelector('#twc-edificios').addEventListener('change', salvarConfig);
+  document.querySelector('#twc-delay').addEventListener('change', salvarConfig);
 
-    // ========= BOTÃO EXECUTAR =========
-    const btnExec = document.createElement("button");
-    btnExec.id = "tw-build-btn-executar";
-    conteudo.appendChild(btnExec);
+  document.querySelector('#twc-stop').onclick = ()=>{
+    interromper = true;
+    localStorage.setItem('twc_ativo', '0');
+    log('🛑 Interrompido pelo usuário.');
+  };
 
-    function atualizarBotaoRodando(rodando) {
-        if (rodando) {
-            btnExec.textContent = "Parar";
-            localStorage.setItem(BTN_KEY, "on");
-        } else {
-            btnExec.textContent = "Iniciar";
-            localStorage.setItem(BTN_KEY, "off");
-        }
-    }
+  async function getAldeias() {
+    const res = await fetch('/game.php?screen=overview_villages&mode=combined');
+    const html = await res.text();
+    const matches = [...html.matchAll(/village=(\d+)&/g)];
+    const ids = [...new Set(matches.map(m => m[1]))];
+    if (!ids.length && game_data.village?.id) ids.push(game_data.village.id);
+    return ids;
+  }
 
-    btnExec.onclick = () => {
-        if (intervalo) {
-            clearInterval(intervalo);
-            intervalo = null;
-            atualizarBotaoRodando(false);
-        } else {
-            executarConstrucao();
-            intervalo = setInterval(executarConstrucao, 5000);
-            atualizarBotaoRodando(true);
-        }
-    };
+  async function tentarFila(villageId, fila) {
+    return new Promise(resolve => {
+      iframe.onload = () => {
+        try {
+          const doc = iframe.contentDocument;
 
-    function executarConstrucao() {
-        for (let cod of ordem.filter(c => checks[c])) {
-            const botao = [...document.querySelectorAll(`a.btn-build[id^='main_buildlink_${cod}_']`)]
-                .find(b => b.offsetParent !== null && !b.classList.contains('disabled'));
-            if (botao) {
-                botao.click();
-                break;
+          // Detecta fila cheia
+          if (doc.querySelector('.queue_building_limit, .error')) {
+            log(`⚠️ Fila cheia em aldeia ${villageId}`);
+            ultimoErro[villageId] = Date.now();
+            return resolve(false);
+          }
+
+          for (const edif of fila) {
+            const bloco = doc.querySelector(`#main_buildrow_${edif}`);
+            if (!bloco) continue;
+
+            // Detecta nível máximo
+            const maxSpan = bloco.querySelector('.max_level');
+            if (maxSpan) {
+              log(`✅ ${edificios[edif]} já está no nível máximo (${villageId})`);
+              continue;
             }
+
+            const botao = bloco.querySelector(`a.btn-build[id^='main_buildlink_${edif}_']:not(.btn-disabled)`);
+
+            if (botao) {
+              botao.click();
+              // Verifica após 1s se o botão sumiu (confirma o clique real)
+              setTimeout(() => {
+                const aindaExiste = iframe.contentDocument.querySelector(`a.btn-build[id^='main_buildlink_${edif}_']:not(.btn-disabled)`);
+                if (!aindaExiste) {
+                  log(`🏗️ ${edificios[edif]} realmente iniciado em aldeia ${villageId}`);
+                  ultimoErro[villageId] = 0;
+                  resolve(true);
+                } else {
+                  log(`⚠️ Fila ocupada ou erro de clique em ${villageId}`);
+                  ultimoErro[villageId] = Date.now();
+                  resolve(false);
+                }
+              }, 1000);
+              return;
+            }
+          }
+
+          log(`⚠️ Nenhum edifício disponível em ${villageId} (sem recursos ou todos no máximo)`);
+          ultimoErro[villageId] = Date.now();
+          resolve(false);
+        } catch(e) {
+          log(`❌ Erro em aldeia ${villageId}: ${e.message}`);
+          ultimoErro[villageId] = Date.now();
+          resolve(false);
         }
+      };
+      iframe.src = `/game.php?village=${villageId}&screen=main`;
+    });
+  }
+
+  async function iniciarLoop() {
+    interromper = false;
+    localStorage.setItem('twc_ativo', '1');
+    const fila = Object.keys(edificios).filter(k=>localStorage.getItem('twc_'+k)==='1');
+    if (!fila.length) return log('⚠️ Nenhum edifício selecionado!');
+    const delay = Number(document.querySelector('#twc-delay').value) * 1000;
+
+    log('🚀 Gerenciador Global iniciado (verificação real).');
+
+    while (!interromper) {
+      const aldeias = await getAldeias();
+      log(`📜 Verificando ${aldeias.length} aldeia(s)...`);
+
+      for (let i=0; i<aldeias.length; i++) {
+        if (interromper) break;
+        const vid = aldeias[i];
+        if (ultimoErro[vid] && Date.now() - ultimoErro[vid] < 60000) continue;
+        await tentarFila(vid, fila);
+        document.querySelector('#twc-bar').style.width = ((i+1)/aldeias.length*100).toFixed(1)+'%';
+        await new Promise(r=>setTimeout(r, delay));
+      }
+
+      if (interromper) break;
+      log(`🔁 Aguardando novo ciclo (${delay/1000}s)...`);
+      await new Promise(r=>setTimeout(r, delay));
     }
 
-    // ========= RESTAURAR ESTADO =========
-    if (localStorage.getItem(BTN_KEY) === "on") {
-        intervalo = setInterval(executarConstrucao, 5000);
-        atualizarBotaoRodando(true);
-    } else {
-        atualizarBotaoRodando(false);
+    localStorage.setItem('twc_ativo', '0');
+    log('✅ Processo encerrado.');
+  }
+
+  document.querySelector('#twc-start').onclick = iniciarLoop;
+
+  window.addEventListener('load', ()=>{
+    if (localStorage.getItem('twc_ativo')==='1') {
+      log('♻️ Retomando construção automática após recarregamento...');
+      iniciarLoop();
     }
+  });
 
 })();
-
-
