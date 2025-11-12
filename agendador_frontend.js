@@ -91,7 +91,7 @@
       }
 
       #tws-panel.panel-hidden {
-        right: -480px;
+        right: -500px;
       }
 
       .tws-toggle-tab {
