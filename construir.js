@@ -1,609 +1,513 @@
 // ==UserScript==
-// @name         TW - Gerenciador Global de Construção Tribal (Verificação Real + Retomar Auto)
-// @namespace    http://tampermonkey.net/
-// @version      1.6
-// @description  Percorre todas as aldeias e constrói automaticamente via iframe invisível. Verifica fila cheia, nível máximo e retoma após reload. Tema Tribal Wars.
-// @match        *://*.tribalwars.com.br/*game.php*
-// @grant        none
+// TW Auto Builder - IFRAME VERSION WITH BUILDING CONTROLS - FIXED
 // ==/UserScript==
 
-(async function () {
-  'use strict';
+class TWAutoBuilder {
+    constructor() {
+        // PRIMEIRO definir buildingsList ANTES de qualquer outro uso
+        this.buildingsList = {
+            'main': 'Edifício principal',
+            'barracks': 'Quartel', 
+            'stable': 'Estábulo',
+            'garage': 'Oficina',
+            'church': 'Igreja',
+            'watchtower': 'Torre de vigia',
+            'snob': 'Academia',
+            'smith': 'Ferreiro',
+            'place': 'Praça de reunião',
+            'statue': 'Estátua',
+            'market': 'Mercado',
+            'wood': 'Bosque',
+            'stone': 'Poço de argila', 
+            'iron': 'Mina de ferro',
+            'farm': 'Fazenda',
+            'storage': 'Armazém',
+            'hide': 'Esconderijo',
+            'wall': 'Muralha'
+        };
 
-  const ESTILO = `
-    .twc-tribal-theme {
-      --color-primary: #8b4513;
-      --color-secondary: #654321;
-      --color-accent: #cd853f;
-      --color-dark: #3e2723;
-      --color-light: #f5deb3;
-      --color-success: #8fbc8f;
-      --color-warning: #daa520;
-      --color-error: #cd5c5c;
-      --border-radius: 8px;
-      --shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+        // DEPOIS as settings que dependem do buildingsList
+        this.settings = {
+            enabled: true,
+            checkInterval: 45000,
+            priorityBuildings: Object.keys(this.buildingsList), // Usa as chaves do buildingsList
+            maxLevels: {
+                'main': 30, 'farm': 30, 'storage': 30, 
+                'wood': 30, 'stone': 30, 'iron': 30,
+                'barracks': 25, 'stable': 20, 'market': 25, 
+                'smith': 20, 'wall': 20, 'garage': 15,
+                'hide': 10, 'snob': 1, 'church': 3,
+                'watchtower': 20, 'place': 1, 'statue': 1
+            },
+            allowQueue: true,
+            maxQueueSlots: 5,
+            enabledBuildings: {} // Será preenchido no loadBuildingSettings
+        };
+        
+        this.isRunning = false;
+        this.intervalId = null;
+        this.currentVillageId = this.getCurrentVillageId();
+        this.iframe = null;
+        
+        this.init();
     }
 
-    #twc-tab {
-      position: fixed;
-      right: 0;
-      top: 10%;
-      transform: translateY(-50%);
-      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-      color: var(--color-light);
-      padding: 15px 8px;
-      border-radius: var(--border-radius) 0 0 var(--border-radius);
-      cursor: pointer;
-      z-index: 10000;
-      font-family: 'Trebuchet MS', sans-serif;
-      font-weight: bold;
-      font-size: 14px;
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-      box-shadow: var(--shadow);
-      border: 2px solid var(--color-accent);
-      border-right: none;
-      transition: all 0.3s ease;
+    init() {
+        console.log('🏗️ TW Auto Builder - CONTROLE DE EDIFFÍCIOS iniciado!');
+        this.createIframe();
+        this.loadBuildingSettings(); // CARREGAR ANTES de criar o painel
+        this.createControlPanel();
+        this.start();
     }
 
-    #twc-tab:hover {
-      background: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
-      padding-right: 12px;
+    getCurrentVillageId() {
+        const url = window.location.href;
+        const match = url.match(/village=(\d+)/);
+        return match ? match[1] : null;
     }
 
-    #twc-panel {
-      position: fixed;
-      bottom: 80px;
-      right: -420px;
-      width: 400px;
-      background: linear-gradient(145deg, var(--color-dark), #2c1e17);
-      color: var(--color-light);
-      border: 3px solid var(--color-accent);
-      font-family: 'Trebuchet MS', sans-serif;
-      font-size: 13px;
-      padding: 15px;
-      z-index: 9999;
-      border-radius: var(--border-radius);
-      box-shadow: var(--shadow);
-      transition: right 0.4s ease-in-out;
-      max-height: 80vh;
-      overflow-y: auto;
+    createIframe() {
+        const existingIframe = document.getElementById('tw-builder-iframe');
+        if (existingIframe) existingIframe.remove();
+
+        this.iframe = document.createElement('iframe');
+        this.iframe.id = 'tw-builder-iframe';
+        this.iframe.style.cssText = `
+            position: fixed;
+            width: 1px;
+            height: 1px;
+            border: none;
+            opacity: 0;
+            pointer-events: none;
+            z-index: -9999;
+        `;
+        document.body.appendChild(this.iframe);
     }
 
-    #twc-panel.panel-visible {
-      right: 20px;
+    // Carrega configurações salvas dos edifícios
+    loadBuildingSettings() {
+        // Inicializa todos como true (ativados) por padrão
+        Object.keys(this.buildingsList).forEach(buildingId => {
+            const saved = localStorage.getItem(`tw_build_${buildingId}`);
+            // Se não existe configuração salva, default é true
+            this.settings.enabledBuildings[buildingId] = saved === null ? true : saved !== 'false';
+        });
+        
+        console.log('✅ Configurações carregadas:', this.settings.enabledBuildings);
     }
 
-    #twc-panel.panel-hidden {
-      right: -500px;
-    }
-
-    .twc-header {
-      text-align: center;
-      margin: 0 0 12px 0;
-      font-size: 16px;
-      color: var(--color-light);
-      background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
-      padding: 8px;
-      border-radius: var(--border-radius);
-      border: 1px solid var(--color-accent);
-      position: relative;
-    }
-
-    .twc-header::before {
-      content: '⚔️';
-      margin-right: 8px;
-    }
-
-    .twc-header::after {
-      content: '⚔️';
-      margin-left: 8px;
-    }
-
-    .twc-controls-section {
-      background: rgba(139, 69, 19, 0.2);
-      border: 1px solid var(--color-primary);
-      border-radius: var(--border-radius);
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-
-    .twc-section-title {
-      font-weight: bold;
-      color: var(--color-accent);
-      margin-bottom: 8px;
-      font-size: 14px;
-      border-bottom: 1px solid var(--color-primary);
-      padding-bottom: 4px;
-    }
-
-    #twc-edificios {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      max-height: 200px;
-      overflow-y: auto;
-      padding: 8px;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 6px;
-      border: 1px solid var(--color-primary);
-    }
-
-    #twc-edificios label {
-      display: flex;
-      align-items: center;
-      margin: 2px 0;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 4px;
-      transition: background 0.2s;
-    }
-
-    #twc-edificios label:hover {
-      background: rgba(205, 133, 63, 0.2);
-    }
-
-    #twc-edificios input[type="checkbox"] {
-      margin-right: 8px;
-      accent-color: var(--color-accent);
-      transform: scale(1.1);
-    }
-
-    .twc-input-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 8px 0;
-    }
-
-    .twc-input-group label {
-      font-weight: bold;
-      color: var(--color-accent);
-    }
-
-    #twc-delay {
-      width: 60px;
-      text-align: center;
-      background: var(--color-dark);
-      border: 1px solid var(--color-primary);
-      color: var(--color-light);
-      border-radius: 4px;
-      padding: 4px;
-    }
-
-    .twc-buttons {
-      display: flex;
-      gap: 8px;
-      margin: 12px 0;
-    }
-
-    .twc-button {
-      flex: 1;
-      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-      border: 1px solid var(--color-accent);
-      color: var(--color-light);
-      padding: 8px 12px;
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      font-family: 'Trebuchet MS', sans-serif;
-      font-weight: bold;
-      font-size: 12px;
-      transition: all 0.2s;
-    }
-
-    .twc-button:hover {
-      background: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    }
-
-    .twc-button:active {
-      transform: translateY(0);
-    }
-
-    .twc-button-start {
-      background: linear-gradient(135deg, #2e8b57, #3cb371);
-    }
-
-    .twc-button-stop {
-      background: linear-gradient(135deg, #b22222, #dc143c);
-    }
-
-    #twc-progress {
-      width: 100%;
-      height: 16px;
-      background: var(--color-dark);
-      border: 1px solid var(--color-primary);
-      border-radius: var(--border-radius);
-      margin: 12px 0;
-      overflow: hidden;
-    }
-
-    #twc-bar {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--color-success), var(--color-warning));
-      border-radius: var(--border-radius);
-      transition: width 0.5s ease;
-      position: relative;
-    }
-
-    #twc-bar::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-      animation: shimmer 2s infinite;
-    }
-
-    @keyframes shimmer {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(100%); }
-    }
-
-    #twc-log {
-      height: 120px;
-      overflow: auto;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid var(--color-primary);
-      padding: 8px;
-      color: var(--color-light);
-      border-radius: var(--border-radius);
-      font-size: 11px;
-      font-family: 'Courier New', monospace;
-    }
-
-    .log-entry {
-      margin: 2px 0;
-      padding: 2px 4px;
-      border-radius: 3px;
-    }
-
-    .log-success { background: rgba(143, 188, 143, 0.2); }
-    .log-warning { background: rgba(218, 165, 32, 0.2); }
-    .log-error { background: rgba(205, 92, 92, 0.2); }
-    .log-info { background: rgba(205, 133, 63, 0.2); }
-
-    #twc-iframe {
-      display: none;
-      width: 0;
-      height: 0;
-      border: none;
-    }
-
-    .twc-stats {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: var(--color-accent);
-      margin-top: 8px;
-    }
-
-    .scrollbar-custom::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .scrollbar-custom::-webkit-scrollbar-track {
-      background: var(--color-dark);
-      border-radius: 4px;
-    }
-
-    .scrollbar-custom::-webkit-scrollbar-thumb {
-      background: var(--color-primary);
-      border-radius: 4px;
-    }
-
-    .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-      background: var(--color-accent);
-    }
-  `;
-
-  const edificios = {
-    main: 'Edifício Principal',
-    barracks: 'Quartel',
-    stable: 'Estábulo',
-    garage: 'Oficina',
-    smith: 'Ferreiro',
-    market: 'Mercado',
-    farm: 'Fazenda',
-    storage: 'Armazém',
-    wall: 'Muralha',
-    wood: 'Bosque',
-    stone: 'Poço de Argila',
-    iron: 'Mina de Ferro',
-    snob: 'Academia',
-    statue: 'Estátua',
-    church: 'Igreja',
-    watchtower: 'Torre de Vigia'
-  };
-
-  // Inicialização do painel
-  if (!document.querySelector('#twc-panel')) {
-    const style = document.createElement('style');
-    style.textContent = ESTILO;
-    document.head.appendChild(style);
-
-    // Criar aba de controle
-    const tab = document.createElement('div');
-    tab.id = 'twc-tab';
-    tab.innerHTML = 'CONSTRUTOR TRIBAL';
-    tab.className = 'twc-tribal-theme';
-
-    // Criar painel principal
-    const panel = document.createElement('div');
-    panel.id = 'twc-panel';
-    panel.className = 'twc-tribal-theme panel-hidden scrollbar-custom';
-    panel.innerHTML = `
-      <div class="twc-header">🏹 Construtor Global Tribal</div>
-
-      <div class="twc-controls-section">
-        <div class="twc-section-title">🏗️ Edifícios para Construir</div>
-        <div id="twc-edificios" class="scrollbar-custom">
-          ${Object.entries(edificios).map(([k,v])=>`
-            <label><input type="checkbox" data-ed="${k}" ${localStorage.getItem('twc_'+k)==='1'?'checked':''}>${v}</label>
-          `).join('')}
-        </div>
-      </div>
-
-      <div class="twc-controls-section">
-        <div class="twc-section-title">⚙️ Configurações</div>
-        <div class="twc-input-group">
-          <label for="twc-delay">Delay entre aldeias (segundos):</label>
-          <input id="twc-delay" type="number" min="1" max="30" value="${localStorage.getItem('twc_delay')||5}">
-        </div>
-      </div>
-
-      <div class="twc-controls-section">
-        <div class="twc-section-title">🎮 Controles</div>
-        <div class="twc-buttons">
-          <button id="twc-start" class="twc-button twc-button-start">⚔️ Iniciar Conquista</button>
-          <button id="twc-stop" class="twc-button twc-button-stop">🛡️ Parar Batalha</button>
-        </div>
-        <div id="twc-progress">
-          <div id="twc-bar"></div>
-        </div>
-      </div>
-
-      <div class="twc-controls-section">
-        <div class="twc-section-title">📜 Registro de Batalha</div>
-        <div id="twc-log" class="scrollbar-custom"></div>
-        <div class="twc-stats">
-          <span id="twc-stats-time">⏱️ --:--:--</span>
-          <span id="twc-stats-villages">🏘️ 0/0 aldeias</span>
-          <span id="twc-stats-status">💤 Inativo</span>
-        </div>
-      </div>
-
-      <iframe id="twc-iframe"></iframe>
-    `;
-
-    document.body.appendChild(tab);
-    document.body.appendChild(panel);
-
-    // Controle de visibilidade do painel
-    let panelVisible = localStorage.getItem('twc_panel_visible') === 'true';
-
-    tab.onclick = () => {
-      panelVisible = !panelVisible;
-      localStorage.setItem('twc_panel_visible', panelVisible.toString());
-
-      if (panelVisible) {
-        panel.classList.remove('panel-hidden');
-        panel.classList.add('panel-visible');
-        tab.innerHTML = '⬅️ OCULTAR';
-      } else {
-        panel.classList.remove('panel-visible');
-        panel.classList.add('panel-hidden');
-        tab.innerHTML = 'CONSTRUTOR TRIBAL';
-      }
-    };
-
-    // Inicializar visibilidade do painel
-    if (panelVisible) {
-      panel.classList.remove('panel-hidden');
-      panel.classList.add('panel-visible');
-      tab.innerHTML = '⬅️ OCULTAR';
-    }
-  }
-
-  // Elementos do DOM
-  const logBox = document.querySelector('#twc-log');
-  const iframe = document.querySelector('#twc-iframe');
-  const progressBar = document.querySelector('#twc-bar');
-  const statsTime = document.querySelector('#twc-stats-time');
-  const statsVillages = document.querySelector('#twc-stats-villages');
-  const statsStatus = document.querySelector('#twc-stats-status');
-
-  let interromper = false;
-  const ultimoErro = {};
-  let startTime = null;
-  let timerInterval = null;
-
-  // Funções de utilidade
-  const log = (msg, type = 'info') => {
-    const timestamp = new Date().toLocaleTimeString();
-    const typeClass = `log-${type}`;
-    logBox.innerHTML += `<div class="log-entry ${typeClass}">[${timestamp}] ${msg}</div>`;
-    logBox.scrollTop = logBox.scrollHeight;
-  };
-
-  const updateStats = (current = 0, total = 0, status = '') => {
-    if (statsVillages) {
-      statsVillages.textContent = `🏘️ ${current}/${total} aldeias`;
-    }
-    if (statsStatus && status) {
-      statsStatus.textContent = status;
-    }
-  };
-
-  const updateTimer = () => {
-    if (!startTime) return;
-    const now = new Date();
-    const diff = now - startTime;
-    const hours = Math.floor(diff / 3600000);
-    const minutes = Math.floor((diff % 3600000) / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
-
-    if (statsTime) {
-      statsTime.textContent = `⏱️ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-  };
-
-  const salvarConfig = () => {
-    document.querySelectorAll('#twc-edificios input[type=checkbox]').forEach(ch => {
-      localStorage.setItem('twc_' + ch.dataset.ed, ch.checked ? '1' : '0');
-    });
-    localStorage.setItem('twc_delay', document.querySelector('#twc-delay').value);
-  };
-
-  // Event listeners
-  document.querySelector('#twc-edificios').addEventListener('change', salvarConfig);
-  document.querySelector('#twc-delay').addEventListener('change', salvarConfig);
-
-  document.querySelector('#twc-stop').onclick = () => {
-    interromper = true;
-    localStorage.setItem('twc_ativo', '0');
-    if (timerInterval) clearInterval(timerInterval);
-    updateStats(0, 0, '💤 Interrompido');
-    log('🛑 Batalha interrompida pelo guerreiro.', 'error');
-  };
-
-  // Funções principais (mantidas do código original)
-  async function getAldeias() {
-    const res = await fetch('/game.php?screen=overview_villages&mode=combined');
-    const html = await res.text();
-    const matches = [...html.matchAll(/village=(\d+)&/g)];
-    const ids = [...new Set(matches.map(m => m[1]))];
-    if (!ids.length && game_data.village?.id) ids.push(game_data.village.id);
-    return ids;
-  }
-
-  async function tentarFila(villageId, fila) {
-    return new Promise(resolve => {
-      iframe.onload = () => {
-        try {
-          const doc = iframe.contentDocument;
-
-          if (doc.querySelector('.queue_building_limit, .error')) {
-            log(`⚠️ Fila de batalha cheia na aldeia ${villageId}`, 'warning');
-            ultimoErro[villageId] = Date.now();
-            return resolve(false);
-          }
-
-          for (const edif of fila) {
-            const bloco = doc.querySelector(`#main_buildrow_${edif}`);
-            if (!bloco) continue;
-
-            const maxSpan = bloco.querySelector('.max_level');
-            if (maxSpan) {
-              log(`✅ ${edificios[edif]} já alcançou o nível máximo (${villageId})`, 'success');
-              continue;
+    // Salva configurações dos edifícios
+    saveBuildingSettings() {
+        Object.keys(this.buildingsList).forEach(buildingId => {
+            const checkbox = document.querySelector(`#tw-build-${buildingId}`);
+            if (checkbox) {
+                localStorage.setItem(`tw_build_${buildingId}`, checkbox.checked.toString());
+                this.settings.enabledBuildings[buildingId] = checkbox.checked;
             }
+        });
+        this.log('💾 Configurações salvas');
+    }
 
-            const botao = bloco.querySelector(`a.btn-build[id^='main_buildlink_${edif}_']:not(.btn-disabled)`);
+    async loadConstructionPage() {
+        if (!this.currentVillageId) {
+            this.log('❌ Não consegui detectar ID da vila');
+            return null;
+        }
 
-            if (botao) {
-              botao.click();
-              setTimeout(() => {
-                const aindaExiste = iframe.contentDocument.querySelector(`a.btn-build[id^='main_buildlink_${edif}_']:not(.btn-disabled)`);
-                if (!aindaExiste) {
-                  log(`🏹 ${edificios[edif]} construído com sucesso na aldeia ${villageId}`, 'success');
-                  ultimoErro[villageId] = 0;
-                  resolve(true);
-                } else {
-                  log(`⚠️ Fila ocupada ou erro na aldeia ${villageId}`, 'warning');
-                  ultimoErro[villageId] = Date.now();
-                  resolve(false);
+        return new Promise((resolve) => {
+            this.iframe.onload = () => {
+                try {
+                    const doc = this.iframe.contentDocument;
+                    const buildings = this.parseBuildingsFromIframe(doc);
+                    resolve(buildings);
+                } catch (error) {
+                    this.log(`❌ Erro ao carregar iframe: ${error.message}`);
+                    resolve(null);
                 }
-              }, 3000);
-              return;
+            };
+
+            this.iframe.onerror = () => {
+                this.log('❌ Erro ao carregar página de construção');
+                resolve(null);
+            };
+
+            this.iframe.src = `/game.php?village=${this.currentVillageId}&screen=main`;
+        });
+    }
+
+    parseBuildingsFromIframe(doc) {
+        const buildings = {};
+
+        const rows = doc.querySelectorAll('tr[id^="main_buildrow_"]');
+        
+        rows.forEach(row => {
+            try {
+                const buildingId = row.id.replace('main_buildrow_', '');
+                
+                // Só processa se o edifício está na nossa lista
+                if (!this.buildingsList[buildingId]) return;
+                
+                const levelText = row.querySelector('span[style*="font-size: 0.9em"]')?.textContent || '';
+                const currentLevel = this.extractLevel(levelText);
+                
+                const buildButton = row.querySelector('.btn-build');
+                const buildLink = buildButton?.getAttribute('href') || '';
+                
+                const inactiveMessage = row.querySelector('.inactive');
+                const errorMessage = inactiveMessage?.textContent || '';
+                
+                const hasBuildButton = buildButton && buildButton.style.display !== 'none';
+                const canBuildNow = hasBuildButton && !errorMessage.includes('Fazenda') && !errorMessage.includes('requer');
+                const canQueue = hasBuildButton && this.settings.allowQueue && buildLink !== '';
+
+                buildings[buildingId] = {
+                    id: buildingId,
+                    level: currentLevel,
+                    can_build: canBuildNow,
+                    can_queue: canQueue,
+                    build_link: buildLink,
+                    error: errorMessage,
+                    name: this.buildingsList[buildingId],
+                    button_element: buildButton,
+                    enabled: this.settings.enabledBuildings[buildingId] !== false
+                };
+
+            } catch (error) {
+                this.log(`Erro ao analisar ${buildingId}: ${error.message}`);
             }
-          }
+        });
 
-          log(`⚠️ Nenhuma construção disponível na aldeia ${villageId}`, 'warning');
-          ultimoErro[villageId] = Date.now();
-          resolve(false);
-        } catch(e) {
-          log(`❌ Erro crítico na aldeia ${villageId}: ${e.message}`, 'error');
-          ultimoErro[villageId] = Date.now();
-          resolve(false);
-        }
-      };
-      iframe.src = `/game.php?village=${villageId}&screen=main`;
-    });
-  }
-
-  async function iniciarLoop() {
-    interromper = false;
-    localStorage.setItem('twc_ativo', '1');
-    const fila = Object.keys(edificios).filter(k => localStorage.getItem('twc_' + k) === '1');
-
-    if (!fila.length) {
-      log('⚠️ Nenhum edifício selecionado para a conquista!', 'warning');
-      return;
+        this.log(`📊 ${Object.keys(buildings).length} edifícios carregados`);
+        return buildings;
     }
 
-    const delay = Number(document.querySelector('#twc-delay').value) * 1000;
+    extractLevel(levelText) {
+        if (!levelText) return 0;
+        if (levelText.includes('não construído')) return 0;
+        const match = levelText.match(/(\d+)/);
+        return match ? parseInt(match[1]) : 1;
+    }
 
-    // Iniciar timer
-    startTime = new Date();
-    timerInterval = setInterval(updateTimer, 1000);
+    async checkQueueStatus() {
+        try {
+            await this.loadConstructionPage();
+            const doc = this.iframe.contentDocument;
+            const queueItems = doc.querySelectorAll('#buildqueue tr.lit, .build_order');
+            return queueItems.length;
+        } catch (error) {
+            const queueItems = document.querySelectorAll('#buildqueue tr.lit, .build_order');
+            return queueItems.length;
+        }
+    }
 
-    log('⚔️ INICIANDO GRANDE CONQUISTA TRIBAL!', 'success');
-    updateStats(0, 0, '⚔️ Conquistando...');
-
-    while (!interromper) {
-      const aldeias = await getAldeias();
-      const totalAldeias = aldeias.length;
-      log(`📜 Examinando ${totalAldeias} aldeia(s) para conquista...`, 'info');
-
-      let aldeiasProcessadas = 0;
-
-      for (let i = 0; i < aldeias.length; i++) {
-        if (interromper) break;
-        const vid = aldeias[i];
-
-        // Pular aldeias com erro recente
-        if (ultimoErro[vid] && Date.now() - ultimoErro[vid] < 60000) {
-          aldeiasProcessadas++;
-          continue;
+    async buildViaIframe(building) {
+        if (!building.build_link) {
+            this.log(`❌ Sem link para ${building.name}`);
+            return false;
         }
 
-        await tentarFila(vid, fila);
-        aldeiasProcessadas++;
+        try {
+            this.log(`🏗️ Construindo: ${building.name} nível ${building.level + 1}`);
+            
+            this.iframe.onload = () => {
+                this.log(`✅ Construção concluída: ${building.name}`);
+            };
 
-        // Atualizar progresso
-        const progresso = ((aldeiasProcessadas) / totalAldeias * 100).toFixed(1);
-        progressBar.style.width = progresso + '%';
-        updateStats(aldeiasProcessadas, totalAldeias, '⚔️ Conquistando...');
-
-        await new Promise(r => setTimeout(r, delay));
-      }
-
-      if (interromper) break;
-
-      log(`🔁 Preparando próximo ciclo de conquista (${delay/1000}s)...`, 'info');
-      updateStats(0, 0, '⏳ Aguardando...');
-      await new Promise(r => setTimeout(r, delay));
+            this.iframe.src = building.build_link;
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            return true;
+            
+        } catch (error) {
+            this.log(`❌ Erro: ${error.message}`);
+            return false;
+        }
     }
 
-    localStorage.setItem('twc_ativo', '0');
-    if (timerInterval) clearInterval(timerInterval);
-    updateStats(0, 0, '💤 Conquista Finalizada');
-    log('✅ Grande conquista tribal finalizada!', 'success');
-  }
+    async checkAndBuild() {
+        if (!this.settings.enabled) return;
 
-  document.querySelector('#twc-start').onclick = iniciarLoop;
+        this.updateAction('🔄 Verificando...');
+        
+        const currentQueue = await this.checkQueueStatus();
+        const availableSlots = Math.max(0, this.settings.maxQueueSlots - currentQueue);
+        
+        if (availableSlots <= 0) {
+            this.updateAction(`⏳ Fila cheia (${currentQueue}/${this.settings.maxQueueSlots})`);
+            return;
+        }
 
-  // Auto-retomada após reload
-  window.addEventListener('load', () => {
-    if (localStorage.getItem('twc_ativo') === '1') {
-      log('♻️ Retomando a grande conquista tribal...', 'info');
-      setTimeout(iniciarLoop, 2000);
+        this.updateAction('🌐 Carregando construções...');
+        const buildings = await this.loadConstructionPage();
+        
+        if (!buildings || Object.keys(buildings).length === 0) {
+            this.updateAction('❌ Sem dados');
+            return;
+        }
+
+        const nextBuilding = this.findNextBuilding(buildings);
+        
+        if (nextBuilding) {
+            this.updateAction(`🎯 ${nextBuilding.name} nível ${nextBuilding.level + 1}`);
+            
+            const success = await this.buildViaIframe(nextBuilding);
+            
+            if (success) {
+                this.updateAction(`✅ ${nextBuilding.name} iniciada`);
+                this.updateLastBuild(nextBuilding.name, nextBuilding.level + 1);
+            } else {
+                this.updateAction(`❌ Falha`);
+            }
+        } else {
+            this.updateAction('📭 Nenhuma construção');
+            this.log('📭 Nenhuma construção disponível');
+        }
     }
-  });
 
-})();
+    findNextBuilding(buildings) {
+        for (const buildingId of this.settings.priorityBuildings) {
+            const building = buildings[buildingId];
+            if (!building) continue;
+            
+            // Verifica se o edifício está habilitado
+            if (!building.enabled) {
+                this.log(`⏭️ ${building.name} desativado nos controles`);
+                continue;
+            }
+            
+            const maxLevel = this.settings.maxLevels[buildingId];
+            const currentLevel = building.level || 0;
+            
+            if (currentLevel >= maxLevel) {
+                this.log(`✅ ${building.name} no nível máximo (${currentLevel})`);
+                continue;
+            }
+
+            const canBuild = building.can_build || (this.settings.allowQueue && building.can_queue);
+            
+            if (canBuild && building.build_link) {
+                this.log(`🎯 ${building.name} nível ${currentLevel} → ${currentLevel + 1}`);
+                return building;
+            } else {
+                this.log(`⏳ ${building.name} - ${building.error || 'indisponível'}`);
+            }
+        }
+        return null;
+    }
+
+    createControlPanel() {
+        const existingPanel = document.getElementById('tw-auto-builder-panel');
+        if (existingPanel) existingPanel.remove();
+
+        // VERIFICA se buildingsList existe antes de usar
+        if (!this.buildingsList) {
+            console.error('❌ buildingsList não definido!');
+            return;
+        }
+
+        const panel = document.createElement('div');
+        panel.id = 'tw-auto-builder-panel';
+        panel.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 50px;
+                right: 20px;
+                width: 400px;
+                background: #2c3e50;
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                font-family: Arial;
+                font-size: 12px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                max-height: 90vh;
+                overflow-y: auto;
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <strong>🏗️ TW Building Controller</strong>
+                    <button onclick="window.builder.toggle()" style="padding: 4px 8px; font-size: 10px; cursor: pointer;">
+                        ${this.isRunning ? '⏸️ Parar' : '▶️ Iniciar'}
+                    </button>
+                </div>
+                
+                <!-- CONFIGURAÇÕES GERAIS -->
+                <div style="background: #34495e; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                    <div style="display: flex; gap: 15px; margin-bottom: 8px;">
+                        <label style="display: flex; align-items: center;">
+                            <input type="checkbox" ${this.settings.enabled ? 'checked' : ''} 
+                                   onchange="window.builder.settings.enabled = this.checked"> Ativado
+                        </label>
+                        <label style="display: flex; align-items: center;">
+                            <input type="checkbox" ${this.settings.allowQueue ? 'checked' : ''} 
+                                   onchange="window.builder.settings.allowQueue = this.checked"> Permitir fila
+                        </label>
+                    </div>
+                    <div style="display: flex; gap: 15px;">
+                        <label style="display: flex; align-items: center;">
+                            Slots: <input type="number" value="${this.settings.maxQueueSlots}" min="1" max="10"
+                                   style="width: 40px; padding: 2px; margin-left: 5px;" 
+                                   onchange="window.builder.settings.maxQueueSlots = parseInt(this.value)">
+                        </label>
+                        <label style="display: flex; align-items: center;">
+                            Check: <input type="number" value="${this.settings.checkInterval / 1000}" 
+                                   style="width: 40px; padding: 2px; margin-left: 5px;" 
+                                   onchange="window.builder.settings.checkInterval = this.value * 1000">s
+                        </label>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 8px;">
+                        <button onclick="window.builder.toggleAllBuildings(true)" style="padding: 4px 8px; font-size: 10px; background: #27ae60; border: none; color: white; border-radius: 4px; cursor: pointer;">✅ Ativar Todos</button>
+                        <button onclick="window.builder.toggleAllBuildings(false)" style="padding: 4px 8px; font-size: 10px; background: #e74c3c; border: none; color: white; border-radius: 4px; cursor: pointer;">❌ Desativar Todos</button>
+                    </div>
+                </div>
+                
+                <!-- LISTA DE EDIFFÍCIOS -->
+                <div style="background: #34495e; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                    <div style="font-weight: bold; margin-bottom: 8px; color: #3498db;">🏗️ Edifícios para Construir:</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; max-height: 200px; overflow-y: auto;">
+                        ${Object.entries(this.buildingsList).map(([id, name]) => `
+                            <label style="display: flex; align-items: center; padding: 3px 5px; border-radius: 3px; background: rgba(255,255,255,0.1);">
+                                <input type="checkbox" id="tw-build-${id}" 
+                                       ${this.settings.enabledBuildings[id] !== false ? 'checked' : ''}
+                                       onchange="window.builder.saveBuildingSettings()">
+                                <span style="margin-left: 6px; font-size: 11px;">${name}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <!-- STATUS -->
+                <div style="background: #34495e; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                    <div id="builder-status" style="font-size: 11px; color: #ecf0f1; margin-bottom: 5px;">
+                        Status: ${this.isRunning ? '🟢 Rodando' : '🔴 Parado'}
+                    </div>
+                    
+                    <div id="builder-action" style="font-size: 11px; margin: 5px 0; color: #3498db;">
+                        Ação: <span id="current-action">Pronto</span>
+                    </div>
+                    
+                    <div id="builder-last-build" style="font-size: 11px; margin: 5px 0; color: #f39c12;">
+                        Última: <span id="last-build-info">Nenhuma</span>
+                    </div>
+                </div>
+                
+                <!-- LOGS -->
+                <div style="background: #34495e; padding: 10px; border-radius: 6px;">
+                    <div style="font-weight: bold; margin-bottom: 5px; color: #3498db;">📜 Logs:</div>
+                    <div id="builder-logs" style="max-height: 150px; overflow-y: auto; font-size: 10px; background: #2c3e50; padding: 5px; border-radius: 4px;"></div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(panel);
+    }
+
+    log(message) {
+        const logs = document.getElementById('builder-logs');
+        if (logs) {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML = `<div>[${timestamp}] ${message}</div>` + logs.innerHTML;
+            
+            const logEntries = logs.getElementsByTagName('div');
+            if (logEntries.length > 15) {
+                logs.removeChild(logEntries[logEntries.length - 1]);
+            }
+        }
+        console.log(`🏗️ ${message}`);
+    }
+
+    updateAction(message) {
+        const actionElement = document.getElementById('current-action');
+        if (actionElement) {
+            actionElement.textContent = message;
+        }
+    }
+
+    updateLastBuild(buildingName, level) {
+        const lastBuildElement = document.getElementById('last-build-info');
+        if (lastBuildElement) {
+            lastBuildElement.textContent = `${buildingName} nível ${level}`;
+            setTimeout(() => {
+                if (lastBuildElement.textContent.includes(buildingName)) {
+                    lastBuildElement.textContent = 'Nenhuma';
+                }
+            }, 30000);
+        }
+    }
+
+    toggle() {
+        if (this.isRunning) {
+            this.stop();
+        } else {
+            this.start();
+        }
+        this.updateStatus();
+    }
+
+    start() {
+        if (this.isRunning) return;
+        
+        this.isRunning = true;
+        this.intervalId = setInterval(() => {
+            if (this.settings.enabled) {
+                this.checkAndBuild();
+            }
+        }, this.settings.checkInterval);
+        
+        this.log('✅ Auto Builder iniciado');
+        this.updateStatus();
+        this.updateAction('Monitorando...');
+    }
+
+    stop() {
+        this.isRunning = false;
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+        this.log('⏸️ Auto Builder parado');
+        this.updateStatus();
+        this.updateAction('Parado');
+    }
+
+    updateStatus() {
+        const status = document.getElementById('builder-status');
+        const button = document.querySelector('#tw-auto-builder-panel button');
+        
+        if (status) {
+            status.innerHTML = `Status: ${this.isRunning ? '🟢 Rodando' : '🔴 Parado'}`;
+        }
+        if (button) {
+            button.textContent = this.isRunning ? '⏸️ Parar' : '▶️ Iniciar';
+        }
+    }
+
+    // Comando para selecionar/deselecionar todos
+    toggleAllBuildings(enable) {
+        Object.keys(this.buildingsList).forEach(buildingId => {
+            const checkbox = document.querySelector(`#tw-build-${buildingId}`);
+            if (checkbox) {
+                checkbox.checked = enable;
+            }
+        });
+        this.saveBuildingSettings();
+        this.log(enable ? '✅ Todos edifícios ativados' : '❌ Todos edifícios desativados');
+    }
+}
+
+// Inicializa o auto builder
+const builder = new TWAutoBuilder();
+
+console.log(`
+🏗️ TW Auto Builder - CONTROLE COMPLETO
+✅ Controle individual de cada edifício
+✅ Funciona em qualquer tela
+✅ Configurações salvas automaticamente
+
+Comandos:
+- builder.start()/builder.stop()
+- builder.toggleAllBuildings(true) - Ativar todos
+- builder.toggleAllBuildings(false) - Desativar todos
+- builder.settings.maxQueueSlots = 5
+`);
+
+window.builder = builder;
