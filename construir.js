@@ -41,29 +41,230 @@ class TWAutoBuilder {
             },
             allowQueue: true,
             maxQueueSlots: 5,
-            enabledBuildings: {} // Será preenchido no loadBuildingSettings
+            enabledBuildings: {}, // Será preenchido no loadBuildingSettings
+            selectedVillage: null // Aldeia selecionada no dropdown
         };
         
         this.isRunning = false;
         this.intervalId = null;
         this.currentVillageId = this.getCurrentVillageId();
         this.iframe = null;
+        this.myVillages = []; // Array para armazenar as aldeias do jogador
+        this.villagesLoaded = false; // Flag para controlar se as aldeias foram carregadas
         
         this.init();
     }
 
-    init() {
+    async init() {
         console.log('🏗️ TW Auto Builder - CONTROLE DE EDIFFÍCIOS iniciado!');
         this.createIframe();
         this.loadBuildingSettings(); // CARREGAR ANTES de criar o painel
+        
+        // AGORA carregamos as aldeias ANTES de criar o painel
+        await this.loadMyVillages();
+        
         this.createControlPanel();
         this.start();
     }
 
+    // CARREGAR ALDEIAS DO JOGADOR
+    async loadMyVillages() {
+        try {
+            // Buscar dados do jogador
+            const playerId = game_data.player.id;
+            
+            // Fazer requisição para o arquivo de aldeias
+            const response = await fetch('/map/village.txt');
+            const data = await response.text();
+            
+            // Processar as aldeias
+            const allVillages = data.trim().split('\n').map(line => {
+                const [id, name, x, y, player, points, bonus_id] = line.split(',');
+                return {
+                    id: parseInt(id),
+                    name: decodeURIComponent(name.replace(/\+/g, ' ')),
+                    x: parseInt(x),
+                    y: parseInt(y),
+                    player: parseInt(player),
+                    points: parseInt(points),
+                    bonus_id: bonus_id ? parseInt(bonus_id) : null
+                };
+            });
+            
+            // Filtrar apenas as aldeias do jogador atual
+            this.myVillages = allVillages
+                .filter(village => village.player === playerId)
+                .sort((a, b) => {
+                    // Ordenar por nome
+                    const nameA = a.name.toLowerCase();
+                    const nameB = b.name.toLowerCase();
+                    if (nameA < nameB) return -1;
+                    if (nameA > nameB) return 1;
+                    return 0;
+                });
+            
+            this.villagesLoaded = true;
+            console.log(`🏘️ ${this.myVillages.length} aldeias próprias carregadas`);
+            
+        } catch (error) {
+            console.error('❌ Erro ao carregar aldeias:', error);
+            this.myVillages = [];
+            this.villagesLoaded = true;
+        }
+    }
+
+    // CRIAR DROPDOWN DE ALDEIAS
+    createVillageSelector() {
+        if (!this.villagesLoaded) {
+            return '<div style="color: #f39c12; font-size: 11px;">Carregando aldeias...</div>';
+        }
+
+        if (this.myVillages.length === 0) {
+            return '<div style="color: #e74c3c; font-size: 11px;">Nenhuma aldeia encontrada</div>';
+        }
+
+        let html = `
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #3498db;">🏘️ Aldeia para Construir:</label>
+                <select id="village-selector" style="
+                    width: 100%; 
+                    padding: 6px 8px; 
+                    border: 1px solid #34495e; 
+                    background: #2c3e50; 
+                    color: white; 
+                    border-radius: 4px; 
+                    font-size: 11px;
+                    cursor: pointer;
+                " onchange="window.builder.changeVillage(this.value)">
+                    <option value="">-- Selecione uma aldeia --</option>
+        `;
+
+        // Adicionar opções para cada aldeia
+        this.myVillages.forEach(village => {
+            const isSelected = this.settings.selectedVillage === village.id || 
+                              (!this.settings.selectedVillage && village.id === this.currentVillageId);
+            
+            html += `
+                <option value="${village.id}" ${isSelected ? 'selected' : ''}>
+                    ${village.name} (${village.x}|${village.y}) - ${village.points.toLocaleString()} pontos
+                </option>
+            `;
+        });
+
+        html += `</select></div>`;
+
+        return html;
+    }
+
+    // MUDAR ALDEIA SELECIONADA
+    changeVillage(villageId) {
+        if (!villageId) return;
+        
+        const village = this.myVillages.find(v => v.id == villageId);
+        if (village) {
+            this.settings.selectedVillage = village.id;
+            this.currentVillageId = village.id;
+            
+            // Salvar configuração
+            localStorage.setItem('tw_builder_selected_village', villageId);
+            
+            // Carregar configurações específicas da aldeia
+            this.loadVillageSettings();
+            
+            this.log(`🏘️ Aldeia alterada para: ${village.name} (${village.x}|${village.y})`);
+            
+            // Recarregar a página de construção para a nova aldeia
+            if (this.isRunning) {
+                this.checkAndBuild();
+            }
+        }
+    }
+
+    // SALVAR CONFIGURAÇÕES ESPECÍFICAS DA ALDEIA
+    saveVillageSettings() {
+        if (!this.currentVillageId) {
+            this.log('❌ Nenhuma aldeia selecionada para salvar');
+            return;
+        }
+
+        const villageSettings = {
+            enabledBuildings: {...this.settings.enabledBuildings},
+            maxLevels: {...this.settings.maxLevels},
+            priorityBuildings: [...this.settings.priorityBuildings],
+            allowQueue: this.settings.allowQueue,
+            maxQueueSlots: this.settings.maxQueueSlots
+        };
+
+        localStorage.setItem(`tw_builder_village_${this.currentVillageId}`, JSON.stringify(villageSettings));
+        
+        const village = this.myVillages.find(v => v.id === this.currentVillageId);
+        this.log(`💾 Configurações salvas para: ${village ? village.name : 'Aldeia ' + this.currentVillageId}`);
+    }
+
+    // CARREGAR CONFIGURAÇÕES ESPECÍFICAS DA ALDEIA
+    loadVillageSettings() {
+        if (!this.currentVillageId) return;
+
+        const savedSettings = localStorage.getItem(`tw_builder_village_${this.currentVillageId}`);
+        
+        if (savedSettings) {
+            try {
+                const villageSettings = JSON.parse(savedSettings);
+                
+                // Atualizar configurações com as salvas para esta aldeia
+                if (villageSettings.enabledBuildings) {
+                    this.settings.enabledBuildings = {...villageSettings.enabledBuildings};
+                }
+                if (villageSettings.maxLevels) {
+                    this.settings.maxLevels = {...villageSettings.maxLevels};
+                }
+                if (villageSettings.priorityBuildings) {
+                    this.settings.priorityBuildings = [...villageSettings.priorityBuildings];
+                }
+                if (villageSettings.allowQueue !== undefined) {
+                    this.settings.allowQueue = villageSettings.allowQueue;
+                }
+                if (villageSettings.maxQueueSlots !== undefined) {
+                    this.settings.maxQueueSlots = villageSettings.maxQueueSlots;
+                }
+
+                // Atualizar checkboxes na interface
+                this.updateBuildingCheckboxes();
+                
+                const village = this.myVillages.find(v => v.id === this.currentVillageId);
+                this.log(`📂 Configurações carregadas para: ${village ? village.name : 'Aldeia ' + this.currentVillageId}`);
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar configurações da aldeia:', error);
+            }
+        } else {
+            // Se não há configurações salvas para esta aldeia, usar padrão
+            this.loadBuildingSettings();
+            this.log('⚙️ Usando configurações padrão para esta aldeia');
+        }
+    }
+
+    // ATUALIZAR CHECKBOXES NA INTERFACE
+    updateBuildingCheckboxes() {
+        Object.keys(this.buildingsList).forEach(buildingId => {
+            const checkbox = document.querySelector(`#tw-build-${buildingId}`);
+            if (checkbox) {
+                checkbox.checked = this.settings.enabledBuildings[buildingId] !== false;
+            }
+        });
+    }
+
     getCurrentVillageId() {
+        // Primeiro tenta pegar da configuração salva
+        const savedVillage = localStorage.getItem('tw_builder_selected_village');
+        if (savedVillage) {
+            return parseInt(savedVillage);
+        }
+        
+        // Se não tiver salvo, pega da URL atual
         const url = window.location.href;
         const match = url.match(/village=(\d+)/);
-        return match ? match[1] : null;
+        return match ? parseInt(match[1]) : null;
     }
 
     createIframe() {
@@ -84,7 +285,7 @@ class TWAutoBuilder {
         document.body.appendChild(this.iframe);
     }
 
-    // Carrega configurações salvas dos edifícios
+    // Carrega configurações salvas dos edifícios (padrão)
     loadBuildingSettings() {
         // Inicializa todos como true (ativados) por padrão
         Object.keys(this.buildingsList).forEach(buildingId => {
@@ -93,19 +294,20 @@ class TWAutoBuilder {
             this.settings.enabledBuildings[buildingId] = saved === null ? true : saved !== 'false';
         });
         
-        console.log('✅ Configurações carregadas:', this.settings.enabledBuildings);
+        console.log('✅ Configurações padrão carregadas:', this.settings.enabledBuildings);
     }
 
-    // Salva configurações dos edifícios
+    // Salva configurações dos edifícios (para aldeia atual)
     saveBuildingSettings() {
         Object.keys(this.buildingsList).forEach(buildingId => {
             const checkbox = document.querySelector(`#tw-build-${buildingId}`);
             if (checkbox) {
-                localStorage.setItem(`tw_build_${buildingId}`, checkbox.checked.toString());
                 this.settings.enabledBuildings[buildingId] = checkbox.checked;
             }
         });
-        this.log('💾 Configurações salvas');
+        
+        // Salvar automaticamente as configurações para a aldeia atual
+        this.saveVillageSettings();
     }
 
     async loadConstructionPage() {
@@ -311,7 +513,7 @@ class TWAutoBuilder {
                 position: fixed;
                 top: 50px;
                 right: 20px;
-                width: 400px;
+                width: 450px;
                 background: #2c3e50;
                 color: white;
                 padding: 15px;
@@ -328,6 +530,24 @@ class TWAutoBuilder {
                     <button onclick="window.builder.toggle()" style="padding: 4px 8px; font-size: 10px; cursor: pointer;">
                         ${this.isRunning ? '⏸️ Parar' : '▶️ Iniciar'}
                     </button>
+                </div>
+                
+                <!-- SELETOR DE ALDEIAS -->
+                ${this.createVillageSelector()}
+                
+                <!-- BOTÃO SALVAR -->
+                <div style="margin-bottom: 10px;">
+                    <button onclick="window.builder.saveVillageSettings()" style="
+                        width: 100%; 
+                        padding: 8px 12px; 
+                        background: #27ae60; 
+                        color: white; 
+                        border: none; 
+                        border-radius: 4px; 
+                        font-size: 12px; 
+                        cursor: pointer;
+                        font-weight: bold;
+                    ">💾 Salvar Configurações para esta Aldeia</button>
                 </div>
                 
                 <!-- CONFIGURAÇÕES GERAIS -->
@@ -399,6 +619,24 @@ class TWAutoBuilder {
         `;
 
         document.body.appendChild(panel);
+        
+        // Carregar configurações da aldeia atual
+        this.loadVillageSettings();
+        
+        // Atualizar o seletor se as aldeias ainda não estavam carregadas
+        if (!this.villagesLoaded) {
+            setTimeout(() => {
+                this.updateVillageSelector();
+            }, 1000);
+        }
+    }
+
+    // Função para atualizar o seletor de aldeias após carregamento
+    updateVillageSelector() {
+        const villageContainer = document.querySelector('#tw-auto-builder-panel div:has(#village-selector)');
+        if (villageContainer && this.villagesLoaded) {
+            villageContainer.outerHTML = this.createVillageSelector();
+        }
     }
 
     log(message) {
@@ -502,11 +740,14 @@ console.log(`
 ✅ Controle individual de cada edifício
 ✅ Funciona em qualquer tela
 ✅ Configurações salvas automaticamente
+✅ Seletor de aldeias próprias
+✅ Configurações específicas por aldeia
 
 Comandos:
 - builder.start()/builder.stop()
 - builder.toggleAllBuildings(true) - Ativar todos
 - builder.toggleAllBuildings(false) - Desativar todos
+- builder.saveVillageSettings() - Salvar configurações
 - builder.settings.maxQueueSlots = 5
 `);
 
