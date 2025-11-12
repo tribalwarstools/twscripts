@@ -27,7 +27,7 @@
     #twc-tab {
       position: fixed;
       right: 0;
-      top: 50%;
+      top: 10%;
       transform: translateY(-50%);
       background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
       color: var(--color-light);
@@ -53,7 +53,7 @@
 
     #twc-panel {
       position: fixed;
-      bottom: 20px;
+      bottom: 80px;
       right: -420px;
       width: 400px;
       background: linear-gradient(145deg, var(--color-dark), #2c1e17);
@@ -75,7 +75,7 @@
     }
 
     #twc-panel.panel-hidden {
-      right: -420px;
+      right: -500px;
     }
 
     .twc-header {
@@ -338,7 +338,7 @@
     panel.className = 'twc-tribal-theme panel-hidden scrollbar-custom';
     panel.innerHTML = `
       <div class="twc-header">🏹 Construtor Global Tribal</div>
-      
+
       <div class="twc-controls-section">
         <div class="twc-section-title">🏗️ Edifícios para Construir</div>
         <div id="twc-edificios" class="scrollbar-custom">
@@ -385,11 +385,11 @@
 
     // Controle de visibilidade do painel
     let panelVisible = localStorage.getItem('twc_panel_visible') === 'true';
-    
+
     tab.onclick = () => {
       panelVisible = !panelVisible;
       localStorage.setItem('twc_panel_visible', panelVisible.toString());
-      
+
       if (panelVisible) {
         panel.classList.remove('panel-hidden');
         panel.classList.add('panel-visible');
@@ -446,7 +446,7 @@
     const hours = Math.floor(diff / 3600000);
     const minutes = Math.floor((diff % 3600000) / 60000);
     const seconds = Math.floor((diff % 60000) / 1000);
-    
+
     if (statsTime) {
       statsTime.textContent = `⏱️ ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
@@ -518,7 +518,7 @@
                   ultimoErro[villageId] = Date.now();
                   resolve(false);
                 }
-              }, 1000);
+              }, 3000);
               return;
             }
           }
@@ -540,18 +540,18 @@
     interromper = false;
     localStorage.setItem('twc_ativo', '1');
     const fila = Object.keys(edificios).filter(k => localStorage.getItem('twc_' + k) === '1');
-    
+
     if (!fila.length) {
       log('⚠️ Nenhum edifício selecionado para a conquista!', 'warning');
       return;
     }
-    
+
     const delay = Number(document.querySelector('#twc-delay').value) * 1000;
 
     // Iniciar timer
     startTime = new Date();
     timerInterval = setInterval(updateTimer, 1000);
-    
+
     log('⚔️ INICIANDO GRANDE CONQUISTA TRIBAL!', 'success');
     updateStats(0, 0, '⚔️ Conquistando...');
 
@@ -565,26 +565,26 @@
       for (let i = 0; i < aldeias.length; i++) {
         if (interromper) break;
         const vid = aldeias[i];
-        
+
         // Pular aldeias com erro recente
         if (ultimoErro[vid] && Date.now() - ultimoErro[vid] < 60000) {
           aldeiasProcessadas++;
           continue;
         }
-        
+
         await tentarFila(vid, fila);
         aldeiasProcessadas++;
-        
+
         // Atualizar progresso
         const progresso = ((aldeiasProcessadas) / totalAldeias * 100).toFixed(1);
         progressBar.style.width = progresso + '%';
         updateStats(aldeiasProcessadas, totalAldeias, '⚔️ Conquistando...');
-        
+
         await new Promise(r => setTimeout(r, delay));
       }
 
       if (interromper) break;
-      
+
       log(`🔁 Preparando próximo ciclo de conquista (${delay/1000}s)...`, 'info');
       updateStats(0, 0, '⏳ Aguardando...');
       await new Promise(r => setTimeout(r, delay));
