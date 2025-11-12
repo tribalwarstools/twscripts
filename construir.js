@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         TW Auto Builder - Hybrid Mode
-// @version      2.0
+// @version      2.1
 // @description  Auto builder com modo aldeia única e multivillage
 // @author       Your Name
 // @match        https://*.tribalwars.com.br/game.php*
@@ -64,7 +64,9 @@ class TWAutoBuilder {
             operationMode: 'single', // 'single' ou 'multivillage'
             multivillageInterval: 60000, // 1 minuto entre aldeias
             currentVillageIndex: 0,
-            processAllVillages: false
+            processAllVillages: false,
+            // Configuração de UI
+            buildingsSectionCollapsed: false
         };
         
         this.isRunning = false;
@@ -500,21 +502,26 @@ class TWAutoBuilder {
                 </div>
             </div>
             
-            <!-- LISTA DE EDIFFÍCIOS -->
+            <!-- LISTA DE EDIFFÍCIOS RECOLHÍVEL -->
             <div class="twc-controls-section">
-                <div class="twc-section-title">🏗️ Edifícios para Construir</div>
-                <div class="twc-status-item">
-                    Configurações para: <span id="current-village-name">${this.getCurrentVillageName()}</span>
+                <div class="twc-section-title twc-collapsible" onclick="window.builder.toggleBuildingsSection()">
+                    🏗️ Edifícios para Construir
+                    <span class="twc-collapse-icon">${this.settings.buildingsSectionCollapsed ? '▶' : '▼'}</span>
                 </div>
-                <div id="twc-edificios" class="scrollbar-custom">
-                    ${Object.entries(this.buildingsList).map(([id, name]) => `
-                        <label>
-                            <input type="checkbox" id="tw-build-${id}" 
-                                   ${this.settings.enabledBuildings[id] !== false ? 'checked' : ''}
-                                   onchange="window.builder.saveBuildingSettings()">
-                            ${name}
-                        </label>
-                    `).join('')}
+                <div id="buildings-content" class="twc-collapsible-content" style="${this.settings.buildingsSectionCollapsed ? 'display: none;' : ''}">
+                    <div class="twc-status-item">
+                        Configurações para: <span id="current-village-name">${this.getCurrentVillageName()}</span>
+                    </div>
+                    <div id="twc-edificios" class="scrollbar-custom">
+                        ${Object.entries(this.buildingsList).map(([id, name]) => `
+                            <label>
+                                <input type="checkbox" id="tw-build-${id}" 
+                                       ${this.settings.enabledBuildings[id] !== false ? 'checked' : ''}
+                                       onchange="window.builder.saveBuildingSettings()">
+                                ${name}
+                            </label>
+                        `).join('')}
+                    </div>
                 </div>
             </div>
             
@@ -555,6 +562,24 @@ class TWAutoBuilder {
             document.getElementById('operation-mode').value = savedMode;
             this.toggleModeSections();
         }
+    }
+
+    // ALTERNAR SEÇÃO DE EDIFFÍCIOS
+    toggleBuildingsSection() {
+        this.settings.buildingsSectionCollapsed = !this.settings.buildingsSectionCollapsed;
+        localStorage.setItem('tw_builder_buildings_collapsed', this.settings.buildingsSectionCollapsed);
+        
+        const content = document.getElementById('buildings-content');
+        const icon = document.querySelector('.twc-collapse-icon');
+        
+        if (content) {
+            content.style.display = this.settings.buildingsSectionCollapsed ? 'none' : 'block';
+        }
+        if (icon) {
+            icon.textContent = this.settings.buildingsSectionCollapsed ? '▶' : '▼';
+        }
+        
+        this.log(this.settings.buildingsSectionCollapsed ? '📁 Seção de edifícios recolhida' : '📂 Seção de edifícios expandida');
     }
 
     // ALTERNAR VISIBILIDADE DAS SEÇÕES
@@ -708,7 +733,7 @@ class TWAutoBuilder {
         });
     }
 
-    // INJETAR CSS DO TEMA (mantido igual)
+    // INJETAR CSS DO TEMA ATUALIZADO
     injectStyles() {
         const style = document.createElement('style');
         style.textContent = `
@@ -780,6 +805,33 @@ class TWAutoBuilder {
                 font-size: 14px;
                 border-bottom: 1px solid var(--color-primary);
                 padding-bottom: 4px;
+            }
+
+            .twc-collapsible {
+                cursor: pointer;
+                user-select: none;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: background 0.2s;
+                padding: 8px;
+                margin: -8px;
+                border-radius: 6px;
+            }
+
+            .twc-collapsible:hover {
+                background: rgba(205, 133, 63, 0.2);
+            }
+
+            .twc-collapse-icon {
+                font-weight: bold;
+                font-size: 12px;
+                color: var(--color-light);
+            }
+
+            .twc-collapsible-content {
+                transition: all 0.3s ease;
+                overflow: hidden;
             }
 
             #twc-edificios {
@@ -1054,9 +1106,11 @@ console.log(`
 ✅ Modo Multivillage (automático)
 ✅ Configurações individuais por aldeia
 ✅ Intervalos configuráveis
+✅ Seção de edifícios recolhível
 
 Comandos:
 - builder.changeOperationMode('single') - Modo aldeia única
 - builder.changeOperationMode('multivillage') - Modo todas aldeias
 - builder.processAllVillages() - Forçar ciclo multivillage
+- builder.toggleBuildingsSection() - Alternar seção de edifícios
 `);
