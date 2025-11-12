@@ -70,7 +70,7 @@
       #tws-panel {
         position: fixed;
         right: -480px;
-        bottom: 20px;
+        bottom: 80px;
         width: 460px;
         background: linear-gradient(145deg, var(--color-dark), #2c1e17);
         color: var(--color-light);
