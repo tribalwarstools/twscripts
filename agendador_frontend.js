@@ -51,7 +51,7 @@
   // === Criação do painel ===
   const panel = document.createElement('div');
   panel.id = 'tws-panel';
-  panel.className = 'tws-tribal-theme';
+  panel.className = 'tws-tribal-theme scrollbar-custom';
   panel.innerHTML = `
     <style>
       .tws-tribal-theme {
