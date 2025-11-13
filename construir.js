@@ -492,15 +492,15 @@ class TWAutoBuilder {
     togglePanel() {
         const panel = document.getElementById('tw-auto-builder-panel');
         if (panel) {
-            panel.classList.toggle('tws-hidden');
-            this.panelHidden = panel.classList.contains('tws-hidden');
+            panel.classList.toggle('twc-hidden');
+            this.panelHidden = panel.classList.contains('twc-hidden');
             localStorage.setItem('tw_builder_panel_state', this.panelHidden ? 'hidden' : 'visible');
             this.updateToggleTabText();
         }
     }
 
     updateToggleTabText() {
-        const toggleTab = document.getElementById('tws-toggle-tab');
+        const toggleTab = document.getElementById('twc-toggle-tab');
         if (toggleTab) {
             toggleTab.textContent = this.panelHidden ? 'Abrir' : 'Fechar';
         }
@@ -535,12 +535,12 @@ class TWAutoBuilder {
         this.injectStyles();
         const panel = document.createElement('div');
         panel.id = 'tw-auto-builder-panel';
-        panel.className = 'tws-container';
+        panel.className = 'twc-container';
         panel.innerHTML = this.getPanelHTML();
         document.body.appendChild(panel);
 
         if (this.panelHidden) {
-            panel.classList.add('tws-hidden');
+            panel.classList.add('twc-hidden');
         }
         this.updateToggleTabText();
         this.updateVillagesSection();
@@ -553,7 +553,7 @@ class TWAutoBuilder {
         document.getElementById('twc-markall-btn').onclick = () => { this.markAllVillages(true); };
         document.getElementById('twc-unmarkall-btn').onclick = () => { this.markAllVillages(false); };
         document.getElementById('twc-villages-toggle').onclick = () => this.toggleVillages();
-        document.getElementById('tws-toggle-tab').onclick = () => this.togglePanel();
+        document.getElementById('twc-toggle-tab').onclick = () => this.togglePanel();
         
         const iv = document.getElementById('twc-interval-input');
         if (iv) iv.value = String(Math.floor(this.settings.multivillageInterval / 1000));
@@ -563,7 +563,7 @@ class TWAutoBuilder {
 
     getPanelHTML() {
         return `
-            <div class="tws-toggle-tab" id="tws-toggle-tab">${this.panelHidden ? 'Abrir' : 'Fechar'}</div>
+            <div class="twc-toggle-tab" id="twc-toggle-tab">${this.panelHidden ? 'Abrir' : 'Fechar'}</div>
             <div class="twc-header">🏹 Construtor Tribal - Híbrido (Fetch+Iframe)</div>
             <div class="twc-grid">
                 <div class="twc-column twc-column-left">
@@ -687,7 +687,7 @@ class TWAutoBuilder {
     injectStyles() {
         const style = document.createElement('style');
         style.textContent = `
-            .tws-container {
+            .twc-container {
                 position: fixed; 
                 right: 0; 
                 bottom: 10px; 
@@ -703,15 +703,15 @@ class TWAutoBuilder {
                 padding: 10px !important;
                 transition: transform 0.4s ease !important;
             }
-            .tws-toggle-tab {
+            .twc-toggle-tab {
                 position: absolute; left: -28px; top: 40%;
                 background: #5c3a1e; border: 2px solid #654321; border-right: none;
                 border-radius: 6px 0 0 6px; padding: 6px 4px; font-size: 14px;
                 color: #ffd700; cursor: pointer; writing-mode: vertical-rl;
                 text-orientation: mixed; user-select: none; box-shadow: -2px 0 6px rgba(0,0,0,0.5);
             }
-            .tws-toggle-tab:hover { background: #7b5124; }
-            .tws-hidden { transform: translateX(100%); }
+            .twc-toggle-tab:hover { background: #7b5124; }
+            .twc-hidden { transform: translateX(100%); }
             
             .twc-header{text-align:center;font-size:16px;font-weight:bold;padding:8px;margin-bottom:8px;}
             .twc-grid{display:grid;grid-template-columns:1fr 340px;gap:12px;align-items:start;}
@@ -816,3 +816,4 @@ class TWAutoBuilder {
 // instantiate and expose
 const builder = new TWAutoBuilder();
 window.builder = builder;
+
