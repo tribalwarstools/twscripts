@@ -51,6 +51,9 @@ class TWAutoBuilder {
         // Estado do recolhível de aldeias
         this.villagesCollapsed = false;
 
+        // Estado do botão salvar
+        this.saveButtonState = 'normal'; // 'normal', 'saving', 'saved'
+
         this.init();
     }
 
@@ -67,9 +70,27 @@ class TWAutoBuilder {
         this.loadBuildingSettings();
         await this.loadMyVillages();
         this.createControlPanel();
-        // Don't auto start the loop immediately until user presses start.
-        // But if you want auto-start, uncomment next line:
-        // this.start();
+        
+        // Carregar estado do botão iniciar/parar
+        this.loadRunningState();
+    }
+
+    // Carregar estado do botão iniciar/parar do localStorage
+    loadRunningState() {
+        const savedRunningState = localStorage.getItem('tw_builder_running_state');
+        if (savedRunningState === 'true') {
+            this.log('🔄 Retomando estado anterior: Iniciado');
+            this.start();
+        } else {
+            this.log('⏸️ Retomando estado anterior: Parado');
+            this.stop();
+        }
+    }
+
+    // Salvar estado do botão iniciar/parar no localStorage
+    saveRunningState() {
+        localStorage.setItem('tw_builder_running_state', this.isRunning.toString());
+        this.log(`💾 Estado salvo: ${this.isRunning ? 'Rodando' : 'Parado'}`);
     }
 
     // Load player's villages from map/village.txt (same approach as before)
@@ -319,6 +340,7 @@ class TWAutoBuilder {
             this.log('⚠️ Nenhuma aldeia marcada — marque ao menos uma para iniciar.');
             this.isRunning = false;
             this.updateStatus();
+            this.saveRunningState(); // Salvar estado quando parar por falta de aldeias
             return;
         }
 
@@ -380,6 +402,7 @@ class TWAutoBuilder {
         }
         this.isRunning = true;
         this.updateStatus();
+        this.saveRunningState(); // Salvar estado quando iniciar
         this.loopPromise = this.loopWorker(); // don't await, let it run
         this.log('▶️ Auto Builder iniciado (modo global)');
     }
@@ -388,6 +411,7 @@ class TWAutoBuilder {
         if (!this.isRunning) { this.log('⚠️ Já está parado'); return; }
         this.isRunning = false;
         this.updateStatus();
+        this.saveRunningState(); // Salvar estado quando parar
         this.log('⏸️ Auto Builder parado pelo usuário');
     }
 
@@ -401,6 +425,59 @@ class TWAutoBuilder {
             toggleBtn.textContent = this.isRunning ? '⏸️ Parar' : '▶️ Iniciar';
             toggleBtn.className = `twc-button ${this.isRunning ? 'twc-button-stop' : 'twc-button-start'}`;
         }
+    }
+
+    // ---------- Save button state management ----------
+    updateSaveButtonState(state) {
+        this.saveButtonState = state;
+        const saveBtn = document.getElementById('twc-save-btn');
+        if (!saveBtn) return;
+
+        switch (state) {
+            case 'saving':
+                saveBtn.innerHTML = '⏳ Salvando...';
+                saveBtn.className = 'twc-button twc-button-saving';
+                saveBtn.disabled = true;
+                break;
+            case 'saved':
+                saveBtn.innerHTML = '✅ Salvo!';
+                saveBtn.className = 'twc-button twc-button-saved';
+                saveBtn.disabled = false;
+                // Reset to normal after 2 seconds
+                setTimeout(() => {
+                    if (this.saveButtonState === 'saved') {
+                        this.updateSaveButtonState('normal');
+                    }
+                }, 2000);
+                break;
+            case 'normal':
+            default:
+                saveBtn.innerHTML = '💾 Salvar';
+                saveBtn.className = 'twc-button twc-button-save';
+                saveBtn.disabled = false;
+                break;
+        }
+    }
+
+    async handleSave() {
+        this.updateSaveButtonState('saving');
+        
+        // Simulate saving process
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        this.saveBuildingSettings();
+        this.saveVillageSelection();
+        
+        // persist interval input if exists
+        const iv = document.getElementById('twc-interval-input');
+        if (iv) {
+            const v = parseInt(iv.value) || this.settings.multivillageInterval / 1000;
+            this.settings.multivillageInterval = v * 1000;
+            localStorage.setItem('tw_builder_multivillage_interval', String(this.settings.multivillageInterval));
+        }
+        
+        this.log('💾 Configurações salvas');
+        this.updateSaveButtonState('saved');
     }
 
     // ---------- Panel toggle functionality ----------
@@ -465,18 +542,7 @@ class TWAutoBuilder {
         this.renderVillageControls();
         
         // button handlers
-        document.getElementById('twc-save-btn').onclick = () => {
-            this.saveBuildingSettings();
-            this.saveVillageSelection();
-            // persist interval input if exists
-            const iv = document.getElementById('twc-interval-input');
-            if (iv) {
-                const v = parseInt(iv.value) || this.settings.multivillageInterval / 1000;
-                this.settings.multivillageInterval = v * 1000;
-                localStorage.setItem('tw_builder_multivillage_interval', String(this.settings.multivillageInterval));
-            }
-            this.log('💾 Configurações salvas');
-        };
+        document.getElementById('twc-save-btn').onclick = () => this.handleSave();
         document.getElementById('twc-toggle-btn').onclick = () => this.toggle();
         document.getElementById('twc-markall-btn').onclick = () => { this.markAllVillages(true); };
         document.getElementById('twc-unmarkall-btn').onclick = () => { this.markAllVillages(false); };
@@ -489,6 +555,9 @@ class TWAutoBuilder {
         const iv = document.getElementById('twc-interval-input');
         if (iv) iv.value = String(Math.floor(this.settings.multivillageInterval / 1000));
         this.updateStatus();
+        
+        // Initialize save button state
+        this.updateSaveButtonState('normal');
     }
 
     getPanelHTML() {
@@ -504,8 +573,8 @@ class TWAutoBuilder {
                     <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:6px;">
                         <button id="twc-villages-toggle" class="twc-villages-toggle-btn">${this.villagesCollapsed ? '▶️ Aldeias' : '▼ Aldeias'}</button>
                         <div style="display:flex;gap:6px;">
-                            <button id="twc-markall-btn" class="twc-button">Marcar todos</button>
-                            <button id="twc-unmarkall-btn" class="twc-button">Desmarcar</button>
+                            <button id="twc-markall-btn" class="twc-button twc-button-secondary">Marcar todos</button>
+                            <button id="twc-unmarkall-btn" class="twc-button twc-button-secondary">Desmarcar</button>
                         </div>
                     </div>
                     <div id="twc-villages-container" class="scrollbar-custom" style="${this.villagesCollapsed ? 'display:none;' : ''} max-height:200px;overflow:auto;">
@@ -523,7 +592,7 @@ class TWAutoBuilder {
                     <div class="twc-status-item">Intervalo(vil): <input id="twc-interval-input" class="twc-input-small" type="number" min="5" value="${Math.floor(this.settings.multivillageInterval/1000)}">s</div>
                 </div>
                 <div class="twc-buttons">
-                    <button id="twc-save-btn" class="twc-button twc-button-start">💾 Salvar</button>
+                    <button id="twc-save-btn" class="twc-button twc-button-save">💾 Salvar</button>
                     <button id="twc-toggle-btn" class="twc-button ${this.isRunning ? 'twc-button-stop' : 'twc-button-start'}">${this.isRunning ? '⏸️ Parar' : '▶️ Iniciar'}</button>
                 </div>
             </div>
@@ -665,9 +734,81 @@ class TWAutoBuilder {
             .twc-village-name{font-size:12px;color:#f5deb3;}
             .twc-controls-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;}
             .twc-buttons{display:flex;gap:8px;}
-            .twc-button{padding:8px 12px;border-radius:8px;border:1px solid rgba(0,0,0,0.35);font-weight:bold;cursor:pointer;color:#f5deb3;background:linear-gradient(135deg,#7a4a20,#5a3215);font-size:12px;}
-            .twc-button-start{background:linear-gradient(135deg,#2e8b57,#3cb371);}
-            .twc-button-stop{background:linear-gradient(135deg,#b22222,#dc143c);}
+            
+            /* Novos estilos de botões */
+            .twc-button{
+                padding: 8px 16px;
+                border-radius: 8px;
+                border: 1px solid rgba(0,0,0,0.35);
+                font-weight: bold;
+                cursor: pointer;
+                color: #f5deb3;
+                font-size: 12px;
+                transition: all 0.3s ease;
+                min-width: 80px;
+                text-align: center;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .twc-button:disabled {
+                opacity: 0.7;
+                cursor: not-allowed;
+            }
+            
+            /* Botão Salvar - Estados */
+            .twc-button-save {
+                background: linear-gradient(135deg, #4a752c, #5a8c3a);
+                border-color: #6b8c42;
+            }
+            .twc-button-save:hover:not(:disabled) {
+                background: linear-gradient(135deg, #5a8c3a, #6a9c4a);
+                box-shadow: 0 0 10px rgba(90, 140, 58, 0.4);
+            }
+            
+            .twc-button-saving {
+                background: linear-gradient(135deg, #8b7355, #9c8465);
+                border-color: #a8957a;
+                cursor: wait;
+            }
+            
+            .twc-button-saved {
+                background: linear-gradient(135deg, #2e8b57, #3cb371);
+                border-color: #4cc381;
+                box-shadow: 0 0 12px rgba(60, 179, 113, 0.5);
+            }
+            
+            /* Botão Iniciar/Parar */
+            .twc-button-start {
+                background: linear-gradient(135deg, #2e8b57, #3cb371);
+                border-color: #4cc381;
+            }
+            .twc-button-start:hover {
+                background: linear-gradient(135deg, #3cb371, #4cd381);
+                box-shadow: 0 0 10px rgba(60, 179, 113, 0.4);
+            }
+            
+            .twc-button-stop {
+                background: linear-gradient(135deg, #b22222, #dc143c);
+                border-color: #e52444;
+            }
+            .twc-button-stop:hover {
+                background: linear-gradient(135deg, #dc143c, #ec244c);
+                box-shadow: 0 0 10px rgba(220, 20, 60, 0.4);
+            }
+            
+            /* Botões secundários */
+            .twc-button-secondary {
+                background: linear-gradient(135deg, #7a4a20, #5a3215);
+                border-color: #8a5a30;
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+            .twc-button-secondary:hover {
+                background: linear-gradient(135deg, #8a5a30, #6a4225);
+                box-shadow: 0 0 8px rgba(122, 74, 32, 0.3);
+            }
+            
             .twc-log-area{margin-top:12px;}
             .twc-log-container{max-height:150px;overflow:auto;background:rgba(0,0,0,0.18);padding:8px;border-radius:6px;font-family:monospace;font-size:12px;}
             .twc-log-entry{margin-bottom:6px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02);}
