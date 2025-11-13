@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         TW Auto Builder - Global Multivillage (TW Dark)
-// @version      2.3
+// @version      2.4
 // @description  Construtor global: roda em qualquer tela, constrói apenas aldeias marcadas, respeita edifícios e níveis. Painel TW-dark.
 // @author       You
 // @match        https://*.tribalwars.com.br/game.php*
@@ -47,6 +47,9 @@ class TWAutoBuilder {
 
         // list of village ids selected in UI to be processed
         this.selectedVillagesList = [];
+
+        // Estado do recolhível de aldeias
+        this.villagesCollapsed = false;
 
         this.init();
     }
@@ -116,6 +119,14 @@ class TWAutoBuilder {
         } else this.selectedVillagesList = [];
         const savedInterval = localStorage.getItem('tw_builder_multivillage_interval');
         if (savedInterval) this.settings.multivillageInterval = parseInt(savedInterval);
+        
+        // Load panel state
+        const savedPanelState = localStorage.getItem('tw_builder_panel_state');
+        this.panelHidden = savedPanelState === 'hidden';
+        
+        // Load villages collapsed state
+        const savedVillagesCollapsed = localStorage.getItem('tw_builder_villages_collapsed');
+        this.villagesCollapsed = savedVillagesCollapsed === 'true';
     }
 
     saveBuildingSettings() {
@@ -392,6 +403,46 @@ class TWAutoBuilder {
         }
     }
 
+    // ---------- Panel toggle functionality ----------
+    togglePanel() {
+        const panel = document.getElementById('tw-auto-builder-panel');
+        if (panel) {
+            panel.classList.toggle('tws-hidden');
+            this.panelHidden = panel.classList.contains('tws-hidden');
+            localStorage.setItem('tw_builder_panel_state', this.panelHidden ? 'hidden' : 'visible');
+            this.updateToggleTabText();
+        }
+    }
+
+    updateToggleTabText() {
+        const toggleTab = document.getElementById('tws-toggle-tab');
+        if (toggleTab) {
+            toggleTab.textContent = this.panelHidden ? 'Abrir' : 'Fechar';
+        }
+    }
+
+    // ---------- Villages collapse functionality ----------
+    toggleVillages() {
+        this.villagesCollapsed = !this.villagesCollapsed;
+        localStorage.setItem('tw_builder_villages_collapsed', this.villagesCollapsed);
+        this.updateVillagesSection();
+    }
+
+    updateVillagesSection() {
+        const container = document.getElementById('twc-villages-container');
+        const toggleBtn = document.getElementById('twc-villages-toggle');
+        
+        if (container && toggleBtn) {
+            if (this.villagesCollapsed) {
+                container.style.display = 'none';
+                toggleBtn.textContent = '▶️ Aldeias';
+            } else {
+                container.style.display = 'block';
+                toggleBtn.textContent = '▼ Aldeias';
+            }
+        }
+    }
+
     // ---------- UI / Panel ----------
     createControlPanel() {
         const existing = document.getElementById('tw-auto-builder-panel');
@@ -399,11 +450,20 @@ class TWAutoBuilder {
         this.injectStyles();
         const panel = document.createElement('div');
         panel.id = 'tw-auto-builder-panel';
-        panel.className = 'twc-tribal-theme';
+        panel.className = 'tws-container';
         panel.innerHTML = this.getPanelHTML();
         document.body.appendChild(panel);
+
+        // Initialize panel state
+        if (this.panelHidden) {
+            panel.classList.add('tws-hidden');
+        }
+        this.updateToggleTabText();
+        this.updateVillagesSection();
+
         this.renderBuildingsControls();
         this.renderVillageControls();
+        
         // button handlers
         document.getElementById('twc-save-btn').onclick = () => {
             this.saveBuildingSettings();
@@ -420,6 +480,11 @@ class TWAutoBuilder {
         document.getElementById('twc-toggle-btn').onclick = () => this.toggle();
         document.getElementById('twc-markall-btn').onclick = () => { this.markAllVillages(true); };
         document.getElementById('twc-unmarkall-btn').onclick = () => { this.markAllVillages(false); };
+        document.getElementById('twc-villages-toggle').onclick = () => this.toggleVillages();
+        
+        // Panel toggle handler
+        document.getElementById('tws-toggle-tab').onclick = () => this.togglePanel();
+        
         // interval input change live update
         const iv = document.getElementById('twc-interval-input');
         if (iv) iv.value = String(Math.floor(this.settings.multivillageInterval / 1000));
@@ -428,6 +493,7 @@ class TWAutoBuilder {
 
     getPanelHTML() {
         return `
+            <div class="tws-toggle-tab" id="tws-toggle-tab">${this.panelHidden ? 'Abrir' : 'Fechar'}</div>
             <div class="twc-header">🏹 Construtor Tribal - Global</div>
             <div class="twc-grid">
                 <div class="twc-column twc-column-left">
@@ -436,13 +502,15 @@ class TWAutoBuilder {
                 </div>
                 <div class="twc-column twc-column-right">
                     <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                        <div class="twc-section-title">🏘️ Aldeias (marque as que quer construir)</div>
+                        <button id="twc-villages-toggle" class="twc-villages-toggle-btn">${this.villagesCollapsed ? '▶️ Aldeias' : '▼ Aldeias'}</button>
                         <div style="display:flex;gap:6px;">
                             <button id="twc-markall-btn" class="twc-button">Marcar todos</button>
                             <button id="twc-unmarkall-btn" class="twc-button">Desmarcar</button>
                         </div>
                     </div>
-                    <div id="twc-villages-controls" class="scrollbar-custom" style="max-height:360px;overflow:auto;"></div>
+                    <div id="twc-villages-container" class="scrollbar-custom" style="${this.villagesCollapsed ? 'display:none;' : ''} height:200px;overflow:auto;">
+                        <div id="twc-villages-controls"></div>
+                    </div>
                 </div>
             </div>
             <div class="twc-controls-footer">
@@ -455,18 +523,24 @@ class TWAutoBuilder {
                     <button id="twc-toggle-btn" class="twc-button ${this.isRunning ? 'twc-button-stop' : 'twc-button-start'}">${this.isRunning ? '⏸️ Parar' : '▶️ Iniciar'}</button>
                 </div>
             </div>
-            <div class="twc-log-area">
-                <div class="twc-section-title">📜 Logs</div>
-                <div id="builder-logs" class="twc-log-container"></div>
-            </div>
         `;
     }
 
     renderBuildingsControls() {
         const container = document.getElementById('twc-edificios-controls');
         if (!container) return;
+        
+        // Dividir edifícios em duas colunas
+        const buildingsArray = Object.entries(this.buildingsList);
+        const middleIndex = Math.ceil(buildingsArray.length / 2);
+        const firstColumn = buildingsArray.slice(0, middleIndex);
+        const secondColumn = buildingsArray.slice(middleIndex);
+        
         let html = '<div class="twc-edificios-grid">';
-        Object.entries(this.buildingsList).forEach(([id, name]) => {
+        
+        // Primeira coluna
+        html += '<div class="twc-edificios-column">';
+        firstColumn.forEach(([id, name]) => {
             const checked = this.settings.enabledBuildings[id] !== false ? 'checked' : '';
             const maxVal = this.settings.maxLevels[id] !== undefined ? this.settings.maxLevels[id] : '';
             html += `
@@ -476,6 +550,22 @@ class TWAutoBuilder {
                 </div>
             `;
         });
+        html += '</div>';
+        
+        // Segunda coluna
+        html += '<div class="twc-edificios-column">';
+        secondColumn.forEach(([id, name]) => {
+            const checked = this.settings.enabledBuildings[id] !== false ? 'checked' : '';
+            const maxVal = this.settings.maxLevels[id] !== undefined ? this.settings.maxLevels[id] : '';
+            html += `
+                <div class="twc-edificio-row">
+                    <label class="twc-edificio-label"><input type="checkbox" id="tw-build-${id}" ${checked}> ${name}</label>
+                    <input type="number" id="tw-max-${id}" class="twc-input-small" min="0" value="${maxVal}">
+                </div>
+            `;
+        });
+        html += '</div>';
+        
         html += '</div>';
         container.innerHTML = html;
     }
@@ -513,41 +603,64 @@ class TWAutoBuilder {
     }
 
     log(message) {
-        const logs = document.getElementById('builder-logs');
-        if (logs) {
-            const t = new Date().toLocaleTimeString();
-            logs.innerHTML = `<div class="twc-log-entry">[${t}] ${message}</div>` + logs.innerHTML;
-            const entries = logs.querySelectorAll('.twc-log-entry');
-            if (entries.length > 300) entries[entries.length - 1].remove();
-        }
+        // Removido o log para o painel, apenas console
         console.log('TWBuilder:', message);
     }
 
     injectStyles() {
         const style = document.createElement('style');
         style.textContent = `
-            .twc-tribal-theme{ --color-primary:#7a4a20; --color-secondary:#5a3215; --color-accent:#c08b4b; --color-dark:#22150f; --color-light:#f2e6d1; --border-radius:8px; --shadow:0 6px 18px rgba(0,0,0,0.6); font-family:Trebuchet MS,Arial,sans-serif;}
-            #tw-auto-builder-panel{position:fixed;top:56px;right:18px;width:720px;background:linear-gradient(180deg,rgba(34,21,15,0.98),rgba(26,16,12,0.98));color:var(--color-light);border:2px solid var(--color-accent);padding:12px;z-index:99999;border-radius:var(--border-radius);box-shadow:var(--shadow);max-height:88vh;overflow:auto;}
+            .tws-container {
+                position: fixed; 
+                right: 0; 
+                bottom: 10px; 
+                width: 720px; 
+                z-index: 99999;
+                font-family: Verdana, sans-serif !important;
+                background: #2b1b0f !important;
+                color: #f5deb3 !important;
+                border: 2px solid #654321 !important; 
+                border-right: none !important;
+                border-radius: 8px 0 0 8px !important;
+                box-shadow: 0 4px 18px rgba(0,0,0,0.7) !important; 
+                padding: 10px !important;
+                transition: transform 0.4s ease !important;
+            }
+            .tws-toggle-tab {
+                position: absolute; left: -28px; top: 40%;
+                background: #5c3a1e; border: 2px solid #654321; border-right: none;
+                border-radius: 6px 0 0 6px; padding: 6px 4px; font-size: 14px;
+                color: #ffd700; cursor: pointer; writing-mode: vertical-rl;
+                text-orientation: mixed; user-select: none; box-shadow: -2px 0 6px rgba(0,0,0,0.5);
+            }
+            .tws-toggle-tab:hover { background: #7b5124; }
+            .tws-hidden { transform: translateX(100%); }
+            
             .twc-header{text-align:center;font-size:16px;font-weight:bold;padding:8px;margin-bottom:8px;}
             .twc-grid{display:grid;grid-template-columns:1fr 340px;gap:12px;align-items:start;}
             .twc-column{background:rgba(255,255,255,0.02);border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,0.25);}
-            .twc-section-title{font-weight:bold;color:var(--color-accent);margin-bottom:8px;font-size:13px;}
-            .twc-edificios-grid{display:grid;grid-template-columns:1fr;gap:8px;}
+            .twc-section-title{font-weight:bold;color:#ffd700;margin-bottom:8px;font-size:13px;}
+            
+            /* Layout de duas colunas para edifícios */
+            .twc-edificios-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+            .twc-edificios-column{display:flex;flex-direction:column;gap:8px;}
             .twc-edificio-row{display:flex;justify-content:space-between;align-items:center;padding:6px;border-radius:6px;background:rgba(0,0,0,0.12);}
-            .twc-edificio-label{display:flex;align-items:center;gap:8px;}
-            .twc-input-small{width:64px;padding:6px;border-radius:6px;border:1px solid rgba(0,0,0,0.4);background:rgba(0,0,0,0.18);color:var(--color-light);text-align:center;}
+            .twc-edificio-label{display:flex;align-items:center;gap:8px;font-size:12px;}
+            .twc-input-small{width:64px;padding:6px;border-radius:6px;border:1px solid rgba(0,0,0,0.4);background:rgba(0,0,0,0.18);color:#f5deb3;text-align:center;}
+            
+            .twc-villages-toggle-btn{background:none;border:none;color:#ffd700;cursor:pointer;font-weight:bold;padding:4px 8px;}
+            .twc-villages-toggle-btn:hover{background:rgba(255,215,0,0.1);border-radius:4px;}
+            
             .twc-village-row{display:flex;align-items:center;gap:8px;padding:6px;border-radius:6px;background:rgba(0,0,0,0.06);margin-bottom:4px;}
-            .twc-village-name{font-size:12px;color:var(--color-light);}
+            .twc-village-name{font-size:12px;color:#f5deb3;}
             .twc-controls-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;}
             .twc-buttons{display:flex;gap:8px;}
-            .twc-button{padding:8px 12px;border-radius:8px;border:1px solid rgba(0,0,0,0.35);font-weight:bold;cursor:pointer;color:var(--color-light);background:linear-gradient(135deg,var(--color-primary),var(--color-secondary));}
+            .twc-button{padding:8px 12px;border-radius:8px;border:1px solid rgba(0,0,0,0.35);font-weight:bold;cursor:pointer;color:#f5deb3;background:linear-gradient(135deg,#7a4a20,#5a3215);font-size:12px;}
             .twc-button-start{background:linear-gradient(135deg,#2e8b57,#3cb371);}
             .twc-button-stop{background:linear-gradient(135deg,#b22222,#dc143c);}
-            .twc-log-container{max-height:150px;overflow:auto;background:rgba(0,0,0,0.18);padding:8px;border-radius:6px;font-family:monospace;font-size:12px;}
-            .twc-log-entry{margin-bottom:6px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02);}
             .scrollbar-custom::-webkit-scrollbar{width:8px;}
             .scrollbar-custom::-webkit-scrollbar-thumb{background:rgba(120,80,40,0.7);border-radius:6px;}
-            input[type="checkbox"]{accent-color:var(--color-accent);transform:scale(1.05);}
+            input[type="checkbox"]{accent-color:#c08b4b;transform:scale(1.05);}
         `;
         document.head.appendChild(style);
     }
