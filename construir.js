@@ -508,8 +508,12 @@ class TWAutoBuilder {
                             <button id="twc-unmarkall-btn" class="twc-button">Desmarcar</button>
                         </div>
                     </div>
-                    <div id="twc-villages-container" class="scrollbar-custom" style="${this.villagesCollapsed ? 'display:none;' : ''} height:200px;overflow:auto;">
+                    <div id="twc-villages-container" class="scrollbar-custom" style="${this.villagesCollapsed ? 'display:none;' : ''} max-height:200px;overflow:auto;">
                         <div id="twc-villages-controls"></div>
+                    </div>
+                    <div class="twc-log-area">
+                        <div class="twc-section-title">📜 Logs</div>
+                        <div id="builder-logs" class="twc-log-container"></div>
                     </div>
                 </div>
             </div>
@@ -603,7 +607,13 @@ class TWAutoBuilder {
     }
 
     log(message) {
-        // Removido o log para o painel, apenas console
+        const logs = document.getElementById('builder-logs');
+        if (logs) {
+            const t = new Date().toLocaleTimeString();
+            logs.innerHTML = `<div class="twc-log-entry">[${t}] ${message}</div>` + logs.innerHTML;
+            const entries = logs.querySelectorAll('.twc-log-entry');
+            if (entries.length > 300) entries[entries.length - 1].remove();
+        }
         console.log('TWBuilder:', message);
     }
 
@@ -658,6 +668,9 @@ class TWAutoBuilder {
             .twc-button{padding:8px 12px;border-radius:8px;border:1px solid rgba(0,0,0,0.35);font-weight:bold;cursor:pointer;color:#f5deb3;background:linear-gradient(135deg,#7a4a20,#5a3215);font-size:12px;}
             .twc-button-start{background:linear-gradient(135deg,#2e8b57,#3cb371);}
             .twc-button-stop{background:linear-gradient(135deg,#b22222,#dc143c);}
+            .twc-log-area{margin-top:12px;}
+            .twc-log-container{max-height:150px;overflow:auto;background:rgba(0,0,0,0.18);padding:8px;border-radius:6px;font-family:monospace;font-size:12px;}
+            .twc-log-entry{margin-bottom:6px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02);}
             .scrollbar-custom::-webkit-scrollbar{width:8px;}
             .scrollbar-custom::-webkit-scrollbar-thumb{background:rgba(120,80,40,0.7);border-radius:6px;}
             input[type="checkbox"]{accent-color:#c08b4b;transform:scale(1.05);}
