@@ -807,7 +807,7 @@ class TWAutoBuilder {
             .twc-log-entry{margin-bottom:6px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02);}
             .scrollbar-custom::-webkit-scrollbar{width:8px;}
             .scrollbar-custom::-webkit-scrollbar-thumb{background:rgba(120,80,40,0.7);border-radius:6px;}
-            //input[type="checkbox"]{accent-color:#c08b4b;transform:scale(1.05);}
+            /*input[type="checkbox"]{accent-color:#c08b4b;transform:scale(1.05);}*/
         `;
         document.head.appendChild(style);
     }
@@ -816,5 +816,6 @@ class TWAutoBuilder {
 // instantiate and expose
 const builder = new TWAutoBuilder();
 window.builder = builder;
+
 
 
