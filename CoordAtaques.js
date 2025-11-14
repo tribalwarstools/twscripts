@@ -84,7 +84,7 @@
     for (const line of lines) {
         const parts = line.split(',');
         if (parts.length >= 6) {
-            const x = parts[2], y = parts[3], id = parts[0]; // CORREÇÃO: parts[0] é o ID da aldeia
+            const x = parts[2], y = parts[3], id = parts[0];
             villageMap[`${x}|${y}`] = id;
         }
     }
@@ -155,7 +155,7 @@
     
     panel.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #ddd;">
-            <h3 style="margin:0; color:#2c3e50; cursor:move; font-size:14px; font-weight:600;">Coordenador de Ataques 3.0</h3>
+            <h3 style="margin:0; color:#2c3e50; cursor:move; font-size:14px; font-weight:600;">Coordenador de Ataques</h3>
             <button id="fechar" style="background:#e74c3c; color:white; border:none; padding:3px 8px; border-radius:3px; cursor:pointer; font-size:10px;">✕</button>
         </div>
         
@@ -184,6 +184,16 @@
                     <label style="font-weight:600; color:#2c3e50;">📈 Sinal (%):</label>
                     <input id="bonusSinal" type="number" value="0" min="0" max="100" style="width:100%; padding:6px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;" placeholder="0">
                 </div>
+            </div>
+            
+            <div style="margin-bottom:6px;">
+                <label style="font-weight:600; color:#2c3e50;">🔀 Ordenação:</label>
+                <select id="tipoOrdenacao" style="width:100%; padding:6px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;">
+                    <option value="digitacao">Por Ordem de Digitação</option>
+                    <option value="lancamento">Por Horário de Lançamento</option>
+                    <option value="chegada">Por Horário de Chegada</option>
+                    <option value="distancia">Por Distância</option>
+                </select>
             </div>
             
             <div id="campoHoraChegada">
@@ -317,11 +327,12 @@
         }
     };
 
-    // --- Gera tabela com cálculo automático ---
+    // --- Gera tabela com ORDENAÇÃO FLEXÍVEL CORRIGIDA ---
     panel.querySelector('#gerar').onclick = () => {
         const origens = panel.querySelector('#origens').value.trim().split(/\s+/);
         const destinos = panel.querySelector('#destinos').value.trim().split(/\s+/);
         const tipoCalculo = panel.querySelector('#tipoCalculo').value;
+        const tipoOrdenacao = panel.querySelector('#tipoOrdenacao').value;
         const bonusSinal = parseInt(panel.querySelector('#bonusSinal').value) || 0;
         const tropas = getTropas();
         
@@ -340,7 +351,16 @@
             }
         }
 
-        let out = `[table][**]Unidade[||]Origem[||]Destino[||]Hora de Lançamento[||]Hora de Chegada[||]Enviar[/**]\n`;
+        // Array para armazenar todas as combinações
+        const combinacoes = [];
+        
+        // FUNÇÃO CORRIGIDA para converter data/hora para timestamp
+        function converterParaTimestamp(dataHoraStr) {
+            const [data, tempo] = dataHoraStr.split(' ');
+            const [dia, mes, ano] = data.split('/').map(Number);
+            const [hora, minuto, segundo] = tempo.split(':').map(Number);
+            return new Date(ano, mes - 1, dia, hora, minuto, segundo).getTime();
+        }
         
         for (const o of origens) {
             const vid = villageMap[o];
@@ -351,26 +371,64 @@
             
             for (const d of destinos) {
                 const [x,y] = d.split('|');
-                // CORREÇÃO: Usar as tropas reais em vez de zeros
-                let qs = Object.entries(tropas).map(([k,v])=>`att_${k}=${v}`).join('&');
-                const link = `https://${location.host}/game.php?village=${vid}&screen=place&x=${x}&y=${y}&from=simulator&${qs}`;
                 
                 const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
                 let horaLancamento, horaChegada;
                 
                 if (tipoCalculo === 'chegada') {
-                    // Calcula lançamento baseado na chegada
                     horaLancamento = calcularHorarioLancamento(o, d, horaBase, tropas, bonusSinal);
                     horaChegada = horaBase;
                 } else {
-                    // Calcula chegada baseado no lançamento
                     horaLancamento = horaBase;
                     horaChegada = calcularHorarioChegada(o, d, horaBase, tropas, bonusSinal);
                 }
                 
-                out += `[*][unit]${unidadeMaisLenta}[/unit] [|] ${o} [|] ${d} [|] ${horaLancamento} [|] ${horaChegada} [|] [url=${link}]ENVIAR[/url]\n`;
+                // Calcula distância para ordenação
+                const distancia = calcularDistancia(o, d);
+                
+                // CORREÇÃO: Usar a função corrigida para converter datas
+                combinacoes.push({
+                    origem: o,
+                    destino: d,
+                    horaLancamento: horaLancamento,
+                    horaChegada: horaChegada,
+                    distancia: distancia,
+                    timestampLancamento: converterParaTimestamp(horaLancamento), // CORRIGIDO
+                    timestampChegada: converterParaTimestamp(horaChegada),       // CORRIGIDO
+                    vid: vid,
+                    x: x,
+                    y: y
+                });
             }
         }
+        
+        // APLICA ORDENAÇÃO CONFORME SELECIONADO
+        switch(tipoOrdenacao) {
+            case 'lancamento':
+                combinacoes.sort((a, b) => a.timestampLancamento - b.timestampLancamento);
+                break;
+            case 'chegada':
+                combinacoes.sort((a, b) => a.timestampChegada - b.timestampChegada);
+                break;
+            case 'distancia':
+                combinacoes.sort((a, b) => a.distancia - b.distancia);
+                break;
+            case 'digitacao':
+            default:
+                // Mantém a ordem original (digitação)
+                break;
+        }
+        
+        let out = `[table][**]Unidade[||]Origem[||]Destino[||]Hora de Lançamento[||]Hora de Chegada[||]Enviar[/**]\n`;
+        
+        combinacoes.forEach((comb, index) => {
+            let qs = Object.entries(tropas).map(([k,v])=>`att_${k}=${v}`).join('&');
+            const link = `https://${location.host}/game.php?village=${comb.vid}&screen=place&x=${comb.x}&y=${comb.y}&from=simulator&${qs}`;
+            const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
+            
+            out += `[*][unit]${unidadeMaisLenta}[/unit] [|] ${comb.origem} [|] ${comb.destino} [|] ${comb.horaLancamento} [|] ${comb.horaChegada} [|] [url=${link}]ENVIAR[/url]\n`;
+        });
+        
         out += `[/table]`;
         panel.querySelector('#saida').value = out;
     };
