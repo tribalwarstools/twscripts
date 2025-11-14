@@ -95,10 +95,32 @@
       .tws-container details summary{ cursor:pointer; color:#ffd700; margin-top:6px; }
       .tws-status { font-size:11px; margin-top:5px; opacity:0.9; max-height:150px; overflow-y:auto; background:rgba(0,0,0,0.3); padding:4px; border-radius:5px; }
       .tws-bbcode-area { width:100%; height:100px; margin-top:4px; }
-      .tws-tooltip { position: relative; display: inline-block; }
-      .tws-tooltip .tws-tooltip-content { visibility: hidden; width:max-content; max-width:280px; background:#2b1b0f; color:#f5deb3; text-align:left; border:1px solid #7b5b2a; border-radius:5px; padding:5px; position:absolute; z-index:999999; bottom:-200%; left:50%; transform:translateX(-50%); opacity:0; transition:opacity 0.2s; box-shadow:0 0 8px rgba(0,0,0,0.6); font-size:11px; }
-      .tws-tooltip:hover .tws-tooltip-content { visibility:visible; opacity:1; }
-      .tws-tooltip-content img { height:16px; vertical-align:middle; margin-right:3px; }
+.tws-tooltip { position: relative; display: inline-block; }
+.tws-tooltip .tws-tooltip-content { 
+    visibility: hidden; 
+    width: max-content; 
+    max-width: 600px; /* Aumente a largura máxima */
+    background: #2b1b0f; 
+    color: #f5deb3; 
+    text-align: left; 
+    border: 1px solid #7b5b2a; 
+    border-radius: 5px; 
+    padding: 5px 8px; /* Ajuste o padding horizontal */
+    position: absolute; 
+    z-index: 0; 
+    bottom: 0%; 
+    left: 250%; 
+    transform: translateX(-50%); 
+    opacity: 0; 
+    transition: opacity 0.2s; 
+    box-shadow: 0 0 8px rgba(0,0,0,0.6); 
+    font-size: 11px; 
+    white-space: nowrap; /* Impede quebra de linha */
+    overflow: hidden; /* Esconde overflow */
+    text-overflow: ellipsis; /* Adiciona "..." se muito longo */
+}
+.tws-tooltip:hover .tws-tooltip-content { visibility: visible; opacity: 1; }
+.tws-tooltip-content img { height: 16px; vertical-align: middle; margin-right: 3px; }
     </style>
 
     <div class="tws-toggle-tab" id="tws-toggle-tab">Painel</div>
@@ -212,32 +234,33 @@
   // === Funções auxiliares e eventos ===
   const el = id => panel.querySelector(id.startsWith('#') ? id : '#' + id);
 
-  window.renderTable = function renderTable() {
-    const list = backend.getList();
-    const tbody = el('tws-tbody');
-    if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5"><i>Nenhum agendamento</i></td></tr>';
-      return;
-    }
-    const now = Date.now();
-    tbody.innerHTML = list.map((a, i) => {
-      const troops = backend.TROOP_LIST.filter(t => a[t] > 0).map(t => `<img src="/graphic/unit/unit_${t}.png"> ${a[t]}`).join('<br>') || 'Nenhuma tropa';
-      const status = a.done ? '✅ Enviado' : (backend.parseDateTimeToMs(a.datetime) - now > 0 ? `🕒 ${Math.ceil((backend.parseDateTimeToMs(a.datetime)-now)/1000)}s` : '🔥 Enviando...');
-      return `<tr>
-        <td class="tws-tooltip">${a.origem || a.origemId}<div class="tws-tooltip-content">${troops}</div></td>
-        <td>${a.alvo}</td>
-        <td>${a.datetime}</td>
-        <td>${status}</td>
-        <td><button data-idx="${i}" class="tws-del-btn">X</button></td>
-      </tr>`;
-    }).join('');
-    tbody.querySelectorAll('.tws-del-btn').forEach(btn => {
-      btn.onclick = () => {
-        const i = +btn.dataset.idx;
-        const l = backend.getList(); l.splice(i, 1); backend.setList(l);
-      };
-    });
-  };
+window.renderTable = function renderTable() {
+  const list = backend.getList();
+  const tbody = el('tws-tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><i>Nenhum agendamento</i></td></tr>';
+    return;
+  }
+  const now = Date.now();
+  tbody.innerHTML = list.map((a, i) => {
+    // MUDANÇA AQUI: trocar <br> por espaço simples
+    const troops = backend.TROOP_LIST.filter(t => a[t] > 0).map(t => `<img src="/graphic/unit/unit_${t}.png"> ${a[t]}`).join(' ') || 'Nenhuma tropa';
+    const status = a.done ? '✅ Enviado' : (backend.parseDateTimeToMs(a.datetime) - now > 0 ? `🕒 ${Math.ceil((backend.parseDateTimeToMs(a.datetime)-now)/1000)}s` : '🔥 Enviando...');
+    return `<tr>
+      <td class="tws-tooltip">${a.origem || a.origemId}<div class="tws-tooltip-content">${troops}</div></td>
+      <td>${a.alvo}</td>
+      <td>${a.datetime}</td>
+      <td>${status}</td>
+      <td><button data-idx="${i}" class="tws-del-btn">X</button></td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('.tws-del-btn').forEach(btn => {
+    btn.onclick = () => {
+      const i = +btn.dataset.idx;
+      const l = backend.getList(); l.splice(i, 1); backend.setList(l);
+    };
+  });
+};
 
   backend.startScheduler();
 
