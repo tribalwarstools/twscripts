@@ -84,7 +84,7 @@
     for (const line of lines) {
         const parts = line.split(',');
         if (parts.length >= 6) {
-            const x = parts[2], y = parts[3], id = parts[5];
+            const x = parts[2], y = parts[3], id = parts[0]; // CORREÇÃO: parts[0] é o ID da aldeia
             villageMap[`${x}|${y}`] = id;
         }
     }
@@ -155,7 +155,7 @@
     
     panel.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #ddd;">
-            <h3 style="margin:0; color:#2c3e50; cursor:move; font-size:14px; font-weight:600;">Coordenador de Ataques</h3>
+            <h3 style="margin:0; color:#2c3e50; cursor:move; font-size:14px; font-weight:600;">Coordenador de Ataques 2.0</h3>
             <button id="fechar" style="background:#e74c3c; color:white; border:none; padding:3px 8px; border-radius:3px; cursor:pointer; font-size:10px;">✕</button>
         </div>
         
@@ -340,7 +340,7 @@
             }
         }
 
-        let out = `[table][**]Unidade[||]Origem[||]Destino[||]Hora de Lançamento[||]Hora de Chegada[||]Enviar[/**]\n`;
+        let out = `[table][**]Unidade[||]Origem[||]Destino[||]Hora de Lançamento[||]Enviar[/**]\n`;
         
         for (const o of origens) {
             const vid = villageMap[o];
@@ -351,23 +351,22 @@
             
             for (const d of destinos) {
                 const [x,y] = d.split('|');
+                // CORREÇÃO: Usar as tropas reais em vez de zeros
                 let qs = Object.entries(tropas).map(([k,v])=>`att_${k}=${v}`).join('&');
                 const link = `https://${location.host}/game.php?village=${vid}&screen=place&x=${x}&y=${y}&from=simulator&${qs}`;
                 
                 const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
-                let horaLancamento, horaChegada;
+                let horaLancamento;
                 
                 if (tipoCalculo === 'chegada') {
                     // Calcula lançamento baseado na chegada
                     horaLancamento = calcularHorarioLancamento(o, d, horaBase, tropas, bonusSinal);
-                    horaChegada = horaBase;
                 } else {
-                    // Calcula chegada baseado no lançamento
-                    horaChegada = calcularHorarioChegada(o, d, horaBase, tropas, bonusSinal);
+                    // Usa a hora de lançamento informada
                     horaLancamento = horaBase;
                 }
                 
-                out += `[*][unit]${unidadeMaisLenta}[/unit] [|] ${o} [|] ${d} [|] ${horaLancamento} [|] ${horaChegada} [|] [url=${link}]ENVIAR[/url]\n`;
+                out += `[*][unit]${unidadeMaisLenta}[/unit] [|] ${o} [|] ${d} [|] ${horaLancamento} [|] [url=${link}]ENVIAR[/url]\n`;
             }
         }
         out += `[/table]`;
