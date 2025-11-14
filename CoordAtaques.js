@@ -312,6 +312,40 @@
         };
     }
 
+    // --- Função para carregar configurações salvas ---
+    function carregarConfiguracoes() {
+        try {
+            const configSalva = localStorage.getItem('twPanelConfig');
+            if (configSalva) {
+                const config = JSON.parse(configSalva);
+                
+                // Preenche os campos com os valores salvos
+                if (config.destinos) panel.querySelector('#destinos').value = config.destinos;
+                if (config.origens) panel.querySelector('#origens').value = config.origens;
+                if (config.tipoCalculo) panel.querySelector('#tipoCalculo').value = config.tipoCalculo;
+                if (config.bonusSinal) panel.querySelector('#bonusSinal').value = config.bonusSinal;
+                if (config.tipoOrdenacao) panel.querySelector('#tipoOrdenacao').value = config.tipoOrdenacao;
+                if (config.horaChegada) panel.querySelector('#horaChegada').value = config.horaChegada;
+                if (config.horaLancamento) panel.querySelector('#horaLancamento').value = config.horaLancamento;
+                
+                // Preenche as tropas
+                if (config.tropas) {
+                    for (const [unidade, quantidade] of Object.entries(config.tropas)) {
+                        const input = document.getElementById(unidade);
+                        if (input) input.value = quantidade;
+                    }
+                }
+                
+                // Atualiza a visibilidade dos campos de hora
+                panel.querySelector('#tipoCalculo').dispatchEvent(new Event('change'));
+                
+                console.log('✅ Configurações carregadas!');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar configurações:', error);
+        }
+    }
+
     // --- Evento para alternar entre os tipos de cálculo ---
     panel.querySelector('#tipoCalculo').onchange = function() {
         const tipo = this.value;
@@ -446,42 +480,20 @@
         
         try {
             navigator.clipboard.writeText(saida.value).then(() => {
-                const alertDiv = document.createElement('div');
-                alertDiv.innerHTML = '✅ BBCode copiado!';
-                Object.assign(alertDiv.style, {
-                    position: 'fixed',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: 'rgba(39, 174, 96, 0.95)',
-                    color: 'white',
-                    padding: '12px 20px',
-                    borderRadius: '6px',
-                    border: '1px solid #27ae60',
-                    fontWeight: '600',
-                    zIndex: 1000000,
-                    fontSize: '13px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-                });
-                document.body.appendChild(alertDiv);
-                
-                setTimeout(() => {
-                    alertDiv.remove();
-                }, 1500);
+                mostrarMensagem('✅ BBCode copiado!', '#27ae60');
             }).catch(err => {
                 document.execCommand('copy');
-                alert('✅ BBCode copiado!');
+                mostrarMensagem('✅ BBCode copiado!', '#27ae60');
             });
         } catch (err) {
             document.execCommand('copy');
-            alert('✅ BBCode copiado!');
+            mostrarMensagem('✅ BBCode copiado!', '#27ae60');
         }
     };
 
     // --- Botão Salvar ---
     panel.querySelector('#salvar').onclick = () => {
-        // Aqui você pode implementar a lógica de salvamento
-        // Por exemplo, salvar as configurações atuais no localStorage
+        // Cria objeto com todas as configurações
         const config = {
             destinos: panel.querySelector('#destinos').value,
             origens: panel.querySelector('#origens').value,
@@ -493,20 +505,31 @@
             tropas: getTropas()
         };
         
-        localStorage.setItem('twPanelConfig', JSON.stringify(config));
-        
+        // Salva no localStorage
+        try {
+            localStorage.setItem('twPanelConfig', JSON.stringify(config));
+            mostrarMensagem('✅ Configurações salvas!', '#8e44ad');
+            console.log('Configurações salvas:', config);
+        } catch (error) {
+            mostrarMensagem('❌ Erro ao salvar configurações!', '#e74c3c');
+            console.error('Erro ao salvar:', error);
+        }
+    };
+
+    // --- Função para mostrar mensagens ---
+    function mostrarMensagem(mensagem, cor) {
         const alertDiv = document.createElement('div');
-        alertDiv.innerHTML = '✅ Configurações salvas!';
+        alertDiv.innerHTML = mensagem;
         Object.assign(alertDiv.style, {
             position: 'fixed',
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            background: 'rgba(142, 68, 173, 0.95)',
+            background: cor,
             color: 'white',
             padding: '12px 20px',
             borderRadius: '6px',
-            border: '1px solid #8e44ad',
+            border: `1px solid ${cor}`,
             fontWeight: '600',
             zIndex: 1000000,
             fontSize: '13px',
@@ -517,7 +540,7 @@
         setTimeout(() => {
             alertDiv.remove();
         }, 1500);
-    };
+    }
 
     // --- Botão Fechar ---
     panel.querySelector('#fechar').onclick = () => {
@@ -605,6 +628,9 @@
         panel.style.cursor = 'default';
         titleBar.style.userSelect = 'auto';
     });
+
+    // --- Carregar configurações salvas ao iniciar ---
+    carregarConfiguracoes();
 
     // --- Focar no primeiro campo ao abrir ---
     setTimeout(() => {
