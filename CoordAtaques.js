@@ -5,6 +5,77 @@
     }
     window.__TW_PANEL__ = true;
 
+    // === FUNÇÕES DE CÁLCULO DE TEMPO ===
+    const velocidadesUnidades = {
+        spear: 18,      // Lanceiro
+        sword: 22,      // Espadachim
+        axe: 18,        // Machado
+        archer: 18,     // Arqueiro
+        spy: 9,         // Espião
+        light: 10,      // Cavalaria Leve
+        marcher: 10,    // Arqueiro a Cavalo
+        heavy: 11,      // Cavalaria Pesada
+        ram: 30,        // Ariete
+        catapult: 30,   // Catapulta
+        knight: 10,     // Paladino
+        snob: 35        // Nobre
+    };
+
+    // Calcula distância entre coordenadas
+    function calcularDistancia(coord1, coord2) {
+        const [x1, y1] = coord1.split('|').map(Number);
+        const [x2, y2] = coord2.split('|').map(Number);
+        const deltaX = Math.abs(x1 - x2);
+        const deltaY = Math.abs(y1 - y2);
+        return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    }
+
+    // Calcula tempo de viagem em milissegundos
+    function calcularTempoViagem(origem, destino, unidadeMaisLenta, bonusSinal = 0) {
+        const distancia = calcularDistancia(origem, destino);
+        const velocidadeBase = velocidadesUnidades[unidadeMaisLenta];
+        const fatorBonus = 1 + (bonusSinal / 100);
+        const tempoMinutos = (distancia * velocidadeBase) / fatorBonus;
+        return tempoMinutos * 60000; // Converter para milissegundos
+    }
+
+    // Converte string de data para objeto Date
+    function parseDataHora(dataHoraStr) {
+        const [data, tempo] = dataHoraStr.split(' ');
+        const [dia, mes, ano] = data.split('/').map(Number);
+        const [hora, minuto, segundo] = tempo.split(':').map(Number);
+        return new Date(ano, mes - 1, dia, hora, minuto, segundo);
+    }
+
+    // Formata data para exibição
+    function formatarDataHora(data) {
+        const dia = String(data.getDate()).padStart(2, '0');
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const ano = data.getFullYear();
+        const hora = String(data.getHours()).padStart(2, '0');
+        const minuto = String(data.getMinutes()).padStart(2, '0');
+        const segundo = String(data.getSeconds()).padStart(2, '0');
+        return `${dia}/${mes}/${ano} ${hora}:${minuto}:${segundo}`;
+    }
+
+    // Calcula horário de lançamento baseado na chegada
+    function calcularHorarioLancamento(origem, destino, horaChegada, tropas, bonusSinal = 0) {
+        const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
+        const tempoViagem = calcularTempoViagem(origem, destino, unidadeMaisLenta, bonusSinal);
+        const chegadaDate = parseDataHora(horaChegada);
+        const lancamentoDate = new Date(chegadaDate.getTime() - tempoViagem);
+        return formatarDataHora(lancamentoDate);
+    }
+
+    // Calcula horário de chegada baseado no lançamento
+    function calcularHorarioChegada(origem, destino, horaLancamento, tropas, bonusSinal = 0) {
+        const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
+        const tempoViagem = calcularTempoViagem(origem, destino, unidadeMaisLenta, bonusSinal);
+        const lancamentoDate = parseDataHora(horaLancamento);
+        const chegadaDate = new Date(lancamentoDate.getTime() + tempoViagem);
+        return formatarDataHora(chegadaDate);
+    }
+
     // --- Carrega o village.txt ---
     const res = await fetch('/map/village.txt');
     const text = await res.text();
@@ -36,21 +107,20 @@
     };
 
     // --- Ordem das unidades da MAIS LENTA para a MAIS RÁPIDA ---
-const unidadesPorVelocidade = [
-    'snob',      // Nobre — 35 min (mais lento)
-    'catapult',  // Catapulta — 30 min
-    'ram',       // Ariete — 30 min
-    'sword',     // Espadachim — 22 min
-    'spear',     // Lanceiro — 18 min
-    'archer',    // Arqueiro — 18 min (se houver arqueiros)
-    'axe',       // Machado — 18 min
-    'heavy',     // Cavalaria Pesada — 11 min
-    'light',     // Cavalaria Leve — 10 min
-    'marcher',   // Arqueiro a Cavalo — 10 min (se houver arqueiros)
-    'knight',    // Paladino — 10 min
-    'spy'        // Batedor — 9 min (mais rápido)
-];
-
+    const unidadesPorVelocidade = [
+        'snob',      // Nobre — 35 min (mais lento)
+        'catapult',  // Catapulta — 30 min
+        'ram',       // Ariete — 30 min
+        'sword',     // Espadachim — 22 min
+        'spear',     // Lanceiro — 18 min
+        'archer',    // Arqueiro — 18 min (se houver arqueiros)
+        'axe',       // Machado — 18 min
+        'heavy',     // Cavalaria Pesada — 11 min
+        'light',     // Cavalaria Leve — 10 min
+        'marcher',   // Arqueiro a Cavalo — 10 min (se houver arqueiros)
+        'knight',    // Paladino — 10 min
+        'spy'        // Batedor — 9 min (mais rápido)
+    ];
 
     // --- Função para encontrar a unidade mais lenta presente ---
     function getUnidadeMaisLenta(tropas) {
@@ -68,7 +138,7 @@ const unidadesPorVelocidade = [
         position: 'fixed',
         top: '50px',
         left: '50px',
-        width: '420px',
+        width: '450px',
         background: 'rgba(240, 240, 240, 0.98)',
         color: '#333',
         padding: '12px',
@@ -102,8 +172,29 @@ const unidadesPorVelocidade = [
         </div>
         
         <div style="margin-bottom:10px;">
-            <label style="font-weight:600; color:#2c3e50;">⏰ Hora de Lançamento:</label>
-            <input id="hora" type="text" style="width:100%; padding:6px; margin-top:4px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;" placeholder="13/11/2025 18:30:00">
+            <div style="display:flex; gap:8px; margin-bottom:6px;">
+                <div style="flex:1;">
+                    <label style="font-weight:600; color:#2c3e50;">🎯 Tipo de Cálculo:</label>
+                    <select id="tipoCalculo" style="width:100%; padding:6px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;">
+                        <option value="chegada">Por Hora de Chegada</option>
+                        <option value="lancamento">Por Hora de Lançamento</option>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label style="font-weight:600; color:#2c3e50;">📈 Sinal (%):</label>
+                    <input id="bonusSinal" type="number" value="0" min="0" max="100" style="width:100%; padding:6px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;" placeholder="0">
+                </div>
+            </div>
+            
+            <div id="campoHoraChegada">
+                <label style="font-weight:600; color:#2c3e50;">⏰ Hora de Chegada:</label>
+                <input id="horaChegada" type="text" style="width:100%; padding:6px; margin-top:4px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;" placeholder="13/11/2025 18:30:00">
+            </div>
+            
+            <div id="campoHoraLancamento" style="display:none;">
+                <label style="font-weight:600; color:#2c3e50;">🚀 Hora de Lançamento:</label>
+                <input id="horaLancamento" type="text" style="width:100%; padding:6px; margin-top:4px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;" placeholder="13/11/2025 17:45:00">
+            </div>
         </div>
         
         <div style="margin-bottom:12px; border:1px solid #ddd; padding:8px; border-radius:4px; background:rgba(255,255,255,0.8);">
@@ -211,24 +302,72 @@ const unidadesPorVelocidade = [
         };
     }
 
-    // --- Gera tabela ---
+    // --- Evento para alternar entre os tipos de cálculo ---
+    panel.querySelector('#tipoCalculo').onchange = function() {
+        const tipo = this.value;
+        const campoChegada = panel.querySelector('#campoHoraChegada');
+        const campoLancamento = panel.querySelector('#campoHoraLancamento');
+        
+        if (tipo === 'chegada') {
+            campoChegada.style.display = 'block';
+            campoLancamento.style.display = 'none';
+        } else {
+            campoChegada.style.display = 'none';
+            campoLancamento.style.display = 'block';
+        }
+    };
+
+    // --- Gera tabela com cálculo automático ---
     panel.querySelector('#gerar').onclick = () => {
         const origens = panel.querySelector('#origens').value.trim().split(/\s+/);
         const destinos = panel.querySelector('#destinos').value.trim().split(/\s+/);
-        const hora = panel.querySelector('#hora').value.trim();
+        const tipoCalculo = panel.querySelector('#tipoCalculo').value;
+        const bonusSinal = parseInt(panel.querySelector('#bonusSinal').value) || 0;
         const tropas = getTropas();
+        
+        let horaBase;
+        if (tipoCalculo === 'chegada') {
+            horaBase = panel.querySelector('#horaChegada').value.trim();
+            if (!horaBase) {
+                alert('❌ Informe a hora de chegada!');
+                return;
+            }
+        } else {
+            horaBase = panel.querySelector('#horaLancamento').value.trim();
+            if (!horaBase) {
+                alert('❌ Informe a hora de lançamento!');
+                return;
+            }
+        }
 
-        let out = `[table][**]Unidade[||]Origem[||]Destino[||]Hora de Lançamento[||]Enviar[/**]\n`;
+        let out = `[table][**]Unidade[||]Origem[||]Destino[||]Hora de Lançamento[||]Hora de Chegada[||]Enviar[/**]\n`;
+        
         for (const o of origens) {
             const vid = villageMap[o];
+            if (!vid) {
+                console.warn(`Coordenada ${o} não encontrada no mapa`);
+                continue;
+            }
+            
             for (const d of destinos) {
                 const [x,y] = d.split('|');
                 let qs = Object.entries(tropas).map(([k,v])=>`att_${k}=${v}`).join('&');
-                const link = `https://${location.host}/game.php?village=${vid||0}&screen=place&x=${x}&y=${y}&from=simulator&${qs}`;
+                const link = `https://${location.host}/game.php?village=${vid}&screen=place&x=${x}&y=${y}&from=simulator&${qs}`;
                 
-                // CORREÇÃO: Usa a unidade mais lenta em vez de sempre catapulta
                 const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
-                out += `[*][unit]${unidadeMaisLenta}[/unit] [|] ${o} [|] ${d} [|] ${hora} [|] [url=${link}]ENVIAR[/url]\n`;
+                let horaLancamento, horaChegada;
+                
+                if (tipoCalculo === 'chegada') {
+                    // Calcula lançamento baseado na chegada
+                    horaLancamento = calcularHorarioLancamento(o, d, horaBase, tropas, bonusSinal);
+                    horaChegada = horaBase;
+                } else {
+                    // Calcula chegada baseado no lançamento
+                    horaChegada = calcularHorarioChegada(o, d, horaBase, tropas, bonusSinal);
+                    horaLancamento = horaBase;
+                }
+                
+                out += `[*][unit]${unidadeMaisLenta}[/unit] [|] ${o} [|] ${d} [|] ${horaLancamento} [|] ${horaChegada} [|] [url=${link}]ENVIAR[/url]\n`;
             }
         }
         out += `[/table]`;
