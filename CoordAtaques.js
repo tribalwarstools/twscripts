@@ -43,7 +43,7 @@ const unidadesPorVelocidade = [
     'sword',     // Espadachim — 22 min
     'spear',     // Lanceiro — 18 min
     'archer',    // Arqueiro — 18 min (se houver arqueiros)
-    'axe',       // Machado — 14 min
+    'axe',       // Machado — 18 min
     'heavy',     // Cavalaria Pesada — 11 min
     'light',     // Cavalaria Leve — 10 min
     'marcher',   // Arqueiro a Cavalo — 10 min (se houver arqueiros)
