@@ -35,6 +35,33 @@
         snob: 'https://dsbr.innogamescdn.com/asset/4aba6bcf/graphic/unit/unit_snob.webp'
     };
 
+    // --- Ordem das unidades da MAIS LENTA para a MAIS RÁPIDA ---
+const unidadesPorVelocidade = [
+    'snob',      // Nobre — 35 min (mais lento)
+    'catapult',  // Catapulta — 30 min
+    'ram',       // Ariete — 30 min
+    'sword',     // Espadachim — 22 min
+    'spear',     // Lanceiro — 18 min
+    'archer',    // Arqueiro — 18 min (se houver arqueiros)
+    'axe',       // Machado — 14 min
+    'heavy',     // Cavalaria Pesada — 11 min
+    'light',     // Cavalaria Leve — 10 min
+    'marcher',   // Arqueiro a Cavalo — 10 min (se houver arqueiros)
+    'knight',    // Paladino — 10 min
+    'spy'        // Batedor — 9 min (mais rápido)
+];
+
+
+    // --- Função para encontrar a unidade mais lenta presente ---
+    function getUnidadeMaisLenta(tropas) {
+        for (const unidade of unidadesPorVelocidade) {
+            if (tropas[unidade] > 0) {
+                return unidade;
+            }
+        }
+        return 'spy'; // fallback
+    }
+
     // --- Cria painel na tela ---
     const panel = document.createElement('div');
     Object.assign(panel.style, {
@@ -198,7 +225,10 @@
                 const [x,y] = d.split('|');
                 let qs = Object.entries(tropas).map(([k,v])=>`att_${k}=${v}`).join('&');
                 const link = `https://${location.host}/game.php?village=${vid||0}&screen=place&x=${x}&y=${y}&from=simulator&${qs}`;
-                out += `[*][unit]catapult[/unit] [|] ${o} [|] ${d} [|] ${hora} [|] [url=${link}]ENVIAR[/url]\n`;
+                
+                // CORREÇÃO: Usa a unidade mais lenta em vez de sempre catapulta
+                const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
+                out += `[*][unit]${unidadeMaisLenta}[/unit] [|] ${o} [|] ${d} [|] ${hora} [|] [url=${link}]ENVIAR[/url]\n`;
             }
         }
         out += `[/table]`;
