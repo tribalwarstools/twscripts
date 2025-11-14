@@ -107,10 +107,10 @@
     border-radius: 5px; 
     padding: 5px 8px; /* Ajuste o padding horizontal */
     position: absolute; 
-    z-index: 0; 
+    z-index: 999999; 
     bottom: 0%; 
-    left: 250%; 
-    transform: translateX(-50%); 
+    left: 50%; 
+    transform: translateX(-10%); 
     opacity: 0; 
     transition: opacity 0.2s; 
     box-shadow: 0 0 8px rgba(0,0,0,0.6); 
