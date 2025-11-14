@@ -284,7 +284,7 @@
         <div style="display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap;">
             <button id="gerar" style="flex:2; padding:8px; background:#27ae60; color:white; border:none; border-radius:3px; cursor:pointer; font-size:11px; font-weight:600;">📋 Gerar BBCode</button>
             <button id="copiar" style="flex:1; padding:8px; background:#2980b9; color:white; border:none; border-radius:3px; cursor:pointer; font-size:11px;">📄 Copiar</button>
-            <button id="voltar" style="padding:8px 12px; background:#8e44ad; color:white; border:none; border-radius:3px; cursor:pointer; font-size:11px;">↩️ Voltar</button>
+            <button id="salvar" style="padding:8px 12px; background:#8e44ad; color:white; border:none; border-radius:3px; cursor:pointer; font-size:11px;">💾 Salvar</button>
         </div>
         
         <div>
@@ -478,10 +478,45 @@
         }
     };
 
-    // --- Botão Voltar ---
-    panel.querySelector('#voltar').onclick = () => {
-        panel.style.left = '50px';
-        panel.style.top = '50px';
+    // --- Botão Salvar ---
+    panel.querySelector('#salvar').onclick = () => {
+        // Aqui você pode implementar a lógica de salvamento
+        // Por exemplo, salvar as configurações atuais no localStorage
+        const config = {
+            destinos: panel.querySelector('#destinos').value,
+            origens: panel.querySelector('#origens').value,
+            tipoCalculo: panel.querySelector('#tipoCalculo').value,
+            bonusSinal: panel.querySelector('#bonusSinal').value,
+            tipoOrdenacao: panel.querySelector('#tipoOrdenacao').value,
+            horaChegada: panel.querySelector('#horaChegada').value,
+            horaLancamento: panel.querySelector('#horaLancamento').value,
+            tropas: getTropas()
+        };
+        
+        localStorage.setItem('twPanelConfig', JSON.stringify(config));
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.innerHTML = '✅ Configurações salvas!';
+        Object.assign(alertDiv.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(142, 68, 173, 0.95)',
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '6px',
+            border: '1px solid #8e44ad',
+            fontWeight: '600',
+            zIndex: 1000000,
+            fontSize: '13px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+        });
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 1500);
     };
 
     // --- Botão Fechar ---
