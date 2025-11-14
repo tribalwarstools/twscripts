@@ -272,13 +272,13 @@
     panel.querySelector('#preencherAtaque').onclick = () => {
         document.getElementById('spear').value = '0';
         document.getElementById('sword').value = '0';
-        document.getElementById('axe').value = '1000';
+        document.getElementById('axe').value = '0';
         document.getElementById('archer').value = '0';
         document.getElementById('spy').value = '5';
-        document.getElementById('light').value = '500';
-        document.getElementById('marcher').value = '300';
-        document.getElementById('heavy').value = '200';
-        document.getElementById('ram').value = '0';
+        document.getElementById('light').value = '3000';
+        document.getElementById('marcher').value = '6000';
+        document.getElementById('heavy').value = '0';
+        document.getElementById('ram').value = '300';
         document.getElementById('catapult').value = '0';
         document.getElementById('knight').value = '0';
         document.getElementById('snob').value = '0';
@@ -287,12 +287,12 @@
     // --- Botão Preencher Defesa ---
     panel.querySelector('#preencherDefesa').onclick = () => {
         document.getElementById('spear').value = '1000';
-        document.getElementById('sword').value = '800';
+        document.getElementById('sword').value = '1000';
         document.getElementById('axe').value = '0';
-        document.getElementById('archer').value = '600';
-        document.getElementById('spy').value = '3';
+        document.getElementById('archer').value = '0';
+        document.getElementById('spy').value = '0';
         document.getElementById('light').value = '0';
-        document.getElementById('marcher').value = '400';
+        document.getElementById('marcher').value = '0';
         document.getElementById('heavy').value = '0';
         document.getElementById('ram').value = '0';
         document.getElementById('catapult').value = '0';
@@ -306,10 +306,10 @@
         document.getElementById('sword').value = '0';
         document.getElementById('axe').value = '0';
         document.getElementById('archer').value = '0';
-        document.getElementById('spy').value = '50';
-        document.getElementById('light').value = '2000';
-        document.getElementById('marcher').value = '1000';
-        document.getElementById('heavy').value = '500';
+        document.getElementById('spy').value = '5';
+        document.getElementById('light').value = '25';
+        document.getElementById('marcher').value = '0';
+        document.getElementById('heavy').value = '0';
         document.getElementById('ram').value = '0';
         document.getElementById('catapult').value = '0';
         document.getElementById('knight').value = '0';
