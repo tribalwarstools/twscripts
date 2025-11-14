@@ -453,7 +453,7 @@
                 break;
         }
         
-        let out = `[table][**]Unidade[||]Origem[||]Destino[||]Hora de Lançamento[||]Hora de Chegada[||]Enviar[/**]\n`;
+        let out = `[table][**]Unidade[||]Origem[||]Destino[||]Lançamento[||]Chegada[||]Enviar[/**]\n`;
         
         combinacoes.forEach((comb, index) => {
             let qs = Object.entries(tropas).map(([k,v])=>`att_${k}=${v}`).join('&');
