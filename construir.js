@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TW Auto Builder - Global Multivillage (TW Dark) - Híbrido Otimizado
-// @version      2.6
-// @description  Construtor global otimizado: fetch paralelo controlado, iframe serializado, retry + backoff, jitter, intervalos adaptativos
+// @version      2.7
+// @description  Construtor global otimizado: 1 fetch por vila, iframe serializado, retry + backoff, jitter, intervalos adaptativos
 // @author       You
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        GM_xmlhttpRequest
@@ -305,28 +305,40 @@ class TWAutoBuilder {
         }
     }
 
-    // ========== FETCH PARALELO OTIMIZADO ==========
+    // ========== FETCH UNIFICADO - 1 REQUEST POR VILA ==========
 
-    async fetchConstructionPage(villageId) {
+    async fetchVillageData(villageId) {
         try {
             const url = `/game.php?village=${villageId}&screen=main`;
             const html = await this.fetchWithRetry(url, { timeout: 10000 });
-            return this.parseBuildingsFromHTML(html);
+            
+            return {
+                buildings: this.parseBuildingsFromHTML(html),
+                queueCount: this.parseQueueFromHTML(html)
+            };
         } catch (error) {
-            this.log(`❌ Erro fetch construção vila ${villageId}: ${error.message}`);
-            return null;
+            this.log(`❌ Erro fetch vila ${villageId}: ${error.message}`);
+            return { buildings: null, queueCount: 0 };
         }
     }
 
-    async fetchQueueStatus(villageId) {
-        try {
-            const url = `/game.php?village=${villageId}&screen=main`;
-            const html = await this.fetchWithRetry(url, { timeout: 8000 });
-            return this.parseQueueFromHTML(html);
-        } catch (error) {
-            this.log(`❌ Erro fetch fila vila ${villageId}: ${error.message}`);
-            return 0;
-        }
+    // ========== BUSCA PARALELA OTIMIZADA ==========
+
+    async fetchMultipleVillagesData(villageIds) {
+        const tasks = villageIds.map(vid => 
+            () => this.fetchVillageData(vid)
+        );
+
+        this.log(`🔄 Buscando dados de ${villageIds.length} aldeias (1 request/vila, concorrência: ${this.settings.maxConcurrentFetches})`);
+        
+        const results = await this.executeWithConcurrency(tasks);
+        
+        // Combinar resultados
+        return results.map((data, i) => ({
+            villageId: villageIds[i],
+            buildings: data.buildings,
+            queueCount: data.queueCount
+        }));
     }
 
     parseBuildingsFromHTML(html) {
@@ -379,36 +391,6 @@ class TWAutoBuilder {
         if (levelText.includes('não construído')) return 0;
         const m = levelText.match(/(\d+)/);
         return m ? parseInt(m[1]) : 0;
-    }
-
-    // Busca paralela para múltiplas aldeias
-    async fetchMultipleVillagesData(villageIds) {
-        const constructionTasks = villageIds.map(vid => 
-            () => this.fetchConstructionPage(vid)
-        );
-        
-        const queueTasks = villageIds.map(vid => 
-            () => this.fetchQueueStatus(vid)
-        );
-
-        this.log(`🔄 Buscando dados de ${villageIds.length} aldeias (concorrência: ${this.settings.maxConcurrentFetches})`);
-        
-        const [buildingsResults, queueResults] = await Promise.all([
-            this.executeWithConcurrency(constructionTasks),
-            this.executeWithConcurrency(queueTasks)
-        ]);
-
-        // Combinar resultados
-        const results = [];
-        for (let i = 0; i < villageIds.length; i++) {
-            results.push({
-                villageId: villageIds[i],
-                buildings: buildingsResults[i],
-                queueCount: queueResults[i]
-            });
-        }
-
-        return results;
     }
 
     // ========== IFRAME SERIALIZADO + LIMPEZA ==========
@@ -523,7 +505,7 @@ class TWAutoBuilder {
             return;
         }
 
-        this.log(`🔄 Iniciando execução para ${this.selectedVillagesList.length} aldeias (Modo Híbrido Otimizado)`);
+        this.log(`🔄 Iniciando execução para ${this.selectedVillagesList.length} aldeias (Modo Híbrido Otimizado - 1 fetch/vila)`);
         
         while (this.isRunning) {
             const startTime = Date.now();
@@ -531,7 +513,7 @@ class TWAutoBuilder {
             let errorsCount = 0;
 
             try {
-                // ✅ FETCH PARALELO para todas as aldeias
+                // ✅ FETCH PARALELO UNIFICADO para todas as aldeias (1 request/vila)
                 const villagesData = await this.fetchMultipleVillagesData(this.selectedVillagesList);
                 
                 // Processa resultados sequencialmente
@@ -610,7 +592,7 @@ class TWAutoBuilder {
         this.updateStatus();
         this.saveRunningState();
         this.loopPromise = this.loopWorker();
-        this.log('▶️ Auto Builder iniciado (Modo Híbrido Otimizado)');
+        this.log('▶️ Auto Builder iniciado (Modo Híbrido Otimizado - 1 fetch/vila)');
     }
 
     stop() {
@@ -772,7 +754,7 @@ class TWAutoBuilder {
     getPanelHTML() {
         return `
             <div class="twc-toggle-tab" id="twc-toggle-tab">${this.panelHidden ? 'Abrir' : 'Fechar'}</div>
-            <div class="twc-header">🏹 Construtor Tribal - Híbrido Otimizado</div>
+            <div class="twc-header">🏹 Construtor Tribal - Híbrido Otimizado v2.7</div>
             <div class="twc-grid">
                 <div class="twc-column twc-column-left">
                     <div class="twc-section-title">🏗️ Edifícios (nível alvo)</div>
