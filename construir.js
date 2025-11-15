@@ -666,7 +666,7 @@ class TWB_AutoBuilder {
         this.state.villagesCollapsed = !this.state.villagesCollapsed;
         document.querySelector('.twb-villages').classList.toggle('twb-villages--collapsed');
         document.querySelector('[data-action="toggle-villages"]').textContent = 
-            this.state.villagesCollapsed ? '▶ Aldeias' : '▼ Aldeias';
+            this.state.villagesCollapsed ? '▲ Aldeias' : '▼ Aldeias';
         localStorage.setItem('twb_villages_collapsed', this.state.villagesCollapsed);
     }
 
@@ -1167,5 +1167,6 @@ class TWB_AutoBuilder {
 // Inicialização
 const twBuilder = new TWB_AutoBuilder();
 window.twBuilder = twBuilder;
+
 
 
