@@ -516,7 +516,7 @@ class TWB_AutoBuilder {
                     <button class="twb-btn twb-btn--secondary" data-action="mark-all">✓ Todas</button>
                     <button class="twb-btn twb-btn--secondary" data-action="unmark-all">✗ Nenhuma</button>
                     <button class="twb-btn twb-btn--secondary" data-action="toggle-villages">
-                        ${this.state.villagesCollapsed ? '▶ Aldeias' : '▼ Aldeias'}
+                        ${this.state.villagesCollapsed ? '▲ Aldeias' : '▼ Aldeias'}
                     </button>
                 </div>
 
@@ -1167,4 +1167,5 @@ class TWB_AutoBuilder {
 // Inicialização
 const twBuilder = new TWB_AutoBuilder();
 window.twBuilder = twBuilder;
+
 
