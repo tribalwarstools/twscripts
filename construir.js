@@ -784,7 +784,7 @@ class TWB_AutoBuilder {
                 border: 1px solid var(--border);
                 border-radius: 16px 0 0 16px;
                 box-shadow: -8px 0 32px rgba(0,0,0,0.5);
-                z-index: 10000;
+                z-index: 99999;
                 font-family: 'Segoe UI', system-ui, sans-serif;
                 color: var(--light);
                 transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1167,3 +1167,4 @@ class TWB_AutoBuilder {
 // Inicialização
 const twBuilder = new TWB_AutoBuilder();
 window.twBuilder = twBuilder;
+
