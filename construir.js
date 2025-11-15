@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         TW Auto Builder - CSS 3.0 Moderno
-// @version      3.0
-// @description  Construtor global com CSS 3.0 moderno e código otimizado
+// @name         TW Auto Builder - CSS 3.0 Moderno com Área Sensível
+// @version      3.1
+// @description  Construtor global com CSS 3.0 e área sensível para recolher/expandir
 // @author       You
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        GM_xmlhttpRequest
@@ -75,7 +75,7 @@ class TWB_AutoBuilder {
         this.init();
     }
 
-    // ========== MÉTODOS CORE (MANTIDOS) ==========
+    // ========== MÉTODOS CORE ==========
 
     getCurrentVillageId() {
         const saved = localStorage.getItem('twb_selected_village');
@@ -94,7 +94,6 @@ class TWB_AutoBuilder {
     }
 
     async loadSettings() {
-        // Configurações de edifícios
         Object.keys(this.buildingsList).forEach(id => {
             const saved = localStorage.getItem(`twb_build_${id}`);
             this.settings.enabledBuildings[id] = saved === null ? true : saved !== 'false';
@@ -107,12 +106,10 @@ class TWB_AutoBuilder {
             } catch(e) {}
         }
 
-        // Estado da UI
         this.state.selectedVillages = JSON.parse(localStorage.getItem('twb_selected_villages') || '[]');
         this.state.panelHidden = localStorage.getItem('twb_panel_state') === 'hidden';
         this.state.villagesCollapsed = localStorage.getItem('twb_villages_collapsed') === 'true';
 
-        // Configurações de performance
         const savedConcurrent = localStorage.getItem('twb_max_concurrent');
         if (savedConcurrent) this.settings.maxConcurrentFetches = parseInt(savedConcurrent);
         
@@ -150,7 +147,7 @@ class TWB_AutoBuilder {
         }
     }
 
-    // ========== SISTEMA DE CONSTRUÇÃO (OTIMIZADO) ==========
+    // ========== SISTEMA DE CONSTRUÇÃO ==========
 
     createIframe() {
         const old = document.getElementById('twb-builder-iframe');
@@ -476,7 +473,7 @@ class TWB_AutoBuilder {
         return new Promise(r => setTimeout(r, ms)); 
     }
 
-    // ========== INTERFACE CSS 3.0 MODERNA ==========
+    // ========== INTERFACE COM ÁREA SENSÍVEL ==========
 
     createPanel() {
         this.injectStyles();
@@ -499,7 +496,7 @@ class TWB_AutoBuilder {
             <div class="twb-panel__header">
                 <div class="twb-panel__title">
                     <span class="twb-panel__icon">⚡</span>
-                    <span>Construtor Tribal v3.0</span>
+                    <span>Construtor Tribal v3.1</span>
                 </div>
                 <button class="twb-btn twb-btn--icon" data-action="toggle-panel">
                     ${this.state.panelHidden ? '◀' : '▶'}
@@ -507,7 +504,6 @@ class TWB_AutoBuilder {
             </div>
 
             <div class="twb-panel__content">
-                <!-- Status Card -->
                 <div class="twb-status">
                     <div class="twb-status__indicator ${this.state.isRunning ? 'twb-status--running' : 'twb-status--stopped'}"></div>
                     <span class="twb-status__text">${this.state.isRunning ? 'EXECUTANDO' : 'PARADO'}</span>
@@ -516,7 +512,6 @@ class TWB_AutoBuilder {
                     </button>
                 </div>
 
-                <!-- Controles Rápidos -->
                 <div class="twb-controls">
                     <button class="twb-btn twb-btn--secondary" data-action="mark-all">✓ Todas</button>
                     <button class="twb-btn twb-btn--secondary" data-action="unmark-all">✗ Nenhuma</button>
@@ -525,17 +520,14 @@ class TWB_AutoBuilder {
                     </button>
                 </div>
 
-                <!-- Lista de Aldeias -->
                 <div class="twb-villages ${this.state.villagesCollapsed ? 'twb-villages--collapsed' : ''}">
                     <div class="twb-villages__list" id="twb-villages-list"></div>
                 </div>
 
-                <!-- Edifícios -->
                 <div class="twb-buildings">
                     <div class="twb-buildings__grid" id="twb-buildings-grid"></div>
                 </div>
 
-                <!-- Logs -->
                 <div class="twb-logs">
                     <div class="twb-logs__header">
                         <span>📜 Atividades</span>
@@ -577,6 +569,16 @@ class TWB_AutoBuilder {
         document.querySelectorAll('[data-action]').forEach(btn => {
             btn.addEventListener('click', () => actions[btn.dataset.action]());
         });
+
+        // Área sensível - clicar no painel recolhido para expandir
+        const panel = document.getElementById('twb-builder');
+        if (panel) {
+            panel.addEventListener('click', (e) => {
+                if (this.state.panelHidden && e.target === panel) {
+                    this.togglePanel();
+                }
+            });
+        }
     }
 
     renderVillages() {
@@ -653,9 +655,10 @@ class TWB_AutoBuilder {
 
     togglePanel() {
         this.state.panelHidden = !this.state.panelHidden;
-        document.getElementById('twb-builder').classList.toggle('twb-panel--hidden');
-        document.querySelector('[data-action="toggle-panel"]').textContent = 
-            this.state.panelHidden ? '◀' : '▶';
+        const panel = document.getElementById('twb-builder');
+        if (panel) {
+            panel.classList.toggle('twb-panel--hidden');
+        }
         localStorage.setItem('twb_panel_state', this.state.panelHidden ? 'hidden' : 'visible');
     }
 
@@ -668,7 +671,6 @@ class TWB_AutoBuilder {
     }
 
     saveSettings() {
-        // Salvar configurações de edifícios
         Object.keys(this.buildingsList).forEach(id => {
             const cb = document.querySelector(`input[onchange*="${id}"]`);
             if (cb) {
@@ -680,7 +682,6 @@ class TWB_AutoBuilder {
         localStorage.setItem('twb_build_maxLevels', JSON.stringify(this.settings.maxLevels));
         localStorage.setItem('twb_selected_villages', JSON.stringify(this.state.selectedVillages));
 
-        // Salvar configurações de performance
         const intervalInput = document.querySelector('[data-setting="interval"]');
         const concInput = document.querySelector('[data-setting="concurrency"]');
         
@@ -759,7 +760,7 @@ class TWB_AutoBuilder {
         if (logs) logs.innerHTML = '';
     }
 
-    // ========== CSS 3.0 MODERNO ==========
+    // ========== CSS COM ÁREA SENSÍVEL ==========
 
     injectStyles() {
         const styles = `
@@ -782,9 +783,7 @@ class TWB_AutoBuilder {
                 background: var(--darker);
                 border: 1px solid var(--border);
                 border-radius: 16px 0 0 16px;
-                box-shadow: 
-                    -8px 0 32px rgba(0,0,0,0.5),
-                    inset 1px 0 0 var(--border);
+                box-shadow: -8px 0 32px rgba(0,0,0,0.5);
                 z-index: 10000;
                 font-family: 'Segoe UI', system-ui, sans-serif;
                 color: var(--light);
@@ -793,8 +792,54 @@ class TWB_AutoBuilder {
                 -webkit-backdrop-filter: blur(20px);
             }
 
+            /* ESTADO RECOLHIDO COM ÁREA SENSÍVEL */
             .twb-panel--hidden {
-                transform: translateX(100%) translateY(-50%);
+                transform: translateX(calc(100% - 40px)) translateY(-50%);
+                cursor: pointer;
+            }
+
+            .twb-panel--hidden:hover {
+                transform: translateX(calc(100% - 120px)) translateY(-50%);
+                box-shadow: -8px 0 32px rgba(0,0,0,0.7);
+            }
+
+            .twb-panel--hidden::before {
+                content: '⚡';
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 18px;
+                opacity: 0.7;
+                transition: all 0.3s ease;
+            }
+
+            .twb-panel--hidden:hover::before {
+                content: '🏗️ CONSTRUTOR';
+                font-size: 12px;
+                font-weight: bold;
+                opacity: 1;
+                left: 16px;
+                background: linear-gradient(135deg, var(--primary), var(--success));
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                white-space: nowrap;
+            }
+
+            .twb-panel--hidden .twb-panel__header,
+            .twb-panel--hidden .twb-panel__content,
+            .twb-panel--hidden .twb-panel__footer {
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .twb-panel:not(.twb-panel--hidden) .twb-panel__header,
+            .twb-panel:not(.twb-panel--hidden) .twb-panel__content,
+            .twb-panel:not(.twb-panel--hidden) .twb-panel__footer {
+                opacity: 1;
+                pointer-events: all;
+                transition: opacity 0.3s ease 0.1s;
             }
 
             .twb-panel__header {
@@ -821,7 +866,6 @@ class TWB_AutoBuilder {
 
             .twb-panel__icon {
                 font-size: 20px;
-                filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.3));
             }
 
             .twb-panel__content {
@@ -840,14 +884,12 @@ class TWB_AutoBuilder {
                 border-radius: 12px;
                 border: 1px solid var(--border);
                 margin-bottom: 16px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             }
 
             .twb-status__indicator {
                 width: 12px;
                 height: 12px;
                 border-radius: 50%;
-                position: relative;
             }
 
             .twb-status--running {
@@ -882,52 +924,31 @@ class TWB_AutoBuilder {
                 font-size: 13px;
                 font-weight: 600;
                 cursor: pointer;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: all 0.3s ease;
                 display: flex;
                 align-items: center;
                 gap: 6px;
-                position: relative;
-                overflow: hidden;
-            }
-
-            .twb-btn::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-                transition: left 0.5s;
-            }
-
-            .twb-btn:hover::before {
-                left: 100%;
             }
 
             .twb-btn--primary {
                 background: linear-gradient(135deg, var(--primary), #1d4ed8);
                 color: white;
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
             }
 
             .twb-btn--success {
                 background: linear-gradient(135deg, var(--success), #047857);
                 color: white;
-                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
             }
 
             .twb-btn--danger {
                 background: linear-gradient(135deg, var(--danger), #dc2626);
                 color: white;
-                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
             }
 
             .twb-btn--secondary {
                 background: var(--dark);
                 color: var(--light);
                 border: 1px solid var(--border);
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             }
 
             .twb-btn--icon {
@@ -943,16 +964,10 @@ class TWB_AutoBuilder {
 
             .twb-btn--saved {
                 background: linear-gradient(135deg, var(--success), #047857) !important;
-                transform: scale(0.95);
             }
 
             .twb-btn:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-            }
-
-            .twb-btn:active {
-                transform: translateY(0);
             }
 
             .twb-villages--collapsed .twb-villages__list {
@@ -979,12 +994,10 @@ class TWB_AutoBuilder {
                 border-radius: 8px;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                border: 1px solid transparent;
             }
 
             .twb-village:hover {
                 background: rgba(255,255,255,0.08);
-                border-color: var(--border);
                 transform: translateX(4px);
             }
 
@@ -1000,7 +1013,6 @@ class TWB_AutoBuilder {
                 background: var(--darker);
                 padding: 4px 8px;
                 border-radius: 6px;
-                font-weight: 600;
             }
 
             .twb-buildings__grid {
@@ -1018,12 +1030,6 @@ class TWB_AutoBuilder {
                 background: var(--dark);
                 border-radius: 8px;
                 border: 1px solid var(--border);
-                transition: all 0.2s ease;
-            }
-
-            .twb-building:hover {
-                background: rgba(255,255,255,0.05);
-                transform: translateY(-1px);
             }
 
             .twb-building__label {
@@ -1032,7 +1038,6 @@ class TWB_AutoBuilder {
                 gap: 8px;
                 font-size: 12px;
                 cursor: pointer;
-                font-weight: 500;
             }
 
             .twb-building__input {
@@ -1068,14 +1073,13 @@ class TWB_AutoBuilder {
                 overflow-y: auto;
                 padding: 12px;
                 font-size: 11px;
-                font-family: 'JetBrains Mono', 'Fira Code', monospace;
+                font-family: 'Courier New', monospace;
                 background: var(--darker);
             }
 
             .twb-log {
                 padding: 8px 0;
                 border-bottom: 1px solid var(--border);
-                line-height: 1.4;
             }
 
             .twb-log__time {
@@ -1130,7 +1134,11 @@ class TWB_AutoBuilder {
                 font-style: italic;
             }
 
-            /* Scrollbar Moderna */
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+
             .twb-panel__content::-webkit-scrollbar,
             .twb-villages__list::-webkit-scrollbar,
             .twb-logs__content::-webkit-scrollbar {
@@ -1147,39 +1155,6 @@ class TWB_AutoBuilder {
             .twb-panel__content::-webkit-scrollbar-track {
                 background: var(--dark);
                 border-radius: 3px;
-            }
-
-            /* Animações CSS 3.0 */
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.7; }
-            }
-
-            @keyframes slideIn {
-                from { transform: translateX(100%); }
-                to { transform: translateX(0); }
-            }
-
-            /* Responsividade */
-            @media (max-height: 800px) {
-                .twb-panel__content { max-height: 55vh; }
-                .twb-villages__list { max-height: 150px; }
-                .twb-logs__content { max-height: 100px; }
-            }
-
-            /* Melhorias de Acessibilidade */
-            .twb-btn:focus-visible,
-            .twb-input:focus-visible {
-                outline: 2px solid var(--primary);
-                outline-offset: 2px;
-            }
-
-            /* Dark Mode Support */
-            @media (prefers-color-scheme: dark) {
-                .twb-panel {
-                    --light: #f1f5f9;
-                    --gray: #94a3b8;
-                }
             }
         `;
 
