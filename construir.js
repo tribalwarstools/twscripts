@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         TW Auto Builder - Global Multivillage (TW Dark) - Híbrido
-// @version      2.5
-// @description  Construtor global: fetch para leitura, iframe para comandos. Painel TW-dark.
+// @name         TW Auto Builder - Global Multivillage (TW Dark) - Híbrido Otimizado
+// @version      2.6
+// @description  Construtor global otimizado: fetch paralelo controlado, iframe serializado, retry + backoff, jitter, intervalos adaptativos
 // @author       You
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        GM_xmlhttpRequest
@@ -18,7 +18,7 @@ class TWAutoBuilder {
             'storage': 'Armazém', 'hide': 'Esconderijo', 'wall': 'Muralha'
         };
 
-        // Defaults
+        // Defaults otimizados
         this.settings = {
             enabled: true,
             checkInterval: 45000,
@@ -34,6 +34,19 @@ class TWAutoBuilder {
             enabledBuildings: {},
             operationMode: 'multivillage',
             multivillageInterval: 15 * 1000,
+            // Novas configurações de otimização
+            maxConcurrentFetches: 3,
+            maxRetries: 3,
+            baseRetryDelay: 2000,
+            jitterRange: 0.3, // ±30% de jitter
+            adaptiveInterval: {
+                enabled: true,
+                baseInterval: 15000,
+                minInterval: 8000,
+                maxInterval: 60000,
+                errorMultiplier: 1.5,
+                successMultiplier: 0.95
+            }
         };
 
         this.isRunning = false;
@@ -45,11 +58,25 @@ class TWAutoBuilder {
         this.selectedVillagesList = [];
         this.villagesCollapsed = false;
         this.saveButtonState = 'normal';
+        
+        // Estatísticas para adaptive interval
+        this.stats = {
+            consecutiveErrors: 0,
+            consecutiveSuccess: 0,
+            totalErrors: 0,
+            totalSuccess: 0,
+            lastErrorTime: 0
+        };
+
+        // Controle de concorrência
+        this.activeFetches = 0;
+        this.fetchQueue = [];
+        this.currentBuild = null;
 
         this.init();
     }
 
-    getCurrentVillageId = () => {
+    getCurrentVillageId() {
         const saved = localStorage.getItem('tw_builder_selected_village');
         if (saved) return parseInt(saved);
         const m = window.location.href.match(/village=(\d+)/);
@@ -57,7 +84,7 @@ class TWAutoBuilder {
     }
 
     async init() {
-        console.log('🏗️ TW Auto Builder - Híbrido iniciado');
+        console.log('🏗️ TW Auto Builder - Híbrido Otimizado iniciado');
         this.createIframe();
         this.loadBuildingSettings();
         await this.loadMyVillages();
@@ -65,55 +92,8 @@ class TWAutoBuilder {
         this.loadRunningState();
     }
 
-    // Carregar estado do botão iniciar/parar do localStorage
-    loadRunningState() {
-        const savedRunningState = localStorage.getItem('tw_builder_running_state');
-        if (savedRunningState === 'true') {
-            this.log('🔄 Retomando estado anterior: Iniciado');
-            this.start();
-        } else {
-            this.log('⏸️ Retomando estado anterior: Parado');
-            this.stop();
-        }
-    }
+    // ========== PERSISTÊNCIA DE CONFIGURAÇÕES ==========
 
-    // Salvar estado do botão iniciar/parar no localStorage
-    saveRunningState() {
-        localStorage.setItem('tw_builder_running_state', this.isRunning.toString());
-        this.log(`💾 Estado salvo: ${this.isRunning ? 'Rodando' : 'Parado'}`);
-    }
-
-    // Load player's villages from map/village.txt
-    async loadMyVillages() {
-        try {
-            const playerId = (window.game_data && game_data.player && game_data.player.id) ? game_data.player.id : null;
-            const res = await fetch('/map/village.txt');
-            const text = await res.text();
-            this.myVillages = text.trim().split('\n').map(line => {
-                const [id, name, x, y, player, points, bonus_id] = line.split(',');
-                return {
-                    id: parseInt(id),
-                    name: decodeURIComponent(name.replace(/\+/g, ' ')),
-                    x: parseInt(x),
-                    y: parseInt(y),
-                    player: parseInt(player),
-                    points: parseInt(points),
-                    bonus_id: bonus_id ? parseInt(bonus_id) : null
-                };
-            }).filter(v => playerId === null ? true : v.player === playerId)
-              .sort((a,b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
-            this.villagesLoaded = true;
-            this.log(`🏘️ ${this.myVillages.length} aldeias carregadas`);
-            this.renderVillageControls();
-        } catch (err) {
-            console.error('Erro ao carregar aldeias', err);
-            this.myVillages = [];
-            this.villagesLoaded = true;
-            this.renderVillageControls();
-        }
-    }
-
-    // ---------- SETTINGS persistence ----------
     loadBuildingSettings() {
         Object.keys(this.buildingsList).forEach(id => {
             const saved = localStorage.getItem(`tw_build_${id}`);
@@ -135,6 +115,10 @@ class TWAutoBuilder {
         
         const savedVillagesCollapsed = localStorage.getItem('tw_builder_villages_collapsed');
         this.villagesCollapsed = savedVillagesCollapsed === 'true';
+
+        // Carregar configurações de concorrência
+        const savedConcurrent = localStorage.getItem('tw_builder_max_concurrent');
+        if (savedConcurrent) this.settings.maxConcurrentFetches = parseInt(savedConcurrent);
     }
 
     saveBuildingSettings() {
@@ -165,63 +149,168 @@ class TWAutoBuilder {
         this.log(`💾 Aldeias selecionadas: ${this.selectedVillagesList.length}`);
     }
 
-    // ---------- iframe para COMANDOS apenas ----------
-    createIframe() {
-        const old = document.getElementById('tw-builder-iframe');
-        if (old) old.remove();
-        this.iframe = document.createElement('iframe');
-        this.iframe.id = 'tw-builder-iframe';
-        this.iframe.style.cssText = 'position:fixed;width:1px;height:1px;border:none;opacity:0;pointer-events:none;z-index:-9999';
-        document.body.appendChild(this.iframe);
+    loadRunningState() {
+        const savedRunningState = localStorage.getItem('tw_builder_running_state');
+        if (savedRunningState === 'true') {
+            this.log('🔄 Retomando estado anterior: Iniciado');
+            this.start();
+        } else {
+            this.log('⏸️ Retomando estado anterior: Parado');
+            this.stop();
+        }
     }
 
-    waitIframeLoad(timeout = 8000) {
-        return new Promise((resolve) => {
-            let done = false;
-            const onload = () => {
-                if (done) return;
-                done = true;
-                cleanup();
-                resolve(true);
-            };
-            const onerror = () => {
-                if (done) return;
-                done = true;
-                cleanup();
-                resolve(false);
-            };
-            const to = setTimeout(() => {
-                if (done) return;
-                done = true;
-                cleanup();
-                resolve(false);
-            }, timeout);
-            const cleanup = () => {
-                clearTimeout(to);
-                this.iframe.removeEventListener('load', onload);
-                this.iframe.removeEventListener('error', onerror);
-            };
-            this.iframe.addEventListener('load', onload);
-            this.iframe.addEventListener('error', onerror);
-        });
+    saveRunningState() {
+        localStorage.setItem('tw_builder_running_state', this.isRunning.toString());
+        this.log(`💾 Estado salvo: ${this.isRunning ? 'Rodando' : 'Parado'}`);
     }
 
-    // ---------- FETCH para LEITURA (MAIS RÁPIDO) ----------
+    // ========== SISTEMA DE CONCORRÊNCIA CONTROLADA ==========
+
+    async executeWithConcurrency(tasks, maxConcurrent = this.settings.maxConcurrentFetches) {
+        const results = [];
+        const executing = new Set();
+        
+        for (let i = 0; i < tasks.length; i++) {
+            if (!this.isRunning) break;
+            
+            const task = tasks[i];
+            if (executing.size >= maxConcurrent) {
+                await Promise.race(executing);
+            }
+            
+            const promise = task().finally(() => {
+                executing.delete(promise);
+            });
+            
+            executing.add(promise);
+            results.push(promise);
+        }
+        
+        return Promise.all(results);
+    }
+
+    // ========== SISTEMA DE RETRY + BACKOFF EXPONENCIAL ==========
+
+    async fetchWithRetry(url, options = {}, retries = this.settings.maxRetries) {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                this.recordSuccess();
+                return await response.text();
+                
+            } catch (error) {
+                this.recordError();
+                
+                if (attempt === retries) {
+                    throw error;
+                }
+                
+                const delay = this.calculateBackoffDelay(attempt);
+                this.log(`⚠️ Tentativa ${attempt}/${retries} falhou, retry em ${delay}ms: ${error.message}`);
+                await this.sleep(delay);
+            }
+        }
+    }
+
+    calculateBackoffDelay(attempt) {
+        const baseDelay = this.settings.baseRetryDelay;
+        const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+        const jitter = exponentialDelay * this.settings.jitterRange * (Math.random() * 2 - 1);
+        return Math.min(exponentialDelay + jitter, 30000); // Max 30s
+    }
+
+    // ========== SISTEMA DE INTERVALO ADAPTATIVO ==========
+
+    recordSuccess() {
+        this.stats.consecutiveSuccess++;
+        this.stats.consecutiveErrors = 0;
+        this.stats.totalSuccess++;
+    }
+
+    recordError() {
+        this.stats.consecutiveErrors++;
+        this.stats.consecutiveSuccess = 0;
+        this.stats.totalErrors++;
+        this.stats.lastErrorTime = Date.now();
+    }
+
+    calculateAdaptiveInterval() {
+        if (!this.settings.adaptiveInterval.enabled) {
+            return this.settings.multivillageInterval;
+        }
+
+        let interval = this.settings.adaptiveInterval.baseInterval;
+
+        // Aumenta intervalo se houver erros consecutivos
+        if (this.stats.consecutiveErrors > 0) {
+            interval *= Math.pow(this.settings.adaptiveInterval.errorMultiplier, this.stats.consecutiveErrors);
+        }
+        
+        // Diminui gradualmente se sucesso consecutivo
+        if (this.stats.consecutiveSuccess > 3) {
+            interval *= Math.pow(this.settings.adaptiveInterval.successMultiplier, Math.min(this.stats.consecutiveSuccess - 3, 10));
+        }
+
+        // Adiciona jitter
+        const jitter = interval * this.settings.jitterRange * (Math.random() * 2 - 1);
+        interval += jitter;
+
+        // Limites
+        interval = Math.max(this.settings.adaptiveInterval.minInterval, 
+                           Math.min(this.settings.adaptiveInterval.maxInterval, interval));
+
+        return Math.floor(interval);
+    }
+
+    // ========== CARREGAMENTO DE ALDEIAS ==========
+
+    async loadMyVillages() {
+        try {
+            const playerId = (window.game_data && game_data.player && game_data.player.id) ? game_data.player.id : null;
+            const res = await fetch('/map/village.txt');
+            const text = await res.text();
+            this.myVillages = text.trim().split('\n').map(line => {
+                const [id, name, x, y, player, points, bonus_id] = line.split(',');
+                return {
+                    id: parseInt(id),
+                    name: decodeURIComponent(name.replace(/\+/g, ' ')),
+                    x: parseInt(x),
+                    y: parseInt(y),
+                    player: parseInt(player),
+                    points: parseInt(points),
+                    bonus_id: bonus_id ? parseInt(bonus_id) : null
+                };
+            }).filter(v => playerId === null ? true : v.player === playerId)
+              .sort((a,b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+            this.villagesLoaded = true;
+            this.log(`🏘️ ${this.myVillages.length} aldeias carregadas`);
+            this.renderVillageControls();
+        } catch (err) {
+            console.error('Erro ao carregar aldeias', err);
+            this.myVillages = [];
+            this.villagesLoaded = true;
+            this.renderVillageControls();
+        }
+    }
+
+    // ========== FETCH PARALELO OTIMIZADO ==========
+
     async fetchConstructionPage(villageId) {
         try {
             const url = `/game.php?village=${villageId}&screen=main`;
-            const response = await fetch(url, {
-                credentials: 'include',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            const html = await response.text();
+            const html = await this.fetchWithRetry(url, { timeout: 10000 });
             return this.parseBuildingsFromHTML(html);
         } catch (error) {
             this.log(`❌ Erro fetch construção vila ${villageId}: ${error.message}`);
@@ -232,18 +321,7 @@ class TWAutoBuilder {
     async fetchQueueStatus(villageId) {
         try {
             const url = `/game.php?village=${villageId}&screen=main`;
-            const response = await fetch(url, {
-                credentials: 'include',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            const html = await response.text();
+            const html = await this.fetchWithRetry(url, { timeout: 8000 });
             return this.parseQueueFromHTML(html);
         } catch (error) {
             this.log(`❌ Erro fetch fila vila ${villageId}: ${error.message}`);
@@ -303,22 +381,77 @@ class TWAutoBuilder {
         return m ? parseInt(m[1]) : 0;
     }
 
-    // ---------- IFRAME apenas para COMANDOS ----------
-    async buildViaIframe(building) {
+    // Busca paralela para múltiplas aldeias
+    async fetchMultipleVillagesData(villageIds) {
+        const constructionTasks = villageIds.map(vid => 
+            () => this.fetchConstructionPage(vid)
+        );
+        
+        const queueTasks = villageIds.map(vid => 
+            () => this.fetchQueueStatus(vid)
+        );
+
+        this.log(`🔄 Buscando dados de ${villageIds.length} aldeias (concorrência: ${this.settings.maxConcurrentFetches})`);
+        
+        const [buildingsResults, queueResults] = await Promise.all([
+            this.executeWithConcurrency(constructionTasks),
+            this.executeWithConcurrency(queueTasks)
+        ]);
+
+        // Combinar resultados
+        const results = [];
+        for (let i = 0; i < villageIds.length; i++) {
+            results.push({
+                villageId: villageIds[i],
+                buildings: buildingsResults[i],
+                queueCount: queueResults[i]
+            });
+        }
+
+        return results;
+    }
+
+    // ========== IFRAME SERIALIZADO + LIMPEZA ==========
+
+    createIframe() {
+        const old = document.getElementById('tw-builder-iframe');
+        if (old) old.remove();
+        this.iframe = document.createElement('iframe');
+        this.iframe.id = 'tw-builder-iframe';
+        this.iframe.style.cssText = 'position:fixed;width:1px;height:1px;border:none;opacity:0;pointer-events:none;z-index:-9999';
+        document.body.appendChild(this.iframe);
+    }
+
+    async buildViaIframe(building, village) {
         if (!building.build_link) {
-            this.log(`❌ Sem link para ${building.name}`);
+            this.log(`❌ Sem link para ${building.name} em ${village.name}`);
             return false;
         }
+
+        // Serialização: espera build anterior terminar
+        while (this.currentBuild) {
+            await this.sleep(100);
+            if (!this.isRunning) return false;
+        }
+
         try {
-            this.log(`🏗️ Tentando construir ${building.name} (atual: ${building.level})`);
+            this.currentBuild = { building, village };
+            this.log(`🏗️ Tentando construir ${building.name} (nível ${building.level}) em ${village.name}`);
             
-            // Usa iframe apenas para executar o comando
+            // Limpa iframe antes do uso
+            this.iframe.src = 'about:blank';
+            await this.sleep(100);
+            
+            // Executa comando
             this.iframe.src = building.build_link;
             const ok = await this.waitIframeLoad(8000);
             
+            // Limpeza pós-uso
+            await this.sleep(800);
+            this.iframe.src = 'about:blank';
+            
             if (ok) {
-                await this.sleep(1200);
-                this.log(`✅ Comando enviado: ${building.name}`);
+                this.log(`✅ Comando enviado: ${building.name} em ${village.name}`);
                 return true;
             } else {
                 this.log('❌ Timeout no iframe');
@@ -327,8 +460,43 @@ class TWAutoBuilder {
         } catch (e) {
             this.log('❌ Erro buildViaIframe: ' + e.message);
             return false;
+        } finally {
+            this.currentBuild = null;
         }
     }
+
+    waitIframeLoad(timeout = 8000) {
+        return new Promise((resolve) => {
+            let done = false;
+            const onload = () => {
+                if (done) return;
+                done = true;
+                cleanup();
+                resolve(true);
+            };
+            const onerror = () => {
+                if (done) return;
+                done = true;
+                cleanup();
+                resolve(false);
+            };
+            const to = setTimeout(() => {
+                if (done) return;
+                done = true;
+                cleanup();
+                resolve(false);
+            }, timeout);
+            const cleanup = () => {
+                clearTimeout(to);
+                this.iframe.removeEventListener('load', onload);
+                this.iframe.removeEventListener('error', onerror);
+            };
+            this.iframe.addEventListener('load', onload);
+            this.iframe.addEventListener('error', onerror);
+        });
+    }
+
+    // ========== LÓGICA DE CONSTRUÇÃO ==========
 
     findNextBuilding(buildings) {
         for (const id of this.settings.priorityBuildings) {
@@ -344,7 +512,8 @@ class TWAutoBuilder {
         return null;
     }
 
-    // ---------- Main multivillage loop (HÍBRIDO) ----------
+    // ========== LOOP PRINCIPAL OTIMIZADO ==========
+
     async loopWorker() {
         if (!this.selectedVillagesList || this.selectedVillagesList.length === 0) {
             this.log('⚠️ Nenhuma aldeia marcada — marque ao menos uma para iniciar.');
@@ -354,57 +523,82 @@ class TWAutoBuilder {
             return;
         }
 
-        this.log(`🔄 Iniciando execução para ${this.selectedVillagesList.length} aldeias (Modo Híbrido)`);
+        this.log(`🔄 Iniciando execução para ${this.selectedVillagesList.length} aldeias (Modo Híbrido Otimizado)`);
         
         while (this.isRunning) {
-            for (let i = 0; i < this.selectedVillagesList.length; i++) {
-                if (!this.isRunning) break;
+            const startTime = Date.now();
+            let constructionsStarted = 0;
+            let errorsCount = 0;
+
+            try {
+                // ✅ FETCH PARALELO para todas as aldeias
+                const villagesData = await this.fetchMultipleVillagesData(this.selectedVillagesList);
                 
-                const vid = this.selectedVillagesList[i];
-                const village = this.myVillages.find(v => v.id === vid) || {id:vid, name: 'Aldeia ' + vid};
-                this.log(`🏘️ Processando ${village.name} (${i+1}/${this.selectedVillagesList.length})`);
-                
-                // ✅ USANDO FETCH PARA LEITURA (RÁPIDO)
-                const buildings = await this.fetchConstructionPage(vid);
-                if (!buildings || Object.keys(buildings).length === 0) {
-                    this.log(`❌ Não há dados de construção para ${village.name}`);
-                    await this.sleep(this.settings.multivillageInterval);
-                    continue;
-                }
-                
-                // ✅ USANDO FETCH PARA VERIFICAR FILA
-                const queueCount = await this.fetchQueueStatus(vid);
-                const availableSlots = Math.max(0, this.settings.maxQueueSlots - queueCount);
-                if (availableSlots <= 0) {
-                    this.log(`⏳ Fila cheia em ${village.name} (${queueCount}/${this.settings.maxQueueSlots})`);
-                    await this.sleep(this.settings.multivillageInterval);
-                    continue;
-                }
-                
-                const next = this.findNextBuilding(buildings);
-                if (next) {
-                    // ✅ USANDO IFRAME APENAS PARA COMANDOS
-                    const ok = await this.buildViaIframe(next);
-                    if (ok) {
-                        this.log(`✅ ${next.name} iniciado em ${village.name}`);
-                    } else {
-                        this.log(`❌ Falha ao iniciar ${next.name} em ${village.name}`);
+                // Processa resultados sequencialmente
+                for (const data of villagesData) {
+                    if (!this.isRunning) break;
+                    
+                    const village = this.myVillages.find(v => v.id === data.villageId) || 
+                                  {id: data.villageId, name: 'Aldeia ' + data.villageId};
+                    
+                    if (!data.buildings || Object.keys(data.buildings).length === 0) {
+                        this.log(`❌ Sem dados de construção para ${village.name}`);
+                        errorsCount++;
+                        continue;
                     }
-                } else {
-                    this.log(`📭 Nenhuma construção disponível em ${village.name}`);
+                    
+                    const availableSlots = Math.max(0, this.settings.maxQueueSlots - (data.queueCount || 0));
+                    if (availableSlots <= 0) {
+                        this.log(`⏳ Fila cheia em ${village.name} (${data.queueCount}/${this.settings.maxQueueSlots})`);
+                        continue;
+                    }
+                    
+                    const nextBuilding = this.findNextBuilding(data.buildings);
+                    if (nextBuilding) {
+                        // ✅ IFRAME SERIALIZADO para comandos
+                        const success = await this.buildViaIframe(nextBuilding, village);
+                        if (success) {
+                            constructionsStarted++;
+                            this.log(`✅ ${nextBuilding.name} iniciado em ${village.name}`);
+                        } else {
+                            errorsCount++;
+                        }
+                        
+                        // Pequena pausa entre construções na mesma aldeia
+                        await this.sleep(1000);
+                    } else {
+                        this.log(`📭 Nenhuma construção disponível em ${village.name}`);
+                    }
                 }
                 
-                await this.sleep(this.settings.multivillageInterval);
+            } catch (error) {
+                this.log(`❌ Erro no processamento em lote: ${error.message}`);
+                errorsCount++;
+            }
+
+            // Atualiza estatísticas e calcula intervalo adaptativo
+            if (errorsCount > 0) {
+                this.log(`⚠️ ${errorsCount} erro(s) nesta rodada`);
             }
             
-            await this.sleep(Math.max(1000, Math.floor(this.settings.multivillageInterval / 2)));
+            if (constructionsStarted > 0) {
+                this.log(`🏗️ ${constructionsStarted} construção(ões) iniciadas`);
+            }
+
+            const adaptiveInterval = this.calculateAdaptiveInterval();
+            const elapsed = Date.now() - startTime;
+            const waitTime = Math.max(2000, adaptiveInterval - elapsed);
+            
+            this.log(`⏱️ Próxima verificação em ${Math.round(waitTime/1000)}s (adaptativo: ${Math.round(adaptiveInterval/1000)}s)`);
+            
+            await this.sleep(waitTime);
         }
+        
         this.log('⏸️ Loop principal finalizado');
     }
 
-    sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    // ========== CONTROLES PRINCIPAIS ==========
 
-    // ---------- control API ----------
     start() {
         if (this.isRunning) { this.log('⚠️ Já está rodando'); return; }
         this.saveVillageSelection();
@@ -416,7 +610,7 @@ class TWAutoBuilder {
         this.updateStatus();
         this.saveRunningState();
         this.loopPromise = this.loopWorker();
-        this.log('▶️ Auto Builder iniciado (Modo Híbrido - Fetch+Iframe)');
+        this.log('▶️ Auto Builder iniciado (Modo Híbrido Otimizado)');
     }
 
     stop() {
@@ -429,6 +623,12 @@ class TWAutoBuilder {
 
     toggle() { this.isRunning ? this.stop() : this.start(); }
 
+    sleep(ms) { 
+        return new Promise(r => setTimeout(r, ms)); 
+    }
+
+    // ========== INTERFACE DO USUÁRIO ==========
+
     updateStatus() {
         const statusText = document.getElementById('builder-status-text');
         const toggleBtn = document.getElementById('twc-toggle-btn');
@@ -439,7 +639,6 @@ class TWAutoBuilder {
         }
     }
 
-    // ---------- Save button state management ----------
     updateSaveButtonState(state) {
         this.saveButtonState = state;
         const saveBtn = document.getElementById('twc-save-btn');
@@ -481,14 +680,21 @@ class TWAutoBuilder {
         if (iv) {
             const v = parseInt(iv.value) || this.settings.multivillageInterval / 1000;
             this.settings.multivillageInterval = v * 1000;
+            this.settings.adaptiveInterval.baseInterval = v * 1000;
             localStorage.setItem('tw_builder_multivillage_interval', String(this.settings.multivillageInterval));
+        }
+        
+        // Salvar configurações de concorrência
+        const concInput = document.getElementById('twc-concurrency-input');
+        if (concInput) {
+            this.settings.maxConcurrentFetches = parseInt(concInput.value) || 3;
+            localStorage.setItem('tw_builder_max_concurrent', String(this.settings.maxConcurrentFetches));
         }
         
         this.log('💾 Configurações salvas');
         this.updateSaveButtonState('saved');
     }
 
-    // ---------- Panel toggle functionality ----------
     togglePanel() {
         const panel = document.getElementById('tw-auto-builder-panel');
         if (panel) {
@@ -506,7 +712,6 @@ class TWAutoBuilder {
         }
     }
 
-    // ---------- Villages collapse functionality ----------
     toggleVillages() {
         this.villagesCollapsed = !this.villagesCollapsed;
         localStorage.setItem('tw_builder_villages_collapsed', this.villagesCollapsed);
@@ -528,7 +733,6 @@ class TWAutoBuilder {
         }
     }
 
-    // ---------- UI / Panel ----------
     createControlPanel() {
         const existing = document.getElementById('tw-auto-builder-panel');
         if (existing) existing.remove();
@@ -557,6 +761,10 @@ class TWAutoBuilder {
         
         const iv = document.getElementById('twc-interval-input');
         if (iv) iv.value = String(Math.floor(this.settings.multivillageInterval / 1000));
+        
+        const concInput = document.getElementById('twc-concurrency-input');
+        if (concInput) concInput.value = String(this.settings.maxConcurrentFetches);
+        
         this.updateStatus();
         this.updateSaveButtonState('normal');
     }
@@ -564,7 +772,7 @@ class TWAutoBuilder {
     getPanelHTML() {
         return `
             <div class="twc-toggle-tab" id="twc-toggle-tab">${this.panelHidden ? 'Abrir' : 'Fechar'}</div>
-            <div class="twc-header">🏹 Construtor Tribal - Híbrido (Fetch+Iframe)</div>
+            <div class="twc-header">🏹 Construtor Tribal - Híbrido Otimizado</div>
             <div class="twc-grid">
                 <div class="twc-column twc-column-left">
                     <div class="twc-section-title">🏗️ Edifícios (nível alvo)</div>
@@ -588,9 +796,10 @@ class TWAutoBuilder {
                 </div>
             </div>
             <div class="twc-controls-footer">
-                <div style="display:flex;gap:8px;align-items:center;">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <div class="twc-status-item">Status: <strong id="builder-status-text">${this.isRunning ? 'Rodando' : 'Parado'}</strong></div>
-                    <div class="twc-status-item">Intervalo(vil): <input id="twc-interval-input" class="twc-input-small" type="number" min="5" value="${Math.floor(this.settings.multivillageInterval/1000)}">s</div>
+                    <div class="twc-status-item">Intervalo: <input id="twc-interval-input" class="twc-input-small" type="number" min="5" value="${Math.floor(this.settings.multivillageInterval/1000)}">s</div>
+                    <div class="twc-status-item">Concorrência: <input id="twc-concurrency-input" class="twc-input-small" type="number" min="1" max="5" value="${this.settings.maxConcurrentFetches}"></div>
                 </div>
                 <div class="twc-buttons">
                     <button id="twc-save-btn" class="twc-button twc-button-save">💾 Salvar</button>
@@ -807,7 +1016,6 @@ class TWAutoBuilder {
             .twc-log-entry{margin-bottom:6px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02);}
             .scrollbar-custom::-webkit-scrollbar{width:8px;}
             .scrollbar-custom::-webkit-scrollbar-thumb{background:rgba(120,80,40,0.7);border-radius:6px;}
-            /*input[type="checkbox"]{accent-color:#c08b4b;transform:scale(1.05);}*/
         `;
         document.head.appendChild(style);
     }
@@ -816,6 +1024,3 @@ class TWAutoBuilder {
 // instantiate and expose
 const builder = new TWAutoBuilder();
 window.builder = builder;
-
-
-
