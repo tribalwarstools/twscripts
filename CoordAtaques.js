@@ -21,6 +21,38 @@
         snob: 35        // Nobre
     };
 
+    // === FUNÇÕES AUXILIARES DE VALIDAÇÃO ===
+    
+    // Valida formato de coordenada (XXX|YYY)
+    function validarCoordenada(coord) {
+        return /^\d{1,3}\|\d{1,3}$/.test(coord);
+    }
+    
+    // Valida formato de data/hora (DD/MM/YYYY HH:MM:SS)
+    function validarDataHora(dataHoraStr) {
+        return /^\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}:\d{2}$/.test(dataHoraStr);
+    }
+    
+    // Converte string de data para objeto Date (FUNÇÃO UNIFICADA)
+    function parseDataHora(dataHoraStr) {
+        if (!validarDataHora(dataHoraStr)) {
+            throw new Error(`Formato de data inválido: ${dataHoraStr}`);
+        }
+        
+        const [data, tempo] = dataHoraStr.split(' ');
+        const [dia, mes, ano] = data.split('/').map(Number);
+        const [hora, minuto, segundo] = tempo.split(':').map(Number);
+        
+        const date = new Date(ano, mes - 1, dia, hora, minuto, segundo);
+        
+        // Valida se a data é válida
+        if (isNaN(date.getTime())) {
+            throw new Error(`Data inválida: ${dataHoraStr}`);
+        }
+        
+        return date;
+    }
+
     // Calcula distância entre coordenadas
     function calcularDistancia(coord1, coord2) {
         const [x1, y1] = coord1.split('|').map(Number);
@@ -37,14 +69,6 @@
         const fatorBonus = 1 + (bonusSinal / 100);
         const tempoMinutos = (distancia * velocidadeBase) / fatorBonus;
         return tempoMinutos * 60000; // Converter para milissegundos
-    }
-
-    // Converte string de data para objeto Date
-    function parseDataHora(dataHoraStr) {
-        const [data, tempo] = dataHoraStr.split(' ');
-        const [dia, mes, ano] = data.split('/').map(Number);
-        const [hora, minuto, segundo] = tempo.split(':').map(Number);
-        return new Date(ano, mes - 1, dia, hora, minuto, segundo);
     }
 
     // Formata data para exibição
@@ -108,18 +132,8 @@
 
     // --- Ordem das unidades da MAIS LENTA para a MAIS RÁPIDA ---
     const unidadesPorVelocidade = [
-        'snob',      // Nobre — 35 min (mais lento)
-        'catapult',  // Catapulta — 30 min
-        'ram',       // Ariete — 30 min
-        'sword',     // Espadachim — 22 min
-        'spear',     // Lanceiro — 18 min
-        'archer',    // Arqueiro — 18 min (se houver arqueiros)
-        'axe',       // Machado — 18 min
-        'heavy',     // Cavalaria Pesada — 11 min
-        'light',     // Cavalaria Leve — 10 min
-        'marcher',   // Arqueiro a Cavalo — 10 min (se houver arqueiros)
-        'knight',    // Paladino — 10 min
-        'spy'        // Batedor — 9 min (mais rápido)
+        'snob', 'catapult', 'ram', 'sword', 'spear', 'archer', 'axe',
+        'heavy', 'light', 'marcher', 'knight', 'spy'
     ];
 
     // --- Função para encontrar a unidade mais lenta presente ---
@@ -129,7 +143,7 @@
                 return unidade;
             }
         }
-        return 'spy'; // fallback
+        return null; // Retorna null se não houver tropas
     }
 
     // --- Cria painel na tela ---
@@ -198,12 +212,12 @@
             
             <div id="campoHoraChegada">
                 <label style="font-weight:600; color:#2c3e50;">⏰ Hora de Chegada:</label>
-                <input id="horaChegada" type="text" style="width:100%; padding:6px; margin-top:4px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;" placeholder="13/11/2025 18:30:00">
+                <input id="horaChegada" type="text" style="width:100%; padding:6px; margin-top:4px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;" placeholder="15/11/2025 18:30:00">
             </div>
             
             <div id="campoHoraLancamento" style="display:none;">
                 <label style="font-weight:600; color:#2c3e50;">🚀 Hora de Lançamento:</label>
-                <input id="horaLancamento" type="text" style="width:100%; padding:6px; margin-top:4px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;" placeholder="13/11/2025 17:45:00">
+                <input id="horaLancamento" type="text" style="width:100%; padding:6px; margin-top:4px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:3px; font-size:11px;" placeholder="15/11/2025 17:45:00">
             </div>
         </div>
         
@@ -319,7 +333,6 @@
             if (configSalva) {
                 const config = JSON.parse(configSalva);
                 
-                // Preenche os campos com os valores salvos
                 if (config.destinos) panel.querySelector('#destinos').value = config.destinos;
                 if (config.origens) panel.querySelector('#origens').value = config.origens;
                 if (config.tipoCalculo) panel.querySelector('#tipoCalculo').value = config.tipoCalculo;
@@ -328,7 +341,6 @@
                 if (config.horaChegada) panel.querySelector('#horaChegada').value = config.horaChegada;
                 if (config.horaLancamento) panel.querySelector('#horaLancamento').value = config.horaLancamento;
                 
-                // Preenche as tropas
                 if (config.tropas) {
                     for (const [unidade, quantidade] of Object.entries(config.tropas)) {
                         const input = document.getElementById(unidade);
@@ -336,9 +348,7 @@
                     }
                 }
                 
-                // Atualiza a visibilidade dos campos de hora
                 panel.querySelector('#tipoCalculo').dispatchEvent(new Event('change'));
-                
                 console.log('✅ Configurações carregadas!');
             }
         } catch (error) {
@@ -358,161 +368,6 @@
         } else {
             campoChegada.style.display = 'none';
             campoLancamento.style.display = 'block';
-        }
-    };
-
-    // --- Gera tabela com ORDENAÇÃO FLEXÍVEL CORRIGIDA ---
-    panel.querySelector('#gerar').onclick = () => {
-        const origens = panel.querySelector('#origens').value.trim().split(/\s+/);
-        const destinos = panel.querySelector('#destinos').value.trim().split(/\s+/);
-        const tipoCalculo = panel.querySelector('#tipoCalculo').value;
-        const tipoOrdenacao = panel.querySelector('#tipoOrdenacao').value;
-        const bonusSinal = parseInt(panel.querySelector('#bonusSinal').value) || 0;
-        const tropas = getTropas();
-        
-        let horaBase;
-        if (tipoCalculo === 'chegada') {
-            horaBase = panel.querySelector('#horaChegada').value.trim();
-            if (!horaBase) {
-                alert('❌ Informe a hora de chegada!');
-                return;
-            }
-        } else {
-            horaBase = panel.querySelector('#horaLancamento').value.trim();
-            if (!horaBase) {
-                alert('❌ Informe a hora de lançamento!');
-                return;
-            }
-        }
-
-        // Array para armazenar todas as combinações
-        const combinacoes = [];
-        
-        // FUNÇÃO CORRIGIDA para converter data/hora para timestamp
-        function converterParaTimestamp(dataHoraStr) {
-            const [data, tempo] = dataHoraStr.split(' ');
-            const [dia, mes, ano] = data.split('/').map(Number);
-            const [hora, minuto, segundo] = tempo.split(':').map(Number);
-            return new Date(ano, mes - 1, dia, hora, minuto, segundo).getTime();
-        }
-        
-        for (const o of origens) {
-            const vid = villageMap[o];
-            if (!vid) {
-                console.warn(`Coordenada ${o} não encontrada no mapa`);
-                continue;
-            }
-            
-            for (const d of destinos) {
-                const [x,y] = d.split('|');
-                
-                const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
-                let horaLancamento, horaChegada;
-                
-                if (tipoCalculo === 'chegada') {
-                    horaLancamento = calcularHorarioLancamento(o, d, horaBase, tropas, bonusSinal);
-                    horaChegada = horaBase;
-                } else {
-                    horaLancamento = horaBase;
-                    horaChegada = calcularHorarioChegada(o, d, horaBase, tropas, bonusSinal);
-                }
-                
-                // Calcula distância para ordenação
-                const distancia = calcularDistancia(o, d);
-                
-                // CORREÇÃO: Usar a função corrigida para converter datas
-                combinacoes.push({
-                    origem: o,
-                    destino: d,
-                    horaLancamento: horaLancamento,
-                    horaChegada: horaChegada,
-                    distancia: distancia,
-                    timestampLancamento: converterParaTimestamp(horaLancamento), // CORRIGIDO
-                    timestampChegada: converterParaTimestamp(horaChegada),       // CORRIGIDO
-                    vid: vid,
-                    x: x,
-                    y: y
-                });
-            }
-        }
-        
-        // APLICA ORDENAÇÃO CONFORME SELECIONADO
-        switch(tipoOrdenacao) {
-            case 'lancamento':
-                combinacoes.sort((a, b) => a.timestampLancamento - b.timestampLancamento);
-                break;
-            case 'chegada':
-                combinacoes.sort((a, b) => a.timestampChegada - b.timestampChegada);
-                break;
-            case 'distancia':
-                combinacoes.sort((a, b) => a.distancia - b.distancia);
-                break;
-            case 'digitacao':
-            default:
-                // Mantém a ordem original (digitação)
-                break;
-        }
-        
-        let out = `[table][**]Unidade[||]Origem[||]Destino[||]Lançamento[||]Chegada[||]Enviar[/**]\n`;
-        
-        combinacoes.forEach((comb, index) => {
-            let qs = Object.entries(tropas).map(([k,v])=>`att_${k}=${v}`).join('&');
-            const link = `https://${location.host}/game.php?village=${comb.vid}&screen=place&x=${comb.x}&y=${comb.y}&from=simulator&${qs}`;
-            const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
-            
-            out += `[*][unit]${unidadeMaisLenta}[/unit] [|] ${comb.origem} [|] ${comb.destino} [|] ${comb.horaLancamento} [|] ${comb.horaChegada} [|] [url=${link}]ENVIAR[/url]\n`;
-        });
-        
-        out += `[/table]`;
-        panel.querySelector('#saida').value = out;
-    };
-
-    // --- Botão Copiar BBCode ---
-    panel.querySelector('#copiar').onclick = () => {
-        const saida = panel.querySelector('#saida');
-        if (saida.value.trim() === '') {
-            alert('❌ Nenhum BBCode para copiar! Gere o código primeiro.');
-            return;
-        }
-        
-        saida.select();
-        saida.setSelectionRange(0, 99999);
-        
-        try {
-            navigator.clipboard.writeText(saida.value).then(() => {
-                mostrarMensagem('✅ BBCode copiado!', '#27ae60');
-            }).catch(err => {
-                document.execCommand('copy');
-                mostrarMensagem('✅ BBCode copiado!', '#27ae60');
-            });
-        } catch (err) {
-            document.execCommand('copy');
-            mostrarMensagem('✅ BBCode copiado!', '#27ae60');
-        }
-    };
-
-    // --- Botão Salvar ---
-    panel.querySelector('#salvar').onclick = () => {
-        // Cria objeto com todas as configurações
-        const config = {
-            destinos: panel.querySelector('#destinos').value,
-            origens: panel.querySelector('#origens').value,
-            tipoCalculo: panel.querySelector('#tipoCalculo').value,
-            bonusSinal: panel.querySelector('#bonusSinal').value,
-            tipoOrdenacao: panel.querySelector('#tipoOrdenacao').value,
-            horaChegada: panel.querySelector('#horaChegada').value,
-            horaLancamento: panel.querySelector('#horaLancamento').value,
-            tropas: getTropas()
-        };
-        
-        // Salva no localStorage
-        try {
-            localStorage.setItem('twPanelConfig', JSON.stringify(config));
-            mostrarMensagem('✅ Configurações salvas!', '#8e44ad');
-            console.log('Configurações salvas:', config);
-        } catch (error) {
-            mostrarMensagem('❌ Erro ao salvar configurações!', '#e74c3c');
-            console.error('Erro ao salvar:', error);
         }
     };
 
@@ -541,6 +396,209 @@
             alertDiv.remove();
         }, 1500);
     }
+
+    // --- Gera tabela com VALIDAÇÃO COMPLETA ---
+    panel.querySelector('#gerar').onclick = () => {
+        try {
+            // Pega e valida destinos
+            const destinosRaw = panel.querySelector('#destinos').value.trim();
+            if (!destinosRaw) {
+                mostrarMensagem('❌ Informe pelo menos um destino!', '#e74c3c');
+                return;
+            }
+            const destinos = destinosRaw.split(/\s+/);
+            
+            // Valida formato das coordenadas de destino
+            const destinosInvalidos = destinos.filter(d => !validarCoordenada(d));
+            if (destinosInvalidos.length > 0) {
+                mostrarMensagem(`❌ Coordenadas inválidas: ${destinosInvalidos.join(', ')}`, '#e74c3c');
+                return;
+            }
+            
+            // Pega e valida origens
+            const origensRaw = panel.querySelector('#origens').value.trim();
+            if (!origensRaw) {
+                mostrarMensagem('❌ Informe pelo menos uma origem!', '#e74c3c');
+                return;
+            }
+            const origens = origensRaw.split(/\s+/);
+            
+            // Valida formato das coordenadas de origem
+            const origensInvalidas = origens.filter(o => !validarCoordenada(o));
+            if (origensInvalidas.length > 0) {
+                mostrarMensagem(`❌ Coordenadas inválidas: ${origensInvalidas.join(', ')}`, '#e74c3c');
+                return;
+            }
+            
+            const tipoCalculo = panel.querySelector('#tipoCalculo').value;
+            const tipoOrdenacao = panel.querySelector('#tipoOrdenacao').value;
+            const bonusSinal = parseInt(panel.querySelector('#bonusSinal').value) || 0;
+            const tropas = getTropas();
+            
+            // Valida se há tropas selecionadas
+            const unidadeMaisLenta = getUnidadeMaisLenta(tropas);
+            if (!unidadeMaisLenta) {
+                mostrarMensagem('❌ Selecione pelo menos uma tropa!', '#e74c3c');
+                return;
+            }
+            
+            // Pega e valida hora base
+            let horaBase;
+            if (tipoCalculo === 'chegada') {
+                horaBase = panel.querySelector('#horaChegada').value.trim();
+                if (!horaBase) {
+                    mostrarMensagem('❌ Informe a hora de chegada!', '#e74c3c');
+                    return;
+                }
+            } else {
+                horaBase = panel.querySelector('#horaLancamento').value.trim();
+                if (!horaBase) {
+                    mostrarMensagem('❌ Informe a hora de lançamento!', '#e74c3c');
+                    return;
+                }
+            }
+            
+            // Valida formato da data/hora
+            if (!validarDataHora(horaBase)) {
+                mostrarMensagem('❌ Formato de data inválido! Use: DD/MM/AAAA HH:MM:SS', '#e74c3c');
+                return;
+            }
+
+            // Array para armazenar todas as combinações
+            const combinacoes = [];
+            const coordenadasNaoEncontradas = [];
+            
+            for (const o of origens) {
+                const vid = villageMap[o];
+                if (!vid) {
+                    coordenadasNaoEncontradas.push(o);
+                    continue;
+                }
+                
+                for (const d of destinos) {
+                    const [x, y] = d.split('|');
+                    
+                    let horaLancamento, horaChegada;
+                    
+                    if (tipoCalculo === 'chegada') {
+                        horaLancamento = calcularHorarioLancamento(o, d, horaBase, tropas, bonusSinal);
+                        horaChegada = horaBase;
+                    } else {
+                        horaLancamento = horaBase;
+                        horaChegada = calcularHorarioChegada(o, d, horaBase, tropas, bonusSinal);
+                    }
+                    
+                    const distancia = calcularDistancia(o, d);
+                    
+                    combinacoes.push({
+                        origem: o,
+                        destino: d,
+                        horaLancamento: horaLancamento,
+                        horaChegada: horaChegada,
+                        distancia: distancia,
+                        timestampLancamento: parseDataHora(horaLancamento).getTime(),
+                        timestampChegada: parseDataHora(horaChegada).getTime(),
+                        vid: vid,
+                        x: x,
+                        y: y
+                    });
+                }
+            }
+            
+            // Alerta sobre coordenadas não encontradas
+            if (coordenadasNaoEncontradas.length > 0) {
+                console.warn('⚠️ Coordenadas não encontradas no mapa:', coordenadasNaoEncontradas.join(', '));
+                mostrarMensagem(`⚠️ ${coordenadasNaoEncontradas.length} coordenada(s) não encontrada(s)`, '#f39c12');
+            }
+            
+            // Verifica se há combinações válidas
+            if (combinacoes.length === 0) {
+                mostrarMensagem('❌ Nenhuma combinação válida foi gerada!', '#e74c3c');
+                return;
+            }
+            
+            // APLICA ORDENAÇÃO CONFORME SELECIONADO
+            switch(tipoOrdenacao) {
+                case 'lancamento':
+                    combinacoes.sort((a, b) => a.timestampLancamento - b.timestampLancamento);
+                    break;
+                case 'chegada':
+                    combinacoes.sort((a, b) => a.timestampChegada - b.timestampChegada);
+                    break;
+                case 'distancia':
+                    combinacoes.sort((a, b) => a.distancia - b.distancia);
+                    break;
+                case 'digitacao':
+                default:
+                    // Mantém a ordem original (digitação)
+                    break;
+            }
+            
+            let out = `[table][**]Unidade[||]Origem[||]Destino[||]Lançamento[||]Chegada[||]Enviar[/**]\n`;
+            
+            combinacoes.forEach((comb) => {
+                let qs = Object.entries(tropas).map(([k,v])=>`att_${k}=${v}`).join('&');
+                const link = `https://${location.host}/game.php?village=${comb.vid}&screen=place&x=${comb.x}&y=${comb.y}&from=simulator&${qs}`;
+                
+                out += `[*][unit]${unidadeMaisLenta}[/unit] [|] ${comb.origem} [|] ${comb.destino} [|] ${comb.horaLancamento} [|] ${comb.horaChegada} [|] [url=${link}]ENVIAR[/url]\n`;
+            });
+            
+            out += `[/table]`;
+            panel.querySelector('#saida').value = out;
+            
+            mostrarMensagem(`✅ ${combinacoes.length} ataque(s) gerado(s)!`, '#27ae60');
+            
+        } catch (error) {
+            console.error('❌ Erro ao gerar BBCode:', error);
+            mostrarMensagem(`❌ Erro: ${error.message}`, '#e74c3c');
+        }
+    };
+
+    // --- Botão Copiar BBCode ---
+    panel.querySelector('#copiar').onclick = () => {
+        const saida = panel.querySelector('#saida');
+        if (saida.value.trim() === '') {
+            mostrarMensagem('❌ Nenhum BBCode para copiar! Gere o código primeiro.', '#e74c3c');
+            return;
+        }
+        
+        saida.select();
+        saida.setSelectionRange(0, 99999);
+        
+        try {
+            navigator.clipboard.writeText(saida.value).then(() => {
+                mostrarMensagem('✅ BBCode copiado!', '#27ae60');
+            }).catch(err => {
+                document.execCommand('copy');
+                mostrarMensagem('✅ BBCode copiado!', '#27ae60');
+            });
+        } catch (err) {
+            document.execCommand('copy');
+            mostrarMensagem('✅ BBCode copiado!', '#27ae60');
+        }
+    };
+
+    // --- Botão Salvar ---
+    panel.querySelector('#salvar').onclick = () => {
+        const config = {
+            destinos: panel.querySelector('#destinos').value,
+            origens: panel.querySelector('#origens').value,
+            tipoCalculo: panel.querySelector('#tipoCalculo').value,
+            bonusSinal: panel.querySelector('#bonusSinal').value,
+            tipoOrdenacao: panel.querySelector('#tipoOrdenacao').value,
+            horaChegada: panel.querySelector('#horaChegada').value,
+            horaLancamento: panel.querySelector('#horaLancamento').value,
+            tropas: getTropas()
+        };
+        
+        try {
+            localStorage.setItem('twPanelConfig', JSON.stringify(config));
+            mostrarMensagem('✅ Configurações salvas!', '#8e44ad');
+        } catch (error) {
+            mostrarMensagem('❌ Erro ao salvar configurações!', '#e74c3c');
+            console.error('Erro ao salvar:', error);
+        }
+    };
 
     // --- Botão Fechar ---
     panel.querySelector('#fechar').onclick = () => {
@@ -636,4 +694,6 @@
     setTimeout(() => {
         panel.querySelector('#destinos').focus();
     }, 100);
+
+    console.log('✅ Coordenador de Ataques TW carregado com sucesso!');
 })();
