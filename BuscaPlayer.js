@@ -58,7 +58,7 @@
             border: 2px solid #8b5a2b;
             border-radius: 12px;
             padding: 15px;
-            z-index: 10000;
+            z-index: 9999999999;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             backdrop-filter: blur(5px);
