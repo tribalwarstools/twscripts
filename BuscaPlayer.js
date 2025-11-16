@@ -584,15 +584,51 @@
 
             // Detectar minha tribo atual usando TAG
             let minhaTriboTag = "";
+            let minhaTriboId = "";
+            
             try {
-                if (typeof UI !== 'undefined' && UI.player_data) {
-                    const minhaTriboId = UI.player_data.ally;
-                    if (minhaTriboId) {
-                        minhaTriboTag = getTribeTag(minhaTriboId);
+                // Método 1: Via game_data (mais confiável)
+                if (typeof game_data !== 'undefined' && game_data.player && game_data.player.ally) {
+                    minhaTriboId = game_data.player.ally.toString();
+                    minhaTriboTag = getTribeTag(minhaTriboId);
+                    console.log('Método 1 - game_data.player.ally:', minhaTriboId, '→ TAG:', minhaTriboTag);
+                }
+                
+                // Método 2: Via UI.player_data (fallback)
+                if (!minhaTriboTag && typeof UI !== 'undefined' && UI.player_data && UI.player_data.ally) {
+                    minhaTriboId = UI.player_data.ally.toString();
+                    minhaTriboTag = getTribeTag(minhaTriboId);
+                    console.log('Método 2 - UI.player_data.ally:', minhaTriboId, '→ TAG:', minhaTriboTag);
+                }
+                
+                // Método 3: Buscar no HTML da página
+                if (!minhaTriboTag) {
+                    const allyLink = document.querySelector('a[href*="screen=ally"]');
+                    if (allyLink && allyLink.textContent) {
+                        // Pega a TAG diretamente do link da tribo
+                        const tagMatch = allyLink.textContent.match(/\[([^\]]+)\]/);
+                        if (tagMatch) {
+                            minhaTriboTag = tagMatch[1];
+                            console.log('Método 3 - HTML link:', minhaTriboTag);
+                        }
                     }
                 }
+                
+                console.log('=== DEBUG TRIBO ===');
+                console.log('Minha Tribo ID:', minhaTriboId);
+                console.log('Minha Tribo TAG:', minhaTriboTag);
+                console.log('Filtro "Só Tribo" ativo:', soTribo);
+                
             } catch (e) {
                 console.log('Erro ao detectar tribo atual:', e);
+            }
+            
+            // Se não detectou a tribo e o filtro está ativo, avisar o usuário
+            if (soTribo && !minhaTriboTag) {
+                alert('⚠️ Não foi possível detectar sua tribo!\n\nPor favor, use o filtro "Incluir Tribos" manualmente ou desmarque a opção "Apenas membros da minha tribo".');
+                loadingText.textContent = "";
+                resultsDiv.innerHTML = "<div class='scanRow'><b>⚠️ Tribo não detectada. Use filtros manuais.</b></div>";
+                return;
             }
 
             const encontrados = [];
@@ -640,9 +676,23 @@
                 // Obter TAG da tribo do jogador
                 const triboTag = getTribeTag(pj.aliado_id);
                 
+                // DEBUG: Log para verificar comparações
+                if (soTribo) {
+                    console.log('Comparando:', {
+                        jogador: pj.nome,
+                        triboId: pj.aliado_id,
+                        triboTag: triboTag,
+                        minhaTriboTag: minhaTriboTag,
+                        match: triboTag === minhaTriboTag
+                    });
+                }
+                
                 // Filtro "apenas minha tribo"
                 if (soTribo) {
-                    if (triboTag !== minhaTriboTag) return;
+                    // Se o jogador não tem tribo OU tem tribo diferente da minha
+                    if (!triboTag || triboTag !== minhaTriboTag) {
+                        return;
+                    }
                 }
                 
                 // ===== CORREÇÃO: COMPARAR TAGs CORRETAMENTE =====
