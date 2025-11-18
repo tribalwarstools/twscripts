@@ -98,7 +98,7 @@
             color: #f1e1c1;
             z-index: 99999;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateX(-300px);
+            transform: translateX(-335px);
         }
         
         #tw-toggle-btn { 
@@ -765,6 +765,7 @@
     enviarTelegram('🎮 *Sistema TW Unificado Iniciado*\n\n✅ Painel carregado com sucesso\n📊 Estado restaurado');
     
 })();
+
 
 
 
