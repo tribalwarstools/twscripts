@@ -94,7 +94,7 @@ class TWB_AutoBuilder {
         this.createPanel();
         
         // Carregar estado de execução ANTES de carregar aldeias
-        this.loadRunningState();
+        const wasRunning = this.loadRunningState();
 
         // Carregar aldeias em background
         this.loadMyVillages().then(() => {
@@ -102,15 +102,23 @@ class TWB_AutoBuilder {
             this.state.isInitialized = true;
             this.log('✅ Sistema inicializado completamente');
             
-            // ✅ VERIFICAÇÃO DE PERSISTÊNCIA ADICIONADA AQUI
-            if (this.state.isRunning) {
+            // ✅ VERIFICAÇÃO DE PERSISTÊNCIA ROBUSTA
+            if (wasRunning && this.state.isRunning) {
                 this.log('🔄 Retomando execução automática...');
-                this.start(); // Reinicia o loop se estava rodando
+                // Usar nextTick para garantir que UI foi renderizada
+                setTimeout(() => {
+                    if (this.state.isRunning && !this._loopWorkerRunning) {
+                        this.start();
+                    }
+                }, 100);
             }
         }).catch(err => {
             console.error('Falha ao carregar aldeias:', err);
             this.log('❌ Falha ao carregar lista de aldeias');
             this.state.isInitialized = true;
+            // ✅ Garantir que não fica em estado inconsistente
+            this.state.isRunning = false;
+            this.saveRunningState();
         });
     }
 
@@ -579,7 +587,7 @@ class TWB_AutoBuilder {
                 <div class="twb-panel__header">
                     <div class="twb-panel__title">
                         <span class="twb-panel__icon">🏗️</span>
-                        <span>Construtor Automático 4.1</span>
+                        <span>Construtor Automático 4.2</span>
                     </div>
                 </div>
 
@@ -1304,4 +1312,5 @@ if (typeof window.twBuilder === 'undefined') {
     const twBuilder = new TWB_AutoBuilder();
     window.twBuilder = twBuilder;
 }
+
 
