@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         TW Auto Builder - CSS 3.0 Moderno com Área Sensível
-// @version      3.1
-// @description  Construtor global com CSS 3.0 e área sensível para recolher/expandir
+// @name         TW Auto Builder - Estilo Unificado v4.0
+// @version      4.0.1
+// @description  Construtor global com CSS moderno unificado
 // @author       You
 // @match        https://*.tribalwars.com.br/game.php*
-// @grant        GM_xmlhttpRequest
+// @grant        none
 // ==/UserScript==
 
 class TWB_AutoBuilder {
@@ -25,19 +25,19 @@ class TWB_AutoBuilder {
             maxQueueSlots: 5,
             priorityBuildings: Object.keys(this.buildingsList),
             maxLevels: Object.fromEntries(
-                Object.keys(this.buildingsList).map(k => [k, 
-                    k === 'main' || k === 'farm' || k === 'storage' || 
-                    k === 'wood' || k === 'stone' || k === 'iron' ? 30 : 
+                Object.keys(this.buildingsList).map(k => [k,
+                    k === 'main' || k === 'farm' || k === 'storage' ||
+                    k === 'wood' || k === 'stone' || k === 'iron' ? 30 :
                     k === 'barracks' || k === 'market' ? 25 :
                     k === 'stable' || k === 'smith' || k === 'wall' || k === 'watchtower' ? 20 :
-                    k === 'garage' ? 15 : k === 'hide' ? 10 : 
+                    k === 'garage' ? 15 : k === 'hide' ? 10 :
                     k === 'church' ? 3 : 1
                 ])
             ),
             enabledBuildings: {},
             operationMode: 'multivillage',
             multivillageInterval: 15000,
-            maxConcurrentFetches: 3,
+            maxConcurrentFetches: 2,
             maxRetries: 3,
             baseRetryDelay: 2000,
             jitterRange: 0.3,
@@ -58,7 +58,8 @@ class TWB_AutoBuilder {
             myVillages: [],
             villagesLoaded: false,
             panelHidden: false,
-            villagesCollapsed: false
+            villagesCollapsed: false,
+            isInitialized: false
         };
 
         this.stats = {
@@ -85,12 +86,22 @@ class TWB_AutoBuilder {
     }
 
     async init() {
-        console.log('🏗️ TW Auto Builder CSS 3.0 iniciado');
+        console.log('🏗️ TW Auto Builder v4.0.1 iniciado');
         this.createIframe();
         await this.loadSettings();
-        await this.loadMyVillages();
         this.createPanel();
         this.loadRunningState();
+
+        // Carregar aldeias em background
+        this.loadMyVillages().then(() => {
+            this.renderVillages();
+            this.state.isInitialized = true;
+            this.log('✅ Sistema inicializado completamente');
+        }).catch(err => {
+            console.error('Falha ao carregar aldeias:', err);
+            this.log('❌ Falha ao carregar lista de aldeias');
+            this.state.isInitialized = true;
+        });
     }
 
     async loadSettings() {
@@ -101,7 +112,7 @@ class TWB_AutoBuilder {
 
         const savedMax = localStorage.getItem('twb_build_maxLevels');
         if (savedMax) {
-            try { 
+            try {
                 Object.assign(this.settings.maxLevels, JSON.parse(savedMax));
             } catch(e) {}
         }
@@ -112,7 +123,7 @@ class TWB_AutoBuilder {
 
         const savedConcurrent = localStorage.getItem('twb_max_concurrent');
         if (savedConcurrent) this.settings.maxConcurrentFetches = parseInt(savedConcurrent);
-        
+
         const savedInterval = localStorage.getItem('twb_multivillage_interval');
         if (savedInterval) this.settings.multivillageInterval = parseInt(savedInterval);
     }
@@ -121,29 +132,35 @@ class TWB_AutoBuilder {
         try {
             const playerId = (window.game_data && window.game_data.player && window.game_data.player.id) ? window.game_data.player.id : null;
             const res = await fetch('/map/village.txt');
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
             const text = await res.text();
-            
-            this.state.myVillages = text.trim().split('\n').map(line => {
-                const [id, name, x, y, player, points, bonus_id] = line.split(',');
-                return {
-                    id: parseInt(id),
-                    name: decodeURIComponent(name.replace(/\+/g, ' ')),
-                    x: parseInt(x),
-                    y: parseInt(y),
-                    player: parseInt(player),
-                    points: parseInt(points),
-                    bonus_id: bonus_id ? parseInt(bonus_id) : null
-                };
-            }).filter(v => playerId === null ? true : v.player === playerId)
-              .sort((a,b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
-              
+
+            this.state.myVillages = text.trim().split('\n')
+                .filter(line => line.trim())
+                .map(line => {
+                    const [id, name, x, y, player, points, bonus_id] = line.split(',');
+                    return {
+                        id: parseInt(id),
+                        name: decodeURIComponent(name.replace(/\+/g, ' ')),
+                        x: parseInt(x),
+                        y: parseInt(y),
+                        player: parseInt(player),
+                        points: parseInt(points),
+                        bonus_id: bonus_id ? parseInt(bonus_id) : null
+                    };
+                })
+                .filter(v => playerId === null ? true : v.player === playerId)
+                .sort((a,b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+
             this.state.villagesLoaded = true;
             this.log(`🏘️ ${this.state.myVillages.length} aldeias carregadas`);
         } catch (err) {
             console.error('Erro ao carregar aldeias', err);
             this.state.myVillages = [];
             this.state.villagesLoaded = true;
-            this.log('❌ Erro ao carregar aldeias');
+            throw err;
         }
     }
 
@@ -169,16 +186,16 @@ class TWB_AutoBuilder {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     ...options
                 });
-                
+
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
+
                 this.recordSuccess();
                 return await response.text();
-                
+
             } catch (error) {
                 this.recordError();
                 if (attempt === retries) throw error;
-                
+
                 const delay = this.calculateBackoffDelay(attempt);
                 this.log(`⚠️ Tentativa ${attempt}/${retries} falhou, retry em ${delay}ms`);
                 await this.sleep(delay);
@@ -209,27 +226,31 @@ class TWB_AutoBuilder {
     async executeWithConcurrency(tasks, maxConcurrent = this.settings.maxConcurrentFetches) {
         const results = [];
         const executing = new Set();
-        
+
         for (const task of tasks) {
             if (!this.state.isRunning) break;
-            
-            if (executing.size >= maxConcurrent) {
+
+            while (executing.size >= maxConcurrent) {
                 await Promise.race(executing);
+                if (!this.state.isRunning) break;
             }
-            
+
+            if (!this.state.isRunning) break;
+
             const promise = task().finally(() => executing.delete(promise));
             executing.add(promise);
             results.push(promise);
         }
-        
-        return Promise.all(results);
+
+        await Promise.allSettled(Array.from(executing));
+        return Promise.allSettled(results);
     }
 
     async fetchVillageData(villageId) {
         try {
             const url = `/game.php?village=${villageId}&screen=main`;
             const html = await this.fetchWithRetry(url, { timeout: 10000 });
-            
+
             return {
                 buildings: this.parseBuildingsFromHTML(html),
                 queueCount: this.parseQueueFromHTML(html)
@@ -243,25 +264,35 @@ class TWB_AutoBuilder {
     async fetchMultipleVillagesData(villageIds) {
         const tasks = villageIds.map(vid => () => this.fetchVillageData(vid));
         this.log(`🔄 Buscando ${villageIds.length} aldeias`);
-        
+
         const results = await this.executeWithConcurrency(tasks);
-        return results.map((data, i) => ({
-            villageId: villageIds[i],
-            buildings: data.buildings,
-            queueCount: data.queueCount
-        }));
+        return results.map((result, i) => {
+            if (result.status === 'fulfilled') {
+                return {
+                    villageId: villageIds[i],
+                    buildings: result.value.buildings,
+                    queueCount: result.value.queueCount
+                };
+            } else {
+                return {
+                    villageId: villageIds[i],
+                    buildings: null,
+                    queueCount: 0
+                };
+            }
+        });
     }
 
     parseBuildingsFromHTML(html) {
         const buildings = {};
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        
+
         doc.querySelectorAll('tr[id^="main_buildrow_"]').forEach(row => {
             try {
                 const buildingId = row.id.replace('main_buildrow_', '');
                 if (!this.buildingsList[buildingId]) return;
-                
+
                 const levelText = row.querySelector('span[style*="font-size: 0.9em"]')?.textContent || '';
                 const currentLevel = this.extractLevel(levelText);
                 const buildButton = row.querySelector('.btn-build');
@@ -270,7 +301,7 @@ class TWB_AutoBuilder {
                 const hasBuildButton = buildButton && buildButton.style.display !== 'none';
                 const canBuildNow = hasBuildButton && !errorMessage.includes('Fazenda') && !errorMessage.includes('requer');
                 const canQueue = hasBuildButton && this.settings.allowQueue && buildLink !== '';
-                
+
                 buildings[buildingId] = {
                     id: buildingId,
                     level: currentLevel,
@@ -311,16 +342,16 @@ class TWB_AutoBuilder {
         try {
             this.currentBuild = { building, village };
             this.log(`🏗️ Construindo ${building.name} em ${village.name}`);
-            
+
             this.iframe.src = 'about:blank';
             await this.sleep(100);
-            
+
             this.iframe.src = building.build_link;
             const ok = await this.waitIframeLoad(8000);
-            
+
             await this.sleep(800);
             this.iframe.src = 'about:blank';
-            
+
             if (ok) {
                 this.log(`✅ ${building.name} iniciado`);
                 this.stats.totalConstructions++;
@@ -346,7 +377,7 @@ class TWB_AutoBuilder {
             const onload = () => { if (!done) { done = true; cleanup(); resolve(true); } };
             const onerror = () => { if (!done) { done = true; cleanup(); resolve(false); } };
             const to = setTimeout(() => { if (!done) { done = true; cleanup(); resolve(false); } }, timeout);
-            
+
             this.iframe.addEventListener('load', onload);
             this.iframe.addEventListener('error', onerror);
         });
@@ -375,7 +406,7 @@ class TWB_AutoBuilder {
         if (this.stats.consecutiveErrors > 0) {
             interval *= Math.pow(this.settings.adaptiveInterval.errorMultiplier, this.stats.consecutiveErrors);
         }
-        
+
         if (this.stats.consecutiveSuccess > 3) {
             interval *= Math.pow(this.settings.adaptiveInterval.successMultiplier, Math.min(this.stats.consecutiveSuccess - 3, 10));
         }
@@ -383,7 +414,7 @@ class TWB_AutoBuilder {
         const jitter = interval * this.settings.jitterRange * (Math.random() * 2 - 1);
         interval += jitter;
 
-        return Math.max(this.settings.adaptiveInterval.minInterval, 
+        return Math.max(this.settings.adaptiveInterval.minInterval,
                        Math.min(this.settings.adaptiveInterval.maxInterval, interval));
     }
 
@@ -397,31 +428,31 @@ class TWB_AutoBuilder {
         }
 
         this.log(`🔄 Executando ${this.state.selectedVillages.length} aldeias`);
-        
+
         while (this.state.isRunning) {
             const startTime = Date.now();
             let constructionsStarted = 0;
 
             try {
                 const villagesData = await this.fetchMultipleVillagesData(this.state.selectedVillages);
-                
+
                 for (const data of villagesData) {
                     if (!this.state.isRunning) break;
-                    
-                    const village = this.state.myVillages.find(v => v.id === data.villageId) || 
+
+                    const village = this.state.myVillages.find(v => v.id === data.villageId) ||
                                   {id: data.villageId, name: 'Aldeia ' + data.villageId};
-                    
+
                     if (!data.buildings) {
                         this.log(`❌ Sem dados para ${village.name}`);
                         continue;
                     }
-                    
+
                     const availableSlots = Math.max(0, this.settings.maxQueueSlots - (data.queueCount || 0));
                     if (availableSlots <= 0) {
                         this.log(`⏳ Fila cheia em ${village.name}`);
                         continue;
                     }
-                    
+
                     const nextBuilding = this.findNextBuilding(data.buildings);
                     if (nextBuilding && await this.buildViaIframe(nextBuilding, village)) {
                         constructionsStarted++;
@@ -435,7 +466,7 @@ class TWB_AutoBuilder {
             const adaptiveInterval = this.calculateAdaptiveInterval();
             const elapsed = Date.now() - startTime;
             const waitTime = Math.max(2000, adaptiveInterval - elapsed);
-            
+
             this.log(`⏱️ Próxima verificação em ${Math.round(waitTime/1000)}s`);
             await this.sleep(waitTime);
         }
@@ -445,6 +476,12 @@ class TWB_AutoBuilder {
 
     start() {
         if (this.state.isRunning) return;
+
+        if (!this.state.isInitialized) {
+            this.log('⚠️ Sistema ainda inicializando...');
+            return;
+        }
+
         this.saveVillageSelection();
         if (!this.state.selectedVillages.length) {
             this.log('❗ Marque ao menos uma aldeia');
@@ -465,26 +502,26 @@ class TWB_AutoBuilder {
         this.log('⏸️ Auto Builder parado');
     }
 
-    toggle() { 
-        this.state.isRunning ? this.stop() : this.start(); 
+    toggle() {
+        this.state.isRunning ? this.stop() : this.start();
     }
 
-    sleep(ms) { 
-        return new Promise(r => setTimeout(r, ms)); 
+    sleep(ms) {
+        return new Promise(r => setTimeout(r, ms));
     }
 
-    // ========== INTERFACE COM ÁREA SENSÍVEL ==========
+    // ========== INTERFACE ESTILO UNIFICADO ==========
 
     createPanel() {
         this.injectStyles();
-        
+
         const panel = document.createElement('div');
         panel.id = 'twb-builder';
         panel.className = `twb-panel ${this.state.panelHidden ? 'twb-panel--hidden' : ''}`;
-        
+
         panel.innerHTML = this.getPanelHTML();
         document.body.appendChild(panel);
-        
+
         this.attachEvents();
         this.renderVillages();
         this.renderBuildings();
@@ -493,64 +530,76 @@ class TWB_AutoBuilder {
 
     getPanelHTML() {
         return `
-            <div class="twb-panel__header">
-                <div class="twb-panel__title">
-                    <span class="twb-panel__icon">⚡</span>
-                    <span>Construtor Tribal v3.1</span>
-                </div>
-                <button class="twb-btn twb-btn--icon" data-action="toggle-panel">
-                    ${this.state.panelHidden ? '◀' : '▶'}
-                </button>
-            </div>
-
-            <div class="twb-panel__content">
-                <div class="twb-status">
-                    <div class="twb-status__indicator ${this.state.isRunning ? 'twb-status--running' : 'twb-status--stopped'}"></div>
-                    <span class="twb-status__text">${this.state.isRunning ? 'EXECUTANDO' : 'PARADO'}</span>
-                    <button class="twb-btn ${this.state.isRunning ? 'twb-btn--danger' : 'twb-btn--success'}" data-action="toggle">
-                        ${this.state.isRunning ? '⏸️ Parar' : '▶️ Iniciar'}
-                    </button>
-                </div>
-
-                <div class="twb-controls">
-                    <button class="twb-btn twb-btn--secondary" data-action="mark-all">✓ Todas</button>
-                    <button class="twb-btn twb-btn--secondary" data-action="unmark-all">✗ Nenhuma</button>
-                    <button class="twb-btn twb-btn--secondary" data-action="toggle-villages">
-                        ${this.state.villagesCollapsed ? '▲ Aldeias' : '▼ Aldeias'}
-                    </button>
-                </div>
-
-                <div class="twb-villages ${this.state.villagesCollapsed ? 'twb-villages--collapsed' : ''}">
-                    <div class="twb-villages__list" id="twb-villages-list"></div>
-                </div>
-
-                <div class="twb-buildings">
-                    <div class="twb-buildings__grid" id="twb-buildings-grid"></div>
-                </div>
-
-                <div class="twb-logs">
-                    <div class="twb-logs__header">
-                        <span>📜 Atividades</span>
-                        <button class="twb-btn twb-btn--icon twb-btn--small" data-action="clear-logs">🗑️</button>
-                    </div>
-                    <div class="twb-logs__content" id="twb-logs-content"></div>
-                </div>
-            </div>
-
-            <div class="twb-panel__footer">
-                <div class="twb-settings">
-                    <div class="twb-setting">
-                        <label>Intervalo</label>
-                        <input type="number" class="twb-input" data-setting="interval" 
-                               value="${Math.floor(this.settings.multivillageInterval/1000)}" min="5">
-                    </div>
-                    <div class="twb-setting">
-                        <label>Concorrência</label>
-                        <input type="number" class="twb-input" data-setting="concurrency" 
-                               value="${this.settings.maxConcurrentFetches}" min="1" max="5">
+            <div id="twb-toggle-btn">☰</div>
+            <div class="twb-panel__content-wrapper">
+                <div class="twb-panel__header">
+                    <div class="twb-panel__title">
+                        <span class="twb-panel__icon">🏗️</span>
+                        <span>Construtor Automático</span>
                     </div>
                 </div>
-                <button class="twb-btn twb-btn--primary" data-action="save">💾 Salvar</button>
+
+                <div class="twb-panel__content">
+                    <div class="twb-section">
+                        <div class="twb-section-title">⚙️ Status do Sistema</div>
+                        <div class="twb-status-line">
+                            <span>
+                                <span class="twb-status-indicator ${this.state.isRunning ? 'ativo' : 'inativo'}"></span>
+                                <span id="twb-status-text">${this.state.isRunning ? 'Executando' : 'Parado'}</span>
+                            </span>
+                        </div>
+                        <button class="twb-btn ${this.state.isRunning ? 'inativo' : 'ativo'}" id="twb-toggle-btn-main">
+                            ${this.state.isRunning ? '⏸️ Parar Sistema' : '▶️ Iniciar Sistema'}
+                        </button>
+                    </div>
+
+                    <div class="twb-section">
+                        <div class="twb-section-title">🏘️ Seleção de Aldeias</div>
+                        <div class="twb-controls">
+                            <button class="twb-btn" data-action="mark-all">✓ Todas</button>
+                            <button class="twb-btn" data-action="unmark-all">✗ Nenhuma</button>
+                            <button class="twb-btn" data-action="toggle-villages">
+                                ${this.state.villagesCollapsed ? '▲' : '▼'} Expandir
+                            </button>
+                        </div>
+                        <div class="twb-villages ${this.state.villagesCollapsed ? 'twb-villages--collapsed' : ''}">
+                            <div class="twb-villages__list" id="twb-villages-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="twb-section">
+                        <div class="twb-section-title">🏛️ Configuração de Edifícios</div>
+                        <div class="twb-buildings">
+                            <div class="twb-buildings__grid" id="twb-buildings-grid"></div>
+                        </div>
+                    </div>
+
+                    <div class="twb-section">
+                        <div class="twb-section-title">
+                            <span>📜 Registro de Atividades</span>
+                            <button class="twb-btn twb-btn-small" data-action="clear-logs">🗑️</button>
+                        </div>
+                        <div class="twb-logs">
+                            <div class="twb-logs__content" id="twb-logs-content"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="twb-panel__footer">
+                    <div class="twb-settings">
+                        <div class="twb-setting">
+                            <label>Intervalo (s)</label>
+                            <input type="number" class="twb-input" data-setting="interval"
+                                   value="${Math.floor(this.settings.multivillageInterval/1000)}" min="5">
+                        </div>
+                        <div class="twb-setting">
+                            <label>Concorrência</label>
+                            <input type="number" class="twb-input" data-setting="concurrency"
+                                   value="${this.settings.maxConcurrentFetches}" min="1" max="5">
+                        </div>
+                    </div>
+                    <button class="twb-btn twb-btn-primary" data-action="save">💾 Salvar</button>
+                </div>
             </div>
         `;
     }
@@ -558,7 +607,6 @@ class TWB_AutoBuilder {
     attachEvents() {
         const actions = {
             'toggle': () => this.toggle(),
-            'toggle-panel': () => this.togglePanel(),
             'toggle-villages': () => this.toggleVillages(),
             'mark-all': () => this.markAllVillages(true),
             'unmark-all': () => this.markAllVillages(false),
@@ -570,7 +618,16 @@ class TWB_AutoBuilder {
             btn.addEventListener('click', () => actions[btn.dataset.action]());
         });
 
-        // Área sensível - clicar no painel recolhido para expandir
+        const mainToggle = document.getElementById('twb-toggle-btn-main');
+        if (mainToggle) {
+            mainToggle.addEventListener('click', () => this.toggle());
+        }
+
+        const toggleBtn = document.getElementById('twb-toggle-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => this.togglePanel());
+        }
+
         const panel = document.getElementById('twb-builder');
         if (panel) {
             panel.addEventListener('click', (e) => {
@@ -597,7 +654,7 @@ class TWB_AutoBuilder {
 
         container.innerHTML = this.state.myVillages.map(village => `
             <label class="twb-village">
-                <input type="checkbox" value="${village.id}" 
+                <input type="checkbox" value="${village.id}"
                        ${this.state.selectedVillages.includes(village.id) ? 'checked' : ''}
                        onchange="window.twBuilder.toggleVillage(${village.id})">
                 <span class="twb-village__name">${village.x}|${village.y} ${village.name}</span>
@@ -617,11 +674,11 @@ class TWB_AutoBuilder {
             return `
                 <div class="twb-building">
                     <label class="twb-building__label">
-                        <input type="checkbox" ${enabled ? 'checked' : ''} 
+                        <input type="checkbox" ${enabled ? 'checked' : ''}
                                onchange="window.twBuilder.toggleBuilding('${id}')">
                         <span>${name}</span>
                     </label>
-                    <input type="number" class="twb-building__input" 
+                    <input type="number" class="twb-building__input"
                            value="${maxLevel}" min="0" max="30"
                            onchange="window.twBuilder.setMaxLevel('${id}', this.value)">
                 </div>
@@ -665,8 +722,8 @@ class TWB_AutoBuilder {
     toggleVillages() {
         this.state.villagesCollapsed = !this.state.villagesCollapsed;
         document.querySelector('.twb-villages').classList.toggle('twb-villages--collapsed');
-        document.querySelector('[data-action="toggle-villages"]').textContent = 
-            this.state.villagesCollapsed ? '▲ Aldeias' : '▼ Aldeias';
+        document.querySelector('[data-action="toggle-villages"]').textContent =
+            this.state.villagesCollapsed ? '▲ Expandir' : '▼ Recolher';
         localStorage.setItem('twb_villages_collapsed', this.state.villagesCollapsed);
     }
 
@@ -684,12 +741,12 @@ class TWB_AutoBuilder {
 
         const intervalInput = document.querySelector('[data-setting="interval"]');
         const concInput = document.querySelector('[data-setting="concurrency"]');
-        
+
         if (intervalInput) {
             this.settings.multivillageInterval = parseInt(intervalInput.value) * 1000;
             localStorage.setItem('twb_multivillage_interval', this.settings.multivillageInterval);
         }
-        
+
         if (concInput) {
             this.settings.maxConcurrentFetches = parseInt(concInput.value);
             localStorage.setItem('twb_max_concurrent', this.settings.maxConcurrentFetches);
@@ -714,17 +771,17 @@ class TWB_AutoBuilder {
     }
 
     updateUI() {
-        const statusText = document.querySelector('.twb-status__text');
-        const statusIndicator = document.querySelector('.twb-status__indicator');
-        const toggleBtn = document.querySelector('[data-action="toggle"]');
-        
-        if (statusText) statusText.textContent = this.state.isRunning ? 'EXECUTANDO' : 'PARADO';
+        const statusText = document.getElementById('twb-status-text');
+        const statusIndicator = document.querySelector('.twb-status-indicator');
+        const toggleBtn = document.getElementById('twb-toggle-btn-main');
+
+        if (statusText) statusText.textContent = this.state.isRunning ? 'Executando' : 'Parado';
         if (statusIndicator) {
-            statusIndicator.className = `twb-status__indicator ${this.state.isRunning ? 'twb-status--running' : 'twb-status--stopped'}`;
+            statusIndicator.className = `twb-status-indicator ${this.state.isRunning ? 'ativo' : 'inativo'}`;
         }
         if (toggleBtn) {
-            toggleBtn.innerHTML = this.state.isRunning ? '⏸️ Parar' : '▶️ Iniciar';
-            toggleBtn.className = `twb-btn ${this.state.isRunning ? 'twb-btn--danger' : 'twb-btn--success'}`;
+            toggleBtn.innerHTML = this.state.isRunning ? '⏸️ Parar Sistema' : '▶️ Iniciar Sistema';
+            toggleBtn.className = `twb-btn ${this.state.isRunning ? 'inativo' : 'ativo'}`;
         }
     }
 
@@ -732,11 +789,11 @@ class TWB_AutoBuilder {
         const btn = document.querySelector('[data-action="save"]');
         const originalText = btn.innerHTML;
         btn.innerHTML = '✅ Salvo!';
-        btn.classList.add('twb-btn--saved');
-        
+        btn.classList.add('twb-btn-saved');
+
         setTimeout(() => {
             btn.innerHTML = originalText;
-            btn.classList.remove('twb-btn--saved');
+            btn.classList.remove('twb-btn-saved');
         }, 2000);
     }
 
@@ -748,7 +805,7 @@ class TWB_AutoBuilder {
             entry.className = 'twb-log';
             entry.innerHTML = `<span class="twb-log__time">[${time}]</span> ${message}`;
             logs.prepend(entry);
-            
+
             if (logs.children.length > 50) {
                 logs.removeChild(logs.lastChild);
             }
@@ -760,108 +817,90 @@ class TWB_AutoBuilder {
         if (logs) logs.innerHTML = '';
     }
 
-    // ========== CSS COM ÁREA SENSÍVEL ==========
+    // ========== CSS ESTILO UNIFICADO ==========
 
     injectStyles() {
+        if (document.getElementById('twb-styles')) return;
+
         const styles = `
-            .twb-panel {
-                --primary: #3b82f6;
-                --success: #10b981;
-                --danger: #ef4444;
-                --warning: #f59e0b;
-                --dark: #1e293b;
-                --darker: #0f172a;
-                --light: #f8fafc;
-                --gray: #64748b;
-                --border: #334155;
-                
+            /* ============================================ */
+            /* PAINEL PRINCIPAL - ESTILO UNIFICADO */
+            /* ============================================ */
+            #twb-builder {
                 position: fixed;
-                right: 0;
-                top: 50%;
-                transform: translateY(-50%);
-                width: 380px;
-                background: var(--darker);
-                border: 1px solid var(--border);
-                border-radius: 16px 0 0 16px;
-                box-shadow: -8px 0 32px rgba(0,0,0,0.5);
-                z-index: 99999;
-                font-family: 'Segoe UI', system-ui, sans-serif;
-                color: var(--light);
-                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                backdrop-filter: blur(20px);
-                -webkit-backdrop-filter: blur(20px);
+                top: 50px;
+                left: 0;
+                width: 600px;
+                background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+                border: 2px solid #654321;
+                border-left: none;
+                border-radius: 0 12px 12px 0;
+                box-shadow: 4px 4px 16px rgba(0,0,0,0.6);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: #f1e1c1;
+                z-index: 99998;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: translateX(0);
             }
 
-            /* ESTADO RECOLHIDO COM ÁREA SENSÍVEL */
-            .twb-panel--hidden {
-                transform: translateX(calc(100% - 40px)) translateY(-50%);
+            #twb-builder.twb-panel--hidden {
+                transform: translateX(-600px);
                 cursor: pointer;
             }
 
-            .twb-panel--hidden:hover {
-                transform: translateX(calc(100% - 120px)) translateY(-50%);
-                box-shadow: -8px 0 32px rgba(0,0,0,0.7);
+            #twb-builder.twb-panel--hidden:hover {
+                transform: translateX(-600px);
             }
 
-            .twb-panel--hidden::before {
-                content: '⚡';
+            /* ============================================ */
+            /* BOTÃO TOGGLE LATERAL */
+            /* ============================================ */
+            #twb-toggle-btn {
                 position: absolute;
-                left: 12px;
-                top: 50%;
-                transform: translateY(-50%);
+                top: 10px;
+                right: -32px;
+                width: 32px;
+                height: 50px;
+                background: linear-gradient(135deg, #5c4023 0%, #3d2817 100%);
+                border: 2px solid #654321;
+                border-left: none;
+                border-radius: 0 8px 8px 0;
+                color: #f1e1c1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
                 font-size: 18px;
-                opacity: 0.7;
-                transition: all 0.3s ease;
+                box-shadow: 3px 3px 8px rgba(0,0,0,0.5);
+                transition: all 0.2s;
             }
 
-            .twb-panel--hidden:hover::before {
-                content: '🏗️ CONSTRUTOR';
-                font-size: 12px;
-                font-weight: bold;
-                opacity: 1;
-                left: 16px;
-                background: linear-gradient(135deg, var(--primary), var(--success));
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-                white-space: nowrap;
+            #twb-toggle-btn:hover {
+                background: linear-gradient(135deg, #6d5029 0%, #4d3820 100%);
+                transform: translateX(2px);
             }
 
-            .twb-panel--hidden .twb-panel__header,
-            .twb-panel--hidden .twb-panel__content,
-            .twb-panel--hidden .twb-panel__footer {
-                opacity: 0;
-                pointer-events: none;
-            }
-
-            .twb-panel:not(.twb-panel--hidden) .twb-panel__header,
-            .twb-panel:not(.twb-panel--hidden) .twb-panel__content,
-            .twb-panel:not(.twb-panel--hidden) .twb-panel__footer {
-                opacity: 1;
-                pointer-events: all;
-                transition: opacity 0.3s ease 0.1s;
+            /* ============================================ */
+            /* CONTEÚDO DO PAINEL */
+            /* ============================================ */
+            .twb-panel__content-wrapper {
+                width: 100%;
             }
 
             .twb-panel__header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 20px;
-                background: linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%);
-                border-radius: 16px 0 0 0;
-                border-bottom: 1px solid var(--border);
+                padding: 16px 20px;
+                background: linear-gradient(135deg, #654321 0%, #8b6914 50%, #654321 100%);
+                border-radius: 0 12px 0 0;
+                border-bottom: 2px solid #654321;
             }
 
             .twb-panel__title {
                 display: flex;
                 align-items: center;
-                gap: 12px;
-                font-weight: 700;
-                font-size: 18px;
-                background: linear-gradient(135deg, #60a5fa, var(--primary));
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
+                gap: 10px;
+                font-size: 16px;
+                font-weight: bold;
+                color: #d4b35d;
             }
 
             .twb-panel__icon {
@@ -869,105 +908,141 @@ class TWB_AutoBuilder {
             }
 
             .twb-panel__content {
-                padding: 20px;
-                max-height: 65vh;
+                padding: 16px;
+                max-height: 70vh;
                 overflow-y: auto;
-                background: linear-gradient(180deg, var(--darker) 0%, rgba(30, 41, 59, 0.95) 100%);
             }
 
-            .twb-status {
+            /* ============================================ */
+            /* SEÇÕES */
+            /* ============================================ */
+            .twb-section {
+                background: rgba(0,0,0,0.3);
+                border: 1px solid #654321;
+                border-radius: 8px;
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+
+            .twb-section-title {
+                font-size: 13px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                color: #d4b35d;
                 display: flex;
                 align-items: center;
-                gap: 12px;
-                padding: 16px;
-                background: var(--dark);
-                border-radius: 12px;
-                border: 1px solid var(--border);
-                margin-bottom: 16px;
+                justify-content: space-between;
+                gap: 8px;
             }
 
-            .twb-status__indicator {
-                width: 12px;
-                height: 12px;
+            /* ============================================ */
+            /* STATUS */
+            /* ============================================ */
+            .twb-status-line {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin: 8px 0;
+                font-size: 13px;
+            }
+
+            .twb-status-indicator {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
                 border-radius: 50%;
-            }
-
-            .twb-status--running {
-                background: var(--success);
-                box-shadow: 0 0 12px var(--success);
+                margin-right: 8px;
                 animation: pulse 2s infinite;
             }
 
-            .twb-status--stopped {
-                background: var(--danger);
-                box-shadow: 0 0 8px var(--danger);
+            .twb-status-indicator.ativo {
+                background: #2ecc71;
+                box-shadow: 0 0 8px #2ecc71;
             }
 
-            .twb-status__text {
-                flex: 1;
-                font-weight: 600;
-                font-size: 14px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
+            .twb-status-indicator.inativo {
+                background: #e74c3c;
+                box-shadow: 0 0 8px #e74c3c;
             }
 
-            .twb-controls {
-                display: flex;
-                gap: 8px;
-                margin-bottom: 16px;
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
             }
 
+            /* ============================================ */
+            /* BOTÕES */
+            /* ============================================ */
             .twb-btn {
-                padding: 10px 16px;
-                border: none;
-                border-radius: 10px;
-                font-size: 13px;
-                font-weight: 600;
+                display: inline-block;
+                padding: 8px 16px;
+                margin: 4px 2px;
+                background: linear-gradient(135deg, #5c4023 0%, #3d2817 100%);
+                border: 1px solid #654321;
+                border-radius: 6px;
+                color: #f1e1c1;
                 cursor: pointer;
-                transition: all 0.3s ease;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            }
-
-            .twb-btn--primary {
-                background: linear-gradient(135deg, var(--primary), #1d4ed8);
-                color: white;
-            }
-
-            .twb-btn--success {
-                background: linear-gradient(135deg, var(--success), #047857);
-                color: white;
-            }
-
-            .twb-btn--danger {
-                background: linear-gradient(135deg, var(--danger), #dc2626);
-                color: white;
-            }
-
-            .twb-btn--secondary {
-                background: var(--dark);
-                color: var(--light);
-                border: 1px solid var(--border);
-            }
-
-            .twb-btn--icon {
-                background: transparent;
-                padding: 8px;
-                border: 1px solid var(--border);
-            }
-
-            .twb-btn--small {
-                padding: 6px 12px;
                 font-size: 12px;
-            }
-
-            .twb-btn--saved {
-                background: linear-gradient(135deg, var(--success), #047857) !important;
+                font-weight: bold;
+                text-align: center;
+                transition: all 0.2s;
+                user-select: none;
             }
 
             .twb-btn:hover {
-                transform: translateY(-2px);
+                background: linear-gradient(135deg, #6d5029 0%, #4d3820 100%);
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            }
+
+            .twb-btn:active {
+                transform: translateY(0);
+            }
+
+            .twb-btn.ativo {
+                background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+                border-color: #2ecc71;
+            }
+
+            .twb-btn.inativo {
+                background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+                border-color: #e74c3c;
+            }
+
+            .twb-btn-primary {
+                background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+                border-color: #2563eb;
+            }
+
+            .twb-btn-small {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+
+            .twb-btn-saved {
+                background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
+            }
+
+            /* ============================================ */
+            /* CONTROLES */
+            /* ============================================ */
+            .twb-controls {
+                display: flex;
+                gap: 6px;
+                margin-bottom: 10px;
+                flex-wrap: wrap;
+            }
+
+            .twb-controls .twb-btn {
+                flex: 1;
+                min-width: 80px;
+            }
+
+            /* ============================================ */
+            /* ALDEIAS */
+            /* ============================================ */
+            .twb-villages {
+                margin-top: 10px;
             }
 
             .twb-villages--collapsed .twb-villages__list {
@@ -975,132 +1050,132 @@ class TWB_AutoBuilder {
             }
 
             .twb-villages__list {
-                max-height: 200px;
+                max-height: 180px;
                 overflow-y: auto;
-                margin-bottom: 16px;
-                background: var(--dark);
-                border-radius: 12px;
-                border: 1px solid var(--border);
-                padding: 8px;
+                background: rgba(0,0,0,0.4);
+                border-radius: 6px;
+                padding: 6px;
             }
 
             .twb-village {
                 display: flex;
                 align-items: center;
-                gap: 12px;
-                padding: 12px;
+                gap: 10px;
+                padding: 8px 10px;
                 margin-bottom: 4px;
                 background: rgba(255,255,255,0.05);
-                border-radius: 8px;
+                border-radius: 6px;
                 cursor: pointer;
                 transition: all 0.2s ease;
             }
 
             .twb-village:hover {
-                background: rgba(255,255,255,0.08);
+                background: rgba(255,255,255,0.1);
                 transform: translateX(4px);
             }
 
             .twb-village__name {
                 flex: 1;
-                font-size: 13px;
+                font-size: 12px;
                 font-weight: 500;
             }
 
             .twb-village__points {
-                font-size: 11px;
-                color: var(--gray);
-                background: var(--darker);
-                padding: 4px 8px;
-                border-radius: 6px;
+                font-size: 10px;
+                color: #95a5a6;
+                background: rgba(0,0,0,0.3);
+                padding: 3px 6px;
+                border-radius: 4px;
             }
 
+            /* ============================================ */
+            /* EDIFÍCIOS */
+            /* ============================================ */
             .twb-buildings__grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                gap: 8px;
-                margin-bottom: 16px;
+                gap: 6px;
             }
 
             .twb-building {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 10px;
-                background: var(--dark);
-                border-radius: 8px;
-                border: 1px solid var(--border);
+                padding: 8px;
+                background: rgba(0,0,0,0.4);
+                border-radius: 6px;
+                border: 1px solid rgba(101, 67, 33, 0.3);
             }
 
             .twb-building__label {
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                font-size: 12px;
+                gap: 6px;
+                font-size: 11px;
                 cursor: pointer;
+                flex: 1;
             }
 
             .twb-building__input {
-                width: 50px;
-                padding: 6px;
-                border: 1px solid var(--border);
-                border-radius: 6px;
-                background: var(--darker);
-                color: var(--light);
+                width: 45px;
+                padding: 4px;
+                border: 1px solid #654321;
+                border-radius: 4px;
+                background: rgba(0,0,0,0.5);
+                color: #f1e1c1;
                 text-align: center;
-                font-size: 12px;
+                font-size: 11px;
             }
 
+            /* ============================================ */
+            /* LOGS */
+            /* ============================================ */
             .twb-logs {
-                background: var(--dark);
-                border-radius: 12px;
-                border: 1px solid var(--border);
-                overflow: hidden;
-            }
-
-            .twb-logs__header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 12px 16px;
-                background: linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%);
-                font-size: 13px;
-                font-weight: 600;
+                margin-top: 10px;
             }
 
             .twb-logs__content {
-                max-height: 120px;
+                max-height: 100px;
                 overflow-y: auto;
-                padding: 12px;
+                padding: 8px;
+                background: rgba(0,0,0,0.5);
+                border-radius: 6px;
                 font-size: 11px;
                 font-family: 'Courier New', monospace;
-                background: var(--darker);
             }
 
             .twb-log {
-                padding: 8px 0;
-                border-bottom: 1px solid var(--border);
+                padding: 4px 0;
+                border-bottom: 1px solid rgba(101, 67, 33, 0.3);
+            }
+
+            .twb-log:last-child {
+                border-bottom: none;
             }
 
             .twb-log__time {
-                color: var(--gray);
+                color: #95a5a6;
                 font-size: 10px;
+                margin-right: 6px;
             }
 
+            /* ============================================ */
+            /* FOOTER */
+            /* ============================================ */
             .twb-panel__footer {
-                padding: 16px 20px;
-                background: var(--dark);
-                border-top: 1px solid var(--border);
-                border-radius: 0 0 0 16px;
+                padding: 12px 16px;
+                background: rgba(0,0,0,0.3);
+                border-top: 1px solid #654321;
+                border-radius: 0 0 0 12px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                gap: 16px;
+                gap: 12px;
             }
 
             .twb-settings {
                 display: flex;
-                gap: 12px;
+                gap: 10px;
                 align-items: center;
             }
 
@@ -1111,34 +1186,36 @@ class TWB_AutoBuilder {
             }
 
             .twb-setting label {
-                font-size: 11px;
-                color: var(--gray);
+                font-size: 10px;
+                color: #95a5a6;
                 font-weight: 600;
             }
 
             .twb-input {
-                width: 60px;
-                padding: 6px;
-                border: 1px solid var(--border);
-                border-radius: 6px;
-                background: var(--darker);
-                color: var(--light);
+                width: 55px;
+                padding: 5px;
+                border: 1px solid #654321;
+                border-radius: 4px;
+                background: rgba(0,0,0,0.5);
+                color: #f1e1c1;
                 text-align: center;
+                font-size: 11px;
+            }
+
+            /* ============================================ */
+            /* ESTADOS */
+            /* ============================================ */
+            .twb-empty {
+                text-align: center;
+                padding: 16px;
+                color: #95a5a6;
+                font-style: italic;
                 font-size: 12px;
             }
 
-            .twb-empty {
-                text-align: center;
-                padding: 20px;
-                color: var(--gray);
-                font-style: italic;
-            }
-
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.7; }
-            }
-
+            /* ============================================ */
+            /* SCROLLBAR */
+            /* ============================================ */
             .twb-panel__content::-webkit-scrollbar,
             .twb-villages__list::-webkit-scrollbar,
             .twb-logs__content::-webkit-scrollbar {
@@ -1148,25 +1225,44 @@ class TWB_AutoBuilder {
             .twb-panel__content::-webkit-scrollbar-thumb,
             .twb-villages__list::-webkit-scrollbar-thumb,
             .twb-logs__content::-webkit-scrollbar-thumb {
-                background: linear-gradient(135deg, var(--primary), var(--success));
+                background: linear-gradient(135deg, #654321, #8b6914);
                 border-radius: 3px;
             }
 
             .twb-panel__content::-webkit-scrollbar-track {
-                background: var(--dark);
+                background: rgba(0,0,0,0.3);
                 border-radius: 3px;
+            }
+
+            /* ============================================ */
+            /* RESPONSIVIDADE */
+            /* ============================================ */
+            @media (max-height: 800px) {
+                .twb-panel__content {
+                    max-height: 60vh;
+                }
+
+                .twb-villages__list {
+                    max-height: 140px;
+                }
+
+                .twb-logs__content {
+                    max-height: 80px;
+                }
             }
         `;
 
         const styleSheet = document.createElement('style');
+        styleSheet.id = 'twb-styles';
         styleSheet.textContent = styles;
         document.head.appendChild(styleSheet);
     }
 }
 
-// Inicialização
-const twBuilder = new TWB_AutoBuilder();
-window.twBuilder = twBuilder;
-
-
-
+// ============================================
+// INICIALIZAÇÃO SEGURA
+// ============================================
+if (typeof window.twBuilder === 'undefined') {
+    const twBuilder = new TWB_AutoBuilder();
+    window.twBuilder = twBuilder;
+}
