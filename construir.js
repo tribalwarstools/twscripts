@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         TW Auto Builder - Test
+// @name         TW Auto Builder
 // @version      4.5
 // @description  Backend confiável v3.1 com interface moderna v4.0
 // @author       You
@@ -1206,3 +1206,4 @@ if (typeof window.twBuilder === 'undefined') {
     const twBuilder = new TWB_AutoBuilder();
     window.twBuilder = twBuilder;
 }
+
