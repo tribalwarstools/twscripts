@@ -88,40 +88,72 @@ class TWB_AutoBuilder {
     }
 
     async init() {
+        // ✅ PREVENÇÃO: Evitar múltiplas inicializações
+        if (this._initPromise) {
+            console.log('⚠️ Inicialização já em andamento');
+            return this._initPromise;
+        }
+
+        this._initPromise = this._performInit();
+        return this._initPromise;
+    }
+
+    async _performInit() {
         console.log('🏗️ TW Auto Builder v4.0.2 iniciado');
+        
         this.createIframe();
         await this.loadSettings();
+        
+        // ✅ CRÍTICO: Carregar estado ANTES de criar painel
+        const wasRunning = this.loadRunningState();
+        this.state.shouldAutoStart = wasRunning;
+        
         this.createPanel();
         
-        // Carregar estado de execução ANTES de carregar aldeias
-        const wasRunning = this.loadRunningState();
+        console.log('📊 Estado carregado:', {
+            wasRunning,
+            shouldAutoStart: this.state.shouldAutoStart,
+            selectedVillages: this.state.selectedVillages.length
+        });
 
-        // Carregar aldeias em background
-        this.loadMyVillages().then(() => {
+        try {
+            // Carregar aldeias
+            await this.loadMyVillages();
             this.renderVillages();
             this.state.isInitialized = true;
             this.log('✅ Sistema inicializado completamente');
             
-            // ✅ VERIFICAÇÃO DE PERSISTÊNCIA ROBUSTA
-            if (wasRunning && this.state.isRunning) {
+            // ✅ CRÍTICO: Auto-start SOMENTE se estava rodando E tem aldeias
+            if (this.state.shouldAutoStart && this.state.selectedVillages.length > 0) {
                 this.log('🔄 Retomando execução automática...');
-                // Usar nextTick para garantir que UI foi renderizada
-                setTimeout(() => {
-                    if (this.state.isRunning && !this._loopWorkerRunning) {
-                        this.start();
-                    }
-                }, 100);
+                console.log('🔄 Tentando auto-start com:', {
+                    isInitialized: this.state.isInitialized,
+                    shouldAutoStart: this.state.shouldAutoStart,
+                    selectedVillages: this.state.selectedVillages.length,
+                    isRunning: this.state.isRunning
+                });
+                
+                // Pequeno delay para garantir renderização completa
+                await this.sleep(200);
+                
+                // ✅ FORÇAR START
+                this.state.isRunning = false; // Reset para permitir start
+                this.start();
+            } else {
+                console.log('❌ Auto-start não executado:', {
+                    shouldAutoStart: this.state.shouldAutoStart,
+                    hasVillages: this.state.selectedVillages.length > 0
+                });
             }
-        }).catch(err => {
+        } catch (err) {
             console.error('Falha ao carregar aldeias:', err);
             this.log('❌ Falha ao carregar lista de aldeias');
             this.state.isInitialized = true;
-            // ✅ Garantir que não fica em estado inconsistente
             this.state.isRunning = false;
+            this.state.shouldAutoStart = false;
             this.saveRunningState();
-        });
+        }
     }
-
     async loadSettings() {
         Object.keys(this.buildingsList).forEach(id => {
             const saved = localStorage.getItem(`twb_build_${id}`);
@@ -1312,5 +1344,6 @@ if (typeof window.twBuilder === 'undefined') {
     const twBuilder = new TWB_AutoBuilder();
     window.twBuilder = twBuilder;
 }
+
 
 
