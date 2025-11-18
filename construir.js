@@ -90,6 +90,8 @@ class TWB_AutoBuilder {
         this.createIframe();
         await this.loadSettings();
         this.createPanel();
+        
+        // Carregar estado de execução ANTES de carregar aldeias
         this.loadRunningState();
 
         // Carregar aldeias em background
@@ -97,6 +99,12 @@ class TWB_AutoBuilder {
             this.renderVillages();
             this.state.isInitialized = true;
             this.log('✅ Sistema inicializado completamente');
+            
+            // ✅ VERIFICAÇÃO DE PERSISTÊNCIA ADICIONADA AQUI
+            if (this.state.isRunning) {
+                this.log('🔄 Retomando execução automática...');
+                this.start(); // Reinicia o loop se estava rodando
+            }
         }).catch(err => {
             console.error('Falha ao carregar aldeias:', err);
             this.log('❌ Falha ao carregar lista de aldeias');
@@ -126,6 +134,14 @@ class TWB_AutoBuilder {
 
         const savedInterval = localStorage.getItem('twb_multivillage_interval');
         if (savedInterval) this.settings.multivillageInterval = parseInt(savedInterval);
+    }
+
+    loadRunningState() {
+        const savedState = localStorage.getItem('twb_running_state');
+        if (savedState === 'true') {
+            this.state.isRunning = true;
+            this.log('⚡ Estado de execução carregado: AGUARDANDO INICIALIZAÇÃO');
+        }
     }
 
     async loadMyVillages() {
@@ -479,14 +495,18 @@ class TWB_AutoBuilder {
 
         if (!this.state.isInitialized) {
             this.log('⚠️ Sistema ainda inicializando...');
+            // Agenda uma nova tentativa após inicialização
+            setTimeout(() => this.start(), 1000);
             return;
         }
 
         this.saveVillageSelection();
         if (!this.state.selectedVillages.length) {
             this.log('❗ Marque ao menos uma aldeia');
+            this.stop();
             return;
         }
+        
         this.state.isRunning = true;
         this.updateUI();
         this.saveRunningState();
@@ -758,12 +778,6 @@ class TWB_AutoBuilder {
 
     saveVillageSelection() {
         localStorage.setItem('twb_selected_villages', JSON.stringify(this.state.selectedVillages));
-    }
-
-    loadRunningState() {
-        if (localStorage.getItem('twb_running_state') === 'true') {
-            this.start();
-        }
     }
 
     saveRunningState() {
@@ -1266,4 +1280,3 @@ if (typeof window.twBuilder === 'undefined') {
     const twBuilder = new TWB_AutoBuilder();
     window.twBuilder = twBuilder;
 }
-
