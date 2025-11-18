@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         TW Auto Builder - Estilo Unificado v4.0
-// @version      4.0.1
+// @version      4.0.2
 // @description  Construtor global com CSS moderno unificado
 // @author       You
 // @match        https://*.tribalwars.com.br/game.php*
@@ -73,6 +73,8 @@ class TWB_AutoBuilder {
 
         this.iframe = null;
         this.currentBuild = null;
+        this._startTimeout = null;
+        this._loopWorkerRunning = false;
         this.init();
     }
 
@@ -86,7 +88,7 @@ class TWB_AutoBuilder {
     }
 
     async init() {
-        console.log('🏗️ TW Auto Builder v4.0.1 iniciado');
+        console.log('🏗️ TW Auto Builder v4.0.2 iniciado');
         this.createIframe();
         await this.loadSettings();
         this.createPanel();
@@ -486,6 +488,8 @@ class TWB_AutoBuilder {
             this.log(`⏱️ Próxima verificação em ${Math.round(waitTime/1000)}s`);
             await this.sleep(waitTime);
         }
+        
+        this._loopWorkerRunning = false;
     }
 
     // ========== CONTROLES PRINCIPAIS ==========
@@ -495,8 +499,13 @@ class TWB_AutoBuilder {
 
         if (!this.state.isInitialized) {
             this.log('⚠️ Sistema ainda inicializando...');
-            // Agenda uma nova tentativa após inicialização
-            setTimeout(() => this.start(), 1000);
+            // ✅ CORREÇÃO: Verificar se já existe um timeout agendado
+            if (!this._startTimeout) {
+                this._startTimeout = setTimeout(() => {
+                    this._startTimeout = null;
+                    this.start();
+                }, 1000);
+            }
             return;
         }
 
@@ -510,13 +519,28 @@ class TWB_AutoBuilder {
         this.state.isRunning = true;
         this.updateUI();
         this.saveRunningState();
-        this.loopWorker();
+        
+        // ✅ CORREÇÃO: Verificar se o loop já está rodando
+        if (!this._loopWorkerRunning) {
+            this._loopWorkerRunning = true;
+            this.loopWorker().finally(() => {
+                this._loopWorkerRunning = false;
+            });
+        }
+        
         this.log('▶️ Auto Builder iniciado');
     }
 
     stop() {
         if (!this.state.isRunning) return;
         this.state.isRunning = false;
+        
+        // ✅ CORREÇÃO: Limpar timeout pendente
+        if (this._startTimeout) {
+            clearTimeout(this._startTimeout);
+            this._startTimeout = null;
+        }
+        
         this.updateUI();
         this.saveRunningState();
         this.log('⏸️ Auto Builder parado');
