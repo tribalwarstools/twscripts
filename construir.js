@@ -92,6 +92,7 @@ class TWB_AutoBuilder {
         this.createPanel();
         this.loadRunningState();
 
+        // Carregar aldeias em background
         this.loadMyVillages().then(() => {
             this.renderVillages();
             this.state.isInitialized = true;
@@ -530,7 +531,6 @@ class TWB_AutoBuilder {
     getPanelHTML() {
         return `
             <div id="twb-toggle-btn">☰</div>
-
             <div class="twb-panel__content-wrapper">
                 <div class="twb-panel__header">
                     <div class="twb-panel__title">
@@ -540,7 +540,6 @@ class TWB_AutoBuilder {
                 </div>
 
                 <div class="twb-panel__content">
-
                     <div class="twb-section">
                         <div class="twb-section-title">⚙️ Status do Sistema</div>
                         <div class="twb-status-line">
@@ -556,15 +555,13 @@ class TWB_AutoBuilder {
 
                     <div class="twb-section">
                         <div class="twb-section-title">🏘️ Seleção de Aldeias</div>
-
                         <div class="twb-controls">
                             <button class="twb-btn" data-action="mark-all">✓ Todas</button>
                             <button class="twb-btn" data-action="unmark-all">✗ Nenhuma</button>
                             <button class="twb-btn" data-action="toggle-villages">
-                                ${this.state.villagesCollapsed ? '▲ Expandir' : '▼ Recolher'}
+                                ${this.state.villagesCollapsed ? '▲' : '▼'} Expandir
                             </button>
                         </div>
-
                         <div class="twb-villages ${this.state.villagesCollapsed ? 'twb-villages--collapsed' : ''}">
                             <div class="twb-villages__list" id="twb-villages-list"></div>
                         </div>
@@ -586,7 +583,6 @@ class TWB_AutoBuilder {
                             <div class="twb-logs__content" id="twb-logs-content"></div>
                         </div>
                     </div>
-
                 </div>
 
                 <div class="twb-panel__footer">
@@ -596,14 +592,12 @@ class TWB_AutoBuilder {
                             <input type="number" class="twb-input" data-setting="interval"
                                    value="${Math.floor(this.settings.multivillageInterval/1000)}" min="5">
                         </div>
-
                         <div class="twb-setting">
                             <label>Concorrência</label>
                             <input type="number" class="twb-input" data-setting="concurrency"
                                    value="${this.settings.maxConcurrentFetches}" min="1" max="5">
                         </div>
                     </div>
-
                     <button class="twb-btn twb-btn-primary" data-action="save">💾 Salvar</button>
                 </div>
             </div>
@@ -625,10 +619,14 @@ class TWB_AutoBuilder {
         });
 
         const mainToggle = document.getElementById('twb-toggle-btn-main');
-        if (mainToggle) mainToggle.addEventListener('click', () => this.toggle());
+        if (mainToggle) {
+            mainToggle.addEventListener('click', () => this.toggle());
+        }
 
         const toggleBtn = document.getElementById('twb-toggle-btn');
-        if (toggleBtn) toggleBtn.addEventListener('click', () => this.togglePanel());
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => this.togglePanel());
+        }
 
         const panel = document.getElementById('twb-builder');
         if (panel) {
@@ -715,19 +713,17 @@ class TWB_AutoBuilder {
     togglePanel() {
         this.state.panelHidden = !this.state.panelHidden;
         const panel = document.getElementById('twb-builder');
-        if (panel) panel.classList.toggle('twb-panel--hidden');
+        if (panel) {
+            panel.classList.toggle('twb-panel--hidden');
+        }
         localStorage.setItem('twb_panel_state', this.state.panelHidden ? 'hidden' : 'visible');
     }
 
     toggleVillages() {
         this.state.villagesCollapsed = !this.state.villagesCollapsed;
-
-        const list = document.querySelector('.twb-villages');
-        if (list) list.classList.toggle('twb-villages--collapsed');
-
-        const btn = document.querySelector('[data-action="toggle-villages"]');
-        if (btn) btn.textContent = this.state.villagesCollapsed ? '▲ Expandir' : '▼ Recolher';
-
+        document.querySelector('.twb-villages').classList.toggle('twb-villages--collapsed');
+        document.querySelector('[data-action="toggle-villages"]').textContent =
+            this.state.villagesCollapsed ? '▲ Expandir' : '▼ Recolher';
         localStorage.setItem('twb_villages_collapsed', this.state.villagesCollapsed);
     }
 
@@ -756,40 +752,70 @@ class TWB_AutoBuilder {
             localStorage.setItem('twb_max_concurrent', this.settings.maxConcurrentFetches);
         }
 
+        this.showSaveFeedback();
         this.log('💾 Configurações salvas');
     }
-
-    clearLogs() {
-        const logBox = document.getElementById('twb-logs-content');
-        if (logBox) logBox.innerHTML = '';
-    }
-
-    log(msg) {
-        const box = document.getElementById('twb-logs-content');
-        if (!box) return;
-        const line = document.createElement('div');
-        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-        box.appendChild(line);
-        box.scrollTop = box.scrollHeight;
-    }
-
-    updateUI() {}
 
     saveVillageSelection() {
         localStorage.setItem('twb_selected_villages', JSON.stringify(this.state.selectedVillages));
     }
 
-    saveRunningState() {
-        localStorage.setItem('twb_builder_state', this.state.isRunning ? '1' : '0');
-    }
-
     loadRunningState() {
-        this.state.isRunning = localStorage.getItem('twb_builder_state') === '1';
+        if (localStorage.getItem('twb_running_state') === 'true') {
+            this.start();
+        }
     }
 
-    // === AQUI TERMINA ===
-   
+    saveRunningState() {
+        localStorage.setItem('twb_running_state', this.state.isRunning.toString());
+    }
 
+    updateUI() {
+        const statusText = document.getElementById('twb-status-text');
+        const statusIndicator = document.querySelector('.twb-status-indicator');
+        const toggleBtn = document.getElementById('twb-toggle-btn-main');
+
+        if (statusText) statusText.textContent = this.state.isRunning ? 'Executando' : 'Parado';
+        if (statusIndicator) {
+            statusIndicator.className = `twb-status-indicator ${this.state.isRunning ? 'ativo' : 'inativo'}`;
+        }
+        if (toggleBtn) {
+            toggleBtn.innerHTML = this.state.isRunning ? '⏸️ Parar Sistema' : '▶️ Iniciar Sistema';
+            toggleBtn.className = `twb-btn ${this.state.isRunning ? 'inativo' : 'ativo'}`;
+        }
+    }
+
+    showSaveFeedback() {
+        const btn = document.querySelector('[data-action="save"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Salvo!';
+        btn.classList.add('twb-btn-saved');
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('twb-btn-saved');
+        }, 2000);
+    }
+
+    log(message) {
+        const logs = document.getElementById('twb-logs-content');
+        if (logs) {
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'twb-log';
+            entry.innerHTML = `<span class="twb-log__time">[${time}]</span> ${message}`;
+            logs.prepend(entry);
+
+            if (logs.children.length > 50) {
+                logs.removeChild(logs.lastChild);
+            }
+        }
+    }
+
+    clearLogs() {
+        const logs = document.getElementById('twb-logs-content');
+        if (logs) logs.innerHTML = '';
+    }
 
     // ========== CSS ESTILO UNIFICADO ==========
 
@@ -1240,6 +1266,4 @@ if (typeof window.twBuilder === 'undefined') {
     const twBuilder = new TWB_AutoBuilder();
     window.twBuilder = twBuilder;
 }
-
-
 
