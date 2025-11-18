@@ -336,10 +336,9 @@
                     </span>
                 </div>
                 <button class="tw-btn inativo" id="antibot-toggle">Ativar Detector</button>
-                <button class="tw-btn" id="antibot-retomar" style="display:none;">▶️ Retomar Sistema</button>
                 <div class="tw-alert" id="antibot-alert">
                     <div class="tw-alert-title">⚠️ ANTI-BOT DETECTADO!</div>
-                    <div class="tw-alert-text">Resolva o desafio manualmente e clique em "Retomar Sistema"</div>
+                    <div class="tw-alert-text">Fazendo logout automático em 2 segundos...</div>
                 </div>
             </div>
             
@@ -355,10 +354,6 @@
                 <button class="tw-btn inativo" id="antilogoff-toggle">Ativar Anti-Logoff</button>
                 <div class="tw-timer" id="antilogoff-timer">--:--</div>
                 <div class="tw-counter-display" id="antilogoff-counter">Ações: 0</div>
-                <label class="tw-checkbox-label">
-                    <input type="checkbox" id="reload-checkbox">
-                    <span>🔄 Recarregar ao detectar anti-bot</span>
-                </label>
             </div>
             
             <!-- INFO -->
@@ -379,7 +374,6 @@
             indicator: document.getElementById('antibot-indicator'),
             statusText: document.getElementById('antibot-status-text'),
             toggleBtn: document.getElementById('antibot-toggle'),
-            retomarBtn: document.getElementById('antibot-retomar'),
             alert: document.getElementById('antibot-alert')
         },
         antilogoff: {
@@ -388,8 +382,7 @@
             toggleBtn: document.getElementById('antilogoff-toggle'),
             timer: document.getElementById('antilogoff-timer'),
             counter: document.getElementById('antilogoff-counter')
-        },
-        reloadCheckbox: document.getElementById('reload-checkbox')
+        }
     };
     
     // ============================================
@@ -398,11 +391,10 @@
     function atualizarUIAntiBot() {
         if (Estado.antibot.pausado) {
             UI.antibot.indicator.className = 'tw-status-indicator pausado';
-            UI.antibot.statusText.textContent = 'Pausado';
+            UI.antibot.statusText.textContent = 'Fazendo Logout...';
             UI.antibot.toggleBtn.className = 'tw-btn pausado';
-            UI.antibot.toggleBtn.textContent = 'Sistema Pausado';
+            UI.antibot.toggleBtn.textContent = '🚪 Desconectando...';
             UI.antibot.toggleBtn.disabled = true;
-            UI.antibot.retomarBtn.style.display = 'inline-block';
             UI.antibot.alert.classList.add('ativo');
         } else if (Estado.antibot.ativo) {
             UI.antibot.indicator.className = 'tw-status-indicator ativo';
@@ -410,7 +402,6 @@
             UI.antibot.toggleBtn.className = 'tw-btn ativo';
             UI.antibot.toggleBtn.textContent = '✓ Detector Ativo';
             UI.antibot.toggleBtn.disabled = false;
-            UI.antibot.retomarBtn.style.display = 'none';
             UI.antibot.alert.classList.remove('ativo');
         } else {
             UI.antibot.indicator.className = 'tw-status-indicator inativo';
@@ -418,7 +409,6 @@
             UI.antibot.toggleBtn.className = 'tw-btn inativo';
             UI.antibot.toggleBtn.textContent = 'Ativar Detector';
             UI.antibot.toggleBtn.disabled = false;
-            UI.antibot.retomarBtn.style.display = 'none';
             UI.antibot.alert.classList.remove('ativo');
         }
     }
@@ -560,10 +550,9 @@
         const timestamp = new Date().toLocaleString('pt-BR');
         const msg = `⚠️ *ANTI-BOT DETECTADO!*\n\n` +
                    `🕒 ${timestamp}\n` +
-                   `⏸️ Sistema pausado automaticamente\n` +
-                   `🔴 Todos os bots externos foram pausados\n\n` +
-                   `👤 Resolva o desafio manualmente\n` +
-                   `🔄 Clique em "Retomar Sistema" após resolver`;
+                   `🚪 Realizando logout automático...\n` +
+                   `🔴 Todos os bots foram desativados\n\n` +
+                   `👋 Você foi desconectado por segurança`;
         
         enviarTelegram(msg);
         
@@ -572,11 +561,37 @@
             new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS99+aqVRILTKXh8sBvIA==').play();
         } catch (e) {}
         
-        // Se checkbox de reload estiver marcado
-        if (UI.reloadCheckbox.checked) {
-            console.log('♻️ Recarregando página devido ao anti-bot...');
-            setTimeout(() => location.reload(), 2000);
+        // Desativar anti-logoff antes do logout
+        if (Estado.antilogoff.ativo) {
+            desativarAntiLogoff();
         }
+        
+        // Aguarda 2 segundos e faz logout
+        console.log('🚪 Fazendo logout em 2 segundos...');
+        setTimeout(() => {
+            fazerLogout();
+        }, 2000);
+    }
+    
+    function fazerLogout() {
+        // Tenta encontrar o link de logout
+        const logoutLink = document.querySelector("a[href*='logout']");
+        
+        if (logoutLink) {
+            console.log('🚪 Logout via link encontrado');
+            logoutLink.click();
+        } else {
+            // Fallback: redireciona direto para logout
+            console.log('🚪 Logout via redirecionamento');
+            window.location.href = "/game.php?village=0&screen=logout";
+        }
+    }
+    
+    function retomarSistema() {
+        window.TWBotControl.retomar();
+        Estado.antibot.pausado = false;
+        atualizarUIAntiBot();
+        enviarTelegram('✅ *Sistema Retomado*\nUsuário resolveu o anti-bot manualmente.\nTodos os bots externos foram retomados.');
     }
     
     function retomarSistema() {
@@ -703,20 +718,9 @@
         }
     });
     
-    UI.antibot.retomarBtn.addEventListener('click', () => {
-        retomarSistema();
-    });
-    
     // AntiLogoff
     UI.antilogoff.toggleBtn.addEventListener('click', () => {
         Estado.antilogoff.ativo ? desativarAntiLogoff() : ativarAntiLogoff();
-    });
-    
-    // Checkbox reload
-    UI.reloadCheckbox.checked = localStorage.getItem(CONFIG.storage.reloadFinal) === 'true';
-    UI.reloadCheckbox.addEventListener('change', () => {
-        localStorage.setItem(CONFIG.storage.reloadFinal, UI.reloadCheckbox.checked ? 'true' : 'false');
-        console.log(`🔄 Reload ao detectar: ${UI.reloadCheckbox.checked}`);
     });
     
     // ============================================
