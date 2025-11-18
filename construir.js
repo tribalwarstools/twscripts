@@ -830,7 +830,7 @@ class TWB_AutoBuilder {
                 position: fixed;
                 top: 50px;
                 left: 0;
-                width: 600px;
+                width: 400px;
                 background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
                 border: 2px solid #654321;
                 border-left: none;
@@ -1266,3 +1266,4 @@ if (typeof window.twBuilder === 'undefined') {
     const twBuilder = new TWB_AutoBuilder();
     window.twBuilder = twBuilder;
 }
+
