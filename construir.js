@@ -844,12 +844,12 @@ class TWB_AutoBuilder {
             }
 
             #twb-builder.twb-panel--hidden {
-                transform: translateX(-600px);
+                transform: translateX(-400px);
                 cursor: pointer;
             }
 
             #twb-builder.twb-panel--hidden:hover {
-                transform: translateX(-600px);
+                transform: translateX(-400px);
             }
 
             /* ============================================ */
@@ -1266,4 +1266,5 @@ if (typeof window.twBuilder === 'undefined') {
     const twBuilder = new TWB_AutoBuilder();
     window.twBuilder = twBuilder;
 }
+
 
