@@ -579,7 +579,7 @@ class TWB_AutoBuilder {
                 <div class="twb-panel__header">
                     <div class="twb-panel__title">
                         <span class="twb-panel__icon">🏗️</span>
-                        <span>Construtor Automático</span>
+                        <span>Construtor Automático 4.1</span>
                     </div>
                 </div>
 
@@ -1304,3 +1304,4 @@ if (typeof window.twBuilder === 'undefined') {
     const twBuilder = new TWB_AutoBuilder();
     window.twBuilder = twBuilder;
 }
+
