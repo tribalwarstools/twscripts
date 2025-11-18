@@ -324,7 +324,7 @@
     painel.innerHTML = `
         <div id="tw-toggle-btn">☰</div>
         <div id="tw-painel-content">
-            <div class="tw-header">🛡️ Sistema TW Unificado</div>
+            <div class="tw-header">🛡️ Sistema TW Unificado 1.0</div>
             
             <!-- ANTIBOT -->
             <div class="tw-section">
@@ -765,6 +765,7 @@
     enviarTelegram('🎮 *Sistema TW Unificado Iniciado*\n\n✅ Painel carregado com sucesso\n📊 Estado restaurado');
     
 })();
+
 
 
 
