@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         TW Sistema Unificado - AntiBot + AntiLogoff
-// @version      3.1
+// @version      3.2
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -13,8 +13,8 @@
     // ============================================
     const CONFIG = {
         telegram: {
-            token: "8005463332:AAHNA7Z6O0rDdrcBx0MDFrLIWew_s_k4tHA",
-            chatId: "7349171723"
+            token: localStorage.getItem('tw_telegram_token') || "",
+            chatId: localStorage.getItem('tw_telegram_chatid') || ""
         },
         antiLogoff: {
             intervalo: 4 * 60 * 1000, // 4 minutos
@@ -24,7 +24,9 @@
             antibot: 'tw_antibot_enabled',
             antilogoff: 'tw_antilogoff_enabled',
             botPausado: 'tw_bot_pausado',
-            reloadFinal: 'tw_reload_final'
+            reloadFinal: 'tw_reload_final',
+            telegramToken: 'tw_telegram_token',
+            telegramChatId: 'tw_telegram_chatid'
         }
     };
     
@@ -422,6 +424,83 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(149, 165, 166, 0.4);
         }
+        
+        .tw-input-group {
+            margin: 8px 0;
+        }
+        
+        .tw-input-label {
+            display: block;
+            font-size: 11px;
+            margin-bottom: 4px;
+            color: #d4b35d;
+            font-weight: bold;
+        }
+        
+        .tw-input-field {
+            width: 100%;
+            padding: 6px 8px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #654321;
+            border-radius: 4px;
+            color: #f1e1c1;
+            font-size: 11px;
+            box-sizing: border-box;
+        }
+        
+        .tw-input-field:focus {
+            outline: none;
+            border-color: #d4b35d;
+            box-shadow: 0 0 4px rgba(212, 179, 93, 0.5);
+        }
+        
+        .tw-input-hint {
+            font-size: 9px;
+            color: #95a5a6;
+            margin-top: 2px;
+            font-style: italic;
+        }
+        
+        .tw-save-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+            border-color: #2ecc71;
+            width: 100%;
+            margin-top: 8px;
+        }
+        
+        .tw-save-btn:hover {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+        }
+        
+        .tw-test-btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-color: #3498db;
+            width: 100%;
+            margin-top: 4px;
+        }
+        
+        .tw-test-btn:hover {
+            background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+        }
+        
+        .tw-telegram-status {
+            font-size: 11px;
+            text-align: center;
+            margin-top: 6px;
+            padding: 4px;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .tw-telegram-status.ativo {
+            color: #2ecc71;
+            border: 1px solid #2ecc71;
+        }
+        
+        .tw-telegram-status.inativo {
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
     `;
     document.head.appendChild(style);
     
@@ -433,7 +512,7 @@
     painel.innerHTML = `
         <div id="tw-toggle-btn">☰</div>
         <div id="tw-painel-content">
-            <div class="tw-header">🛡️ Sistema TW Unificado 1.1</div>
+            <div class="tw-header">🛡️ Sistema TW Unificado 3.2</div>
             
             <!-- ANTIBOT -->
             <div class="tw-section">
@@ -465,10 +544,28 @@
                 <div class="tw-counter-display" id="antilogoff-counter">Ações: 0</div>
             </div>
             
-            <!-- INFO -->
-            <div class="tw-section" style="font-size: 11px; opacity: 0.8;">
-                <div style="margin-bottom: 4px;">📡 Telegram: Ativo</div>
-                <div>🎮 Integração com bots externos: Ativa</div>
+            <!-- TELEGRAM CONFIG -->
+            <div class="tw-section">
+                <div class="tw-section-title">📡 Configuração Telegram</div>
+                
+                <div class="tw-input-group">
+                    <label class="tw-input-label">Bot Token:</label>
+                    <input type="text" class="tw-input-field" id="telegram-token" value="${CONFIG.telegram.token}" placeholder="Ex: 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz">
+                    <div class="tw-input-hint">Token do seu bot do Telegram</div>
+                </div>
+                
+                <div class="tw-input-group">
+                    <label class="tw-input-label">Chat ID:</label>
+                    <input type="text" class="tw-input-field" id="telegram-chatid" value="${CONFIG.telegram.chatId}" placeholder="Ex: 1234567890">
+                    <div class="tw-input-hint">Seu ID de chat do Telegram</div>
+                </div>
+                
+                <button class="tw-btn tw-save-btn" id="telegram-save">💾 Salvar Configurações</button>
+                <button class="tw-btn tw-test-btn" id="telegram-test">📨 Testar Conexão</button>
+                
+                <div class="tw-telegram-status inativo" id="telegram-status">
+                    ⚠️ Configuração não testada
+                </div>
             </div>
             
             <!-- RESET -->
@@ -517,6 +614,13 @@
             toggleBtn: document.getElementById('antilogoff-toggle'),
             timer: document.getElementById('antilogoff-timer'),
             counter: document.getElementById('antilogoff-counter')
+        },
+        telegram: {
+            token: document.getElementById('telegram-token'),
+            chatId: document.getElementById('telegram-chatid'),
+            saveBtn: document.getElementById('telegram-save'),
+            testBtn: document.getElementById('telegram-test'),
+            status: document.getElementById('telegram-status')
         },
         reset: {
             btn: document.getElementById('reset-btn'),
@@ -570,6 +674,20 @@
         }
     }
     
+    function atualizarUITelegram() {
+        // Verifica se as configurações estão preenchidas
+        const tokenPreenchido = UI.telegram.token.value.trim().length > 0;
+        const chatIdPreenchido = UI.telegram.chatId.value.trim().length > 0;
+        
+        if (tokenPreenchido && chatIdPreenchido) {
+            UI.telegram.status.textContent = '✅ Configurações salvas';
+            UI.telegram.status.className = 'tw-telegram-status ativo';
+        } else {
+            UI.telegram.status.textContent = '⚠️ Configure Token e Chat ID';
+            UI.telegram.status.className = 'tw-telegram-status inativo';
+        }
+    }
+    
     function formatarTempo(ms) {
         const seg = Math.floor(ms / 1000);
         const min = Math.floor(seg / 60);
@@ -596,20 +714,87 @@
     // TELEGRAM
     // ============================================
     async function enviarTelegram(msg) {
+        const token = UI.telegram.token.value.trim() || CONFIG.telegram.token;
+        const chatId = UI.telegram.chatId.value.trim() || CONFIG.telegram.chatId;
+        
+        if (!token || !chatId) {
+            console.error('❌ Token ou Chat ID não configurados');
+            return false;
+        }
+        
         try {
-            await fetch(`https://api.telegram.org/bot${CONFIG.telegram.token}/sendMessage`, {
+            const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    chat_id: CONFIG.telegram.chatId,
+                    chat_id: chatId,
                     text: msg,
                     parse_mode: 'Markdown'
                 })
             });
-            console.log('📨 Telegram enviado:', msg);
+            
+            const data = await response.json();
+            
+            if (data.ok) {
+                console.log('📨 Telegram enviado:', msg);
+                return true;
+            } else {
+                console.error('❌ Erro ao enviar telegram:', data.description);
+                return false;
+            }
         } catch (e) {
-            console.error('❌ Erro ao enviar telegram:', e);
+            console.error('❌ Erro de conexão:', e);
+            return false;
         }
+    }
+    
+    async function testarTelegram() {
+        UI.telegram.status.textContent = '🔄 Testando conexão...';
+        UI.telegram.status.className = 'tw-telegram-status inativo';
+        
+        const sucesso = await enviarTelegram('🧪 *Teste de Conexão*\n\n✅ Sistema TW Unificado\n📡 Conexão Telegram funcionando perfeitamente!');
+        
+        if (sucesso) {
+            UI.telegram.status.textContent = '✅ Conexão funcionando!';
+            UI.telegram.status.className = 'tw-telegram-status ativo';
+            
+            // Mostrar notificação de sucesso
+            mostrarNotificacao('✅ Conexão Telegram testada com sucesso!', 'sucesso');
+        } else {
+            UI.telegram.status.textContent = '❌ Falha na conexão';
+            UI.telegram.status.className = 'tw-telegram-status inativo';
+            
+            // Mostrar notificação de erro
+            mostrarNotificacao('❌ Falha ao testar conexão Telegram. Verifique Token e Chat ID.', 'erro');
+        }
+        
+        return sucesso;
+    }
+    
+    function salvarConfigTelegram() {
+        const token = UI.telegram.token.value.trim();
+        const chatId = UI.telegram.chatId.value.trim();
+        
+        if (!token || !chatId) {
+            mostrarNotificacao('⚠️ Preencha Token e Chat ID antes de salvar.', 'aviso');
+            return false;
+        }
+        
+        // Salvar no localStorage
+        localStorage.setItem(CONFIG.storage.telegramToken, token);
+        localStorage.setItem(CONFIG.storage.telegramChatId, chatId);
+        
+        // Atualizar configuração em tempo real
+        CONFIG.telegram.token = token;
+        CONFIG.telegram.chatId = chatId;
+        
+        // Atualizar UI
+        atualizarUITelegram();
+        
+        console.log('💾 Configurações Telegram salvas:', { token, chatId });
+        mostrarNotificacao('✅ Configurações Telegram salvas com sucesso!', 'sucesso');
+        
+        return true;
     }
     
     // ============================================
@@ -837,6 +1022,61 @@
     }, 1000);
     
     // ============================================
+    // NOTIFICAÇÕES
+    // ============================================
+    function mostrarNotificacao(mensagem, tipo = 'info') {
+        const notif = document.createElement('div');
+        notif.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 9999999;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+            border: 2px solid;
+            animation: popIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            max-width: 300px;
+            word-wrap: break-word;
+        `;
+        
+        // Cores baseadas no tipo
+        switch(tipo) {
+            case 'sucesso':
+                notif.style.background = 'linear-gradient(135deg, #27ae60 0%, #1e8449 100%)';
+                notif.style.borderColor = '#2ecc71';
+                notif.style.color = 'white';
+                break;
+            case 'erro':
+                notif.style.background = 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)';
+                notif.style.borderColor = '#e74c3c';
+                notif.style.color = 'white';
+                break;
+            case 'aviso':
+                notif.style.background = 'linear-gradient(135deg, #f39c12 0%, #d35400 100%)';
+                notif.style.borderColor = '#f39c12';
+                notif.style.color = 'white';
+                break;
+            default:
+                notif.style.background = 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)';
+                notif.style.borderColor = '#3498db';
+                notif.style.color = 'white';
+        }
+        
+        notif.innerHTML = mensagem;
+        document.body.appendChild(notif);
+        
+        setTimeout(() => {
+            notif.style.animation = 'fadeOut 0.3s';
+            setTimeout(() => notif.remove(), 300);
+        }, 3000);
+    }
+    
+    // ============================================
     // RESET COMPLETO
     // ============================================
     function resetCompleto() {
@@ -884,41 +1124,25 @@
         // 8. Atualizar UI
         atualizarUIAntiBot();
         atualizarUIAntiLogoff();
+        atualizarUITelegram();
         
-        // 9. Fechar painel
+        // 9. Resetar campos de input
+        UI.telegram.token.value = '';
+        UI.telegram.chatId.value = '';
+        
+        // 10. Fechar painel
         painel.classList.remove('aberto');
         
         console.log('✅ Reset Completo finalizado!');
         console.log('📊 Sistema retornado ao estado inicial');
         
-        // 10. Notificar via Telegram
-        enviarTelegram('🔄 *Sistema Resetado*\n\n✅ Reset completo realizado\n📊 Todos os estados limpos\n🎮 Sistema pronto para nova execução');
-        
-        // 11. Notificação visual
-        const notif = document.createElement('div');
-        notif.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
-            color: white;
-            padding: 24px 48px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            z-index: 9999999;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.8);
-            border: 2px solid #2ecc71;
-            animation: popIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        `;
-        notif.innerHTML = '✅ Sistema Resetado com Sucesso!';
-        document.body.appendChild(notif);
-        
+        // 11. Notificar via Telegram (se ainda tiver config salva)
         setTimeout(() => {
-            notif.style.animation = 'fadeOut 0.3s';
-            setTimeout(() => notif.remove(), 300);
-        }, 2500);
+            enviarTelegram('🔄 *Sistema Resetado*\n\n✅ Reset completo realizado\n📊 Todos os estados limpos\n🎮 Sistema pronto para nova execução');
+        }, 1000);
+        
+        // 12. Notificação visual
+        mostrarNotificacao('✅ Sistema Resetado com Sucesso!', 'sucesso');
     }
     
     function mostrarConfirmacao() {
@@ -953,6 +1177,20 @@
     UI.antilogoff.toggleBtn.addEventListener('click', () => {
         Estado.antilogoff.ativo ? desativarAntiLogoff() : ativarAntiLogoff();
     });
+    
+    // Telegram - Salvar
+    UI.telegram.saveBtn.addEventListener('click', () => {
+        salvarConfigTelegram();
+    });
+    
+    // Telegram - Testar
+    UI.telegram.testBtn.addEventListener('click', () => {
+        testarTelegram();
+    });
+    
+    // Telegram - Atualizar status ao digitar
+    UI.telegram.token.addEventListener('input', atualizarUITelegram);
+    UI.telegram.chatId.addEventListener('input', atualizarUITelegram);
     
     // Reset - Abrir modal
     UI.reset.btn.addEventListener('click', () => {
@@ -999,14 +1237,16 @@
             ativarAntiLogoff();
         }
         
+        // Atualizar UIs
         atualizarUIAntiBot();
         atualizarUIAntiLogoff();
+        atualizarUITelegram();
     }
     
     // ============================================
     // INICIALIZAÇÃO
     // ============================================
-    console.log('🎮 Sistema TW Unificado carregado!');
+    console.log('🎮 Sistema TW Unificado 3.2 carregado!');
     console.log('📡 API para scripts externos:');
     console.log('   - window.TWBotControl.pausar()');
     console.log('   - window.TWBotControl.retomar()');
@@ -1015,8 +1255,12 @@
     
     restaurarEstado();
     
-    // Mensagem de boas-vindas no Telegram
-    enviarTelegram('🎮 *Sistema TW Unificado Iniciado*\n\n✅ Painel carregado com sucesso\n📊 Estado restaurado');
+    // Mensagem de boas-vindas no Telegram (se configurado)
+    setTimeout(() => {
+        if (UI.telegram.token.value && UI.telegram.chatId.value) {
+            enviarTelegram('🎮 *Sistema TW Unificado 3.2 Iniciado*\n\n✅ Painel carregado com sucesso\n📊 Estado restaurado\n⚙️ Configurações Telegram carregadas');
+        }
+    }, 2000);
     
     // Adicionar animações ao CSS
     const animations = document.createElement('style');
