@@ -512,7 +512,7 @@
     painel.innerHTML = `
         <div id="tw-toggle-btn">☰</div>
         <div id="tw-painel-content">
-            <div class="tw-header">🛡️ Sistema TW Unificado 3.2</div>
+            <div class="tw-header">🛡️ Sistema TW Unificado 3.3</div>
             
             <!-- ANTIBOT -->
             <div class="tw-section">
@@ -1301,4 +1301,5 @@ function fazerLogout() {
     document.head.appendChild(animations);
     
 })();
+
 
