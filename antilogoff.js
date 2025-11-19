@@ -868,50 +868,62 @@
         console.log('🤖 Anti-Bot Detector DESATIVADO');
     }
     
-    function pausarSistema() {
-        window.TWBotControl.pausar();
-        Estado.antibot.pausado = true;
-        atualizarUIAntiBot();
-        
-        const timestamp = new Date().toLocaleString('pt-BR');
-        const msg = `⚠️ *ANTI-BOT DETECTADO!*\n\n` +
-                   `🕒 ${timestamp}\n` +
-                   `🚪 Realizando logout automático...\n` +
-                   `🔴 Todos os bots foram desativados\n\n` +
-                   `👋 Você foi desconectado por segurança`;
-        
-        enviarTelegram(msg);
-        
-        // Som de alerta
-        try {
-            new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS99+aqVRILTKXh8sBvIA==').play();
-        } catch (e) {}
-        
-        // Desativar anti-logoff antes do logout
-        if (Estado.antilogoff.ativo) {
-            desativarAntiLogoff();
-        }
-        
-        // Aguarda 2 segundos e faz logout
-        console.log('🚪 Fazendo logout em 2 segundos...');
-        setTimeout(() => {
-            fazerLogout();
-        }, 2000);
+function pausarSistema() {
+    window.TWBotControl.pausar();
+    Estado.antibot.pausado = true;
+    atualizarUIAntiBot();
+    
+    const timestamp = new Date().toLocaleString('pt-BR');
+    const msg = `⚠️ *ANTI-BOT DETECTADO!*\n\n` +
+               `🕒 ${timestamp}\n` +
+               `🚪 Realizando logout automático...\n` +
+               `🔴 Todos os bots foram desativados\n\n` +
+               `👋 Você foi desconectado por segurança`;
+    
+    enviarTelegram(msg);
+    
+    // Som de alerta
+    try {
+        new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS99+aqVRILTKXh8sBvIA==').play();
+    } catch (e) {}
+    
+    // Desativar anti-logoff antes do logout
+    if (Estado.antilogoff.ativo) {
+        desativarAntiLogoff();
     }
     
-    function fazerLogout() {
-        // Tenta encontrar o link de logout
-        const logoutLink = document.querySelector("a[href*='logout']");
-        
-        if (logoutLink) {
-            console.log('🚪 Logout via link encontrado');
-            logoutLink.click();
-        } else {
-            // Fallback: redireciona direto para logout
-            console.log('🚪 Logout via redirecionamento');
-            window.location.href = "/game.php?village=0&screen=logout";
-        }
+    // Aguarda 2 segundos e faz logout (com reset)
+    console.log('🚪 Fazendo logout em 2 segundos...');
+    setTimeout(() => {
+        fazerLogout(); // ← Agora com reset automático
+    }, 2000);
+}
+    
+function fazerLogout() {
+    console.log('🚪 Executando logout...');
+    
+    // 1. Resetar estado ANTES do logout
+    Estado.antibot.pausado = false;
+    Estado.antibot.ativo = false;
+    localStorage.setItem(CONFIG.storage.antibot, '0');
+    localStorage.setItem(CONFIG.storage.botPausado, '0');
+    
+    // 2. Atualizar UI para estado INATIVO
+    atualizarUIAntiBot();
+    
+    // 3. Parar observer
+    observerAntiBot.disconnect();
+    
+    // 4. Executar logout
+    const logoutLink = document.querySelector("a[href*='logout']");
+    if (logoutLink) {
+        console.log('🚪 Logout via link encontrado');
+        logoutLink.click();
+    } else {
+        console.log('🚪 Logout via redirecionamento');
+        window.location.href = "/game.php?village=0&screen=logout";
     }
+}
     
     function retomarSistema() {
         window.TWBotControl.retomar();
@@ -1289,3 +1301,4 @@
     document.head.appendChild(animations);
     
 })();
+
