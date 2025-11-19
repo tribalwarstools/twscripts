@@ -433,7 +433,7 @@
     painel.innerHTML = `
         <div id="tw-toggle-btn">☰</div>
         <div id="tw-painel-content">
-            <div class="tw-header">🛡️ Sistema TW Unificado 1.0</div>
+            <div class="tw-header">🛡️ Sistema TW Unificado | Anti-Bot + Anti-Logoff</div>
             
             <!-- ANTIBOT -->
             <div class="tw-section">
@@ -1085,3 +1085,4 @@
     document.head.appendChild(animations);
     
 })();
+
