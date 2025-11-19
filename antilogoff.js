@@ -433,7 +433,7 @@
     painel.innerHTML = `
         <div id="tw-toggle-btn">☰</div>
         <div id="tw-painel-content">
-            <div class="tw-header">🛡️ Sistema TW Unificado | Anti-Bot + Anti-Logoff</div>
+            <div class="tw-header">🛡️ Sistema TW Unificado 1.1</div>
             
             <!-- ANTIBOT -->
             <div class="tw-section">
@@ -735,66 +735,26 @@
         enviarTelegram('✅ *Sistema Retomado*\nUsuário resolveu o anti-bot manualmente.\nTodos os bots externos foram retomados.');
     }
     
-    // Detector de Anti-Bot - MELHORADO
+    // Detector de Anti-Bot
     const observerAntiBot = new MutationObserver(() => {
         if (!Estado.antibot.ativo || Estado.antibot.pausado) return;
         
-        // Selectors para detectar proteção
+        // Novos - Tribal Wars atual
+        const botprotectionQuest = document.getElementById('botprotection_quest');
+        
+        // Antigos - métodos anteriores
         const selectors = [
-            // Oficial Tribal Wars
-            '#botprotection_quest',
-            '.quest[id*="botprotection"]',
-            '[data-title*="Proteção contra Bots"]',
-            '[data-title*="Bot Protection"]',
-            
-            // Genéricos
             '.bot-protection-row',
             '#bot_check',
             '.bot_check',
             "img[src*='popup-script']",
             "[class*='captcha']",
-            "[id*='captcha']",
-            "[class*='protection']",
-            "[class*='verify']",
-            "[id*='verify']"
+            "[id*='captcha']"
         ];
         
-        const antiBot = document.querySelector(selectors.join(', '));
+        const antiBotAntigo = document.querySelector(selectors.join(', '));
         
-        // Verificações adicionais
-        let deteccaoExtra = false;
-        
-        // 1. Verificar se há popup visível
-        const popups = document.querySelectorAll('[role="dialog"], .popup, .modal, .alert-box');
-        for (let popup of popups) {
-            const texto = popup.textContent.toLowerCase();
-            if (texto.includes('bot') || texto.includes('verificação') || texto.includes('proteção')) {
-                deteccaoExtra = true;
-                console.log('🚨 Popup suspeito detectado:', popup.textContent.substring(0, 50));
-                break;
-            }
-        }
-        
-        // 2. Verificar changes na URL (redirecionamento)
-        const urlAtual = window.location.href;
-        if (urlAtual.includes('verification') || urlAtual.includes('security') || urlAtual.includes('captcha')) {
-            deteccaoExtra = true;
-            console.log('🚨 URL suspeita detectada:', urlAtual);
-        }
-        
-        // 3. Verificar se há elementos novos que aparecem repentinamente
-        const novosElementos = document.querySelectorAll('[class*="bot"], [id*="bot"], [class*="protection"]');
-        if (novosElementos.length > 0) {
-            for (let el of novosElementos) {
-                if (el.offsetParent !== null) { // Visível
-                    deteccaoExtra = true;
-                    console.log('🚨 Elemento de proteção visível:', el.className || el.id);
-                    break;
-                }
-            }
-        }
-        
-        if (antiBot || deteccaoExtra) {
+        if (botprotectionQuest || antiBotAntigo) {
             console.log('🚨 ANTI-BOT DETECTADO!');
             pausarSistema();
         }
@@ -1085,4 +1045,3 @@
     document.head.appendChild(animations);
     
 })();
-
