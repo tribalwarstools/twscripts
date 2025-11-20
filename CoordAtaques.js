@@ -23,11 +23,19 @@
 
     // === FUNÇÕES AUXILIARES DE VALIDAÇÃO ===
     
-    // Valida formato de coordenada (XXX|YYY)
-    function validarCoordenada(coord) {
-        return /^\d{1,3}\|\d{1,3}$/.test(coord);
+// ⬇️ SUBSTITUIR POR ESTA ⬇️
+function validarCoordenada(coord) {
+    const coordSanitizada = coord.replace(/\s+/g, '');
+    return /^\d{1,3}\|\d{1,3}$/.test(coordSanitizada);
+}
+    // ⬇️ ADICIONAR ESTA NOVA FUNÇÃO ⬇️
+function sanitizarCoordenada(coord) {
+    const coordSanitizada = coord.replace(/\s+/g, '');
+    if (!validarCoordenada(coordSanitizada)) {
+        throw new Error(`Coordenada inválida: ${coord}`);
     }
-    
+    return coordSanitizada;
+}
     // Valida formato de data/hora (DD/MM/YYYY HH:MM:SS)
     function validarDataHora(dataHoraStr) {
         return /^\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}:\d{2}$/.test(dataHoraStr);
@@ -406,10 +414,17 @@
                 mostrarMensagem('❌ Informe pelo menos um destino!', '#e74c3c');
                 return;
             }
-            const destinos = destinosRaw.split(/\s+/);
-            
-            // Valida formato das coordenadas de destino
-            const destinosInvalidos = destinos.filter(d => !validarCoordenada(d));
+            const destinos = destinosRaw.split(/\s+/).map(coord => {
+    try {
+        return sanitizarCoordenada(coord);
+    } catch (e) {
+        return null;
+    }
+}).filter(coord => coord !== null);
+
+const destinosInvalidos = destinosRaw.split(/\s+/).filter(coord => {
+    return !validarCoordenada(coord);
+});
             if (destinosInvalidos.length > 0) {
                 mostrarMensagem(`❌ Coordenadas inválidas: ${destinosInvalidos.join(', ')}`, '#e74c3c');
                 return;
@@ -421,10 +436,18 @@
                 mostrarMensagem('❌ Informe pelo menos uma origem!', '#e74c3c');
                 return;
             }
-            const origens = origensRaw.split(/\s+/);
-            
-            // Valida formato das coordenadas de origem
-            const origensInvalidas = origens.filter(o => !validarCoordenada(o));
+// ⬇️ SUBSTITUIR POR ESTE ⬇️
+const origens = origensRaw.split(/\s+/).map(coord => {
+    try {
+        return sanitizarCoordenada(coord);
+    } catch (e) {
+        return null;
+    }
+}).filter(coord => coord !== null);
+
+const origensInvalidas = origensRaw.split(/\s+/).filter(coord => {
+    return !validarCoordenada(coord);
+});
             if (origensInvalidas.length > 0) {
                 mostrarMensagem(`❌ Coordenadas inválidas: ${origensInvalidas.join(', ')}`, '#e74c3c');
                 return;
