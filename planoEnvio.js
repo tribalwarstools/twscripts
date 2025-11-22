@@ -23,19 +23,19 @@
 
     // === FUNÇÕES AUXILIARES DE VALIDAÇÃO ===
     
-// ⬇️ SUBSTITUIR POR ESTA ⬇️
-function validarCoordenada(coord) {
-    const coordSanitizada = coord.replace(/\s+/g, '');
-    return /^\d{1,3}\|\d{1,3}$/.test(coordSanitizada);
-}
-    // ⬇️ ADICIONAR ESTA NOVA FUNÇÃO ⬇️
-function sanitizarCoordenada(coord) {
-    const coordSanitizada = coord.replace(/\s+/g, '');
-    if (!validarCoordenada(coordSanitizada)) {
-        throw new Error(`Coordenada inválida: ${coord}`);
+    function validarCoordenada(coord) {
+        const coordSanitizada = coord.replace(/\s+/g, '');
+        return /^\d{1,3}\|\d{1,3}$/.test(coordSanitizada);
     }
-    return coordSanitizada;
-}
+
+    function sanitizarCoordenada(coord) {
+        const coordSanitizada = coord.replace(/\s+/g, '');
+        if (!validarCoordenada(coordSanitizada)) {
+            throw new Error(`Coordenada inválida: ${coord}`);
+        }
+        return coordSanitizada;
+    }
+
     // Valida formato de data/hora (DD/MM/YYYY HH:MM:SS)
     function validarDataHora(dataHoraStr) {
         return /^\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}:\d{2}$/.test(dataHoraStr);
@@ -217,6 +217,14 @@ function sanitizarCoordenada(coord) {
                     <option value="distancia">Por Distância</option>
                 </select>
             </div>
+
+            <div style="margin-bottom:6px;">
+                <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:#2c3e50;">
+                    <input type="checkbox" id="incrementarSegundos" style="margin:0;">
+                    ⏱️ Incrementar 5s por ataque
+                </label>
+                <small style="color:#7f8c8d; font-size:10px; display:block; margin-top:2px;">Evita que muitos ataques saiam no mesmo momento</small>
+            </div>
             
             <div id="campoHoraChegada">
                 <label style="font-weight:600; color:#2c3e50;">⏰ Hora de Chegada:</label>
@@ -348,6 +356,9 @@ function sanitizarCoordenada(coord) {
                 if (config.tipoOrdenacao) panel.querySelector('#tipoOrdenacao').value = config.tipoOrdenacao;
                 if (config.horaChegada) panel.querySelector('#horaChegada').value = config.horaChegada;
                 if (config.horaLancamento) panel.querySelector('#horaLancamento').value = config.horaLancamento;
+                if (config.incrementarSegundos !== undefined) {
+                    panel.querySelector('#incrementarSegundos').checked = config.incrementarSegundos;
+                }
                 
                 if (config.tropas) {
                     for (const [unidade, quantidade] of Object.entries(config.tropas)) {
@@ -415,16 +426,16 @@ function sanitizarCoordenada(coord) {
                 return;
             }
             const destinos = destinosRaw.split(/\s+/).map(coord => {
-    try {
-        return sanitizarCoordenada(coord);
-    } catch (e) {
-        return null;
-    }
-}).filter(coord => coord !== null);
+                try {
+                    return sanitizarCoordenada(coord);
+                } catch (e) {
+                    return null;
+                }
+            }).filter(coord => coord !== null);
 
-const destinosInvalidos = destinosRaw.split(/\s+/).filter(coord => {
-    return !validarCoordenada(coord);
-});
+            const destinosInvalidos = destinosRaw.split(/\s+/).filter(coord => {
+                return !validarCoordenada(coord);
+            });
             if (destinosInvalidos.length > 0) {
                 mostrarMensagem(`❌ Coordenadas inválidas: ${destinosInvalidos.join(', ')}`, '#e74c3c');
                 return;
@@ -436,18 +447,17 @@ const destinosInvalidos = destinosRaw.split(/\s+/).filter(coord => {
                 mostrarMensagem('❌ Informe pelo menos uma origem!', '#e74c3c');
                 return;
             }
-// ⬇️ SUBSTITUIR POR ESTE ⬇️
-const origens = origensRaw.split(/\s+/).map(coord => {
-    try {
-        return sanitizarCoordenada(coord);
-    } catch (e) {
-        return null;
-    }
-}).filter(coord => coord !== null);
+            const origens = origensRaw.split(/\s+/).map(coord => {
+                try {
+                    return sanitizarCoordenada(coord);
+                } catch (e) {
+                    return null;
+                }
+            }).filter(coord => coord !== null);
 
-const origensInvalidas = origensRaw.split(/\s+/).filter(coord => {
-    return !validarCoordenada(coord);
-});
+            const origensInvalidas = origensRaw.split(/\s+/).filter(coord => {
+                return !validarCoordenada(coord);
+            });
             if (origensInvalidas.length > 0) {
                 mostrarMensagem(`❌ Coordenadas inválidas: ${origensInvalidas.join(', ')}`, '#e74c3c');
                 return;
@@ -456,6 +466,7 @@ const origensInvalidas = origensRaw.split(/\s+/).filter(coord => {
             const tipoCalculo = panel.querySelector('#tipoCalculo').value;
             const tipoOrdenacao = panel.querySelector('#tipoOrdenacao').value;
             const bonusSinal = parseInt(panel.querySelector('#bonusSinal').value) || 0;
+            const incrementarSegundos = panel.querySelector('#incrementarSegundos').checked;
             const tropas = getTropas();
             
             // Valida se há tropas selecionadas
@@ -557,6 +568,31 @@ const origensInvalidas = origensRaw.split(/\s+/).filter(coord => {
                     break;
             }
             
+            // APLICA INCREMENTO DE SEGUNDOS SE SOLICITADO
+            if (incrementarSegundos) {
+                let segundoIncremento = 0;
+                
+                combinacoes.forEach((comb, index) => {
+                    if (index > 0) {
+                        segundoIncremento += 5; // Incrementa 5 segundo por ataque
+                        
+                        // Ajusta tanto o horário de lançamento quanto o de chegada
+                        const lancamentoDate = parseDataHora(comb.horaLancamento);
+                        const chegadaDate = parseDataHora(comb.horaChegada);
+                        
+                        lancamentoDate.setSeconds(lancamentoDate.getSeconds() + segundoIncremento);
+                        chegadaDate.setSeconds(chegadaDate.getSeconds() + segundoIncremento);
+                        
+                        comb.horaLancamento = formatarDataHora(lancamentoDate);
+                        comb.horaChegada = formatarDataHora(chegadaDate);
+                        comb.timestampLancamento = lancamentoDate.getTime();
+                        comb.timestampChegada = chegadaDate.getTime();
+                    }
+                });
+                
+                console.log(`⏱️ Incremento aplicado: ${segundoIncremento} segundo(s) no total`);
+            }
+            
             let out = `[table][**]Unidade[||]Origem[||]Destino[||]Lançamento[||]Chegada[||]Enviar[/**]\n`;
             
             combinacoes.forEach((comb) => {
@@ -569,7 +605,7 @@ const origensInvalidas = origensRaw.split(/\s+/).filter(coord => {
             out += `[/table]`;
             panel.querySelector('#saida').value = out;
             
-            mostrarMensagem(`✅ ${combinacoes.length} ataque(s) gerado(s)!`, '#27ae60');
+            mostrarMensagem(`✅ ${combinacoes.length} ataque(s) gerado(s)!${incrementarSegundos ? ' (com incremento de segundos)' : ''}`, '#27ae60');
             
         } catch (error) {
             console.error('❌ Erro ao gerar BBCode:', error);
@@ -611,6 +647,7 @@ const origensInvalidas = origensRaw.split(/\s+/).filter(coord => {
             tipoOrdenacao: panel.querySelector('#tipoOrdenacao').value,
             horaChegada: panel.querySelector('#horaChegada').value,
             horaLancamento: panel.querySelector('#horaLancamento').value,
+            incrementarSegundos: panel.querySelector('#incrementarSegundos').checked,
             tropas: getTropas()
         };
         
