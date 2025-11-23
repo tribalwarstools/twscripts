@@ -177,7 +177,7 @@
     
     panel.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #ddd;">
-            <h3 style="margin:0; color:#2c3e50; cursor:move; font-size:14px; font-weight:600;">Coordenador de Ataques</h3>
+            <h3 style="margin:0; color:#2c3e50; cursor:move; font-size:14px; font-weight:600;">Coordenador de Ataques 2.0</h3>
             <button id="fechar" style="background:#e74c3c; color:white; border:none; padding:3px 8px; border-radius:3px; cursor:pointer; font-size:10px;">✕</button>
         </div>
         
@@ -221,8 +221,12 @@
             <div style="margin-bottom:6px;">
                 <label style="display:flex; align-items:center; gap:6px; font-weight:600; color:#2c3e50;">
                     <input type="checkbox" id="incrementarSegundos" style="margin:0;">
-                    ⏱️ Incrementar 5s por ataque
+                    ⏱️ Incrementar por ataque
                 </label>
+                <div style="display:flex; align-items:center; gap:4px; margin-top:2px;">
+                    <input type="number" id="valorIncremento" value="5" min="1" max="60" style="width:60px; padding:3px; background:white; color:#333; border:1px solid #bdc3c7; border-radius:2px; font-size:11px;">
+                    <span style="font-size:10px; color:#7f8c8d;">segundo(s) por ataque</span>
+                </div>
                 <small style="color:#7f8c8d; font-size:10px; display:block; margin-top:2px;">Evita que muitos ataques saiam no mesmo momento</small>
             </div>
             
@@ -359,6 +363,9 @@
                 if (config.incrementarSegundos !== undefined) {
                     panel.querySelector('#incrementarSegundos').checked = config.incrementarSegundos;
                 }
+                if (config.valorIncremento !== undefined) {
+                    panel.querySelector('#valorIncremento').value = config.valorIncremento;
+                }
                 
                 if (config.tropas) {
                     for (const [unidade, quantidade] of Object.entries(config.tropas)) {
@@ -467,6 +474,7 @@
             const tipoOrdenacao = panel.querySelector('#tipoOrdenacao').value;
             const bonusSinal = parseInt(panel.querySelector('#bonusSinal').value) || 0;
             const incrementarSegundos = panel.querySelector('#incrementarSegundos').checked;
+            const valorIncremento = parseInt(panel.querySelector('#valorIncremento').value) || 5;
             const tropas = getTropas();
             
             // Valida se há tropas selecionadas
@@ -574,7 +582,7 @@
                 
                 combinacoes.forEach((comb, index) => {
                     if (index > 0) {
-                        segundoIncremento += 5; // Incrementa 5 segundo por ataque
+                        segundoIncremento += valorIncremento; // Incrementa o valor configurado por ataque
                         
                         // Ajusta tanto o horário de lançamento quanto o de chegada
                         const lancamentoDate = parseDataHora(comb.horaLancamento);
@@ -590,7 +598,7 @@
                     }
                 });
                 
-                console.log(`⏱️ Incremento aplicado: ${segundoIncremento} segundo(s) no total`);
+                console.log(`⏱️ Incremento aplicado: ${segundoIncremento} segundo(s) no total (${valorIncremento}s por ataque)`);
             }
             
             let out = `[table][**]Unidade[||]Origem[||]Destino[||]Lançamento[||]Chegada[||]Enviar[/**]\n`;
@@ -605,7 +613,7 @@
             out += `[/table]`;
             panel.querySelector('#saida').value = out;
             
-            mostrarMensagem(`✅ ${combinacoes.length} ataque(s) gerado(s)!${incrementarSegundos ? ' (com incremento de segundos)' : ''}`, '#27ae60');
+            mostrarMensagem(`✅ ${combinacoes.length} ataque(s) gerado(s)!${incrementarSegundos ? ` (com incremento de ${valorIncremento}s)` : ''}`, '#27ae60');
             
         } catch (error) {
             console.error('❌ Erro ao gerar BBCode:', error);
@@ -648,6 +656,7 @@
             horaChegada: panel.querySelector('#horaChegada').value,
             horaLancamento: panel.querySelector('#horaLancamento').value,
             incrementarSegundos: panel.querySelector('#incrementarSegundos').checked,
+            valorIncremento: panel.querySelector('#valorIncremento').value,
             tropas: getTropas()
         };
         
