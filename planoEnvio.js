@@ -11,7 +11,7 @@
         sword: 22,      // Espadachim
         axe: 18,        // Machado
         archer: 18,     // Arqueiro
-        spy: 8,         // Espião
+        spy: 9,         // Espião
         light: 10,      // Cavalaria Leve
         marcher: 10,    // Arqueiro a Cavalo
         heavy: 11,      // Cavalaria Pesada
