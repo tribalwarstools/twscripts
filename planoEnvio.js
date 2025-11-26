@@ -581,27 +581,27 @@ function getUnidadeMaisLenta(tropas) {
     };
 
     document.getElementById('preencherAtaque').onclick = () => {
-        const ataque = {spear: 18, sword: 22, axe: 18, archer: 18, spy: 9,
-            light: 10, marcher: 10, heavy: 11, ram: 30, catapult: 30,
-            knight: 10, snob: 35 };
+        const ataque = {spear: , sword: , axe: , archer: , spy: ,
+            light: , marcher: , heavy: , ram: , catapult: ,
+            knight: , snob:  };
         Object.keys(velocidadesUnidades).forEach(unidade => {
             document.getElementById(unidade).value = ataque[unidade] || 0;
         });
     };
 
     document.getElementById('preencherDefesa').onclick = () => {
-        const defesa = {spear: 18, sword: 22, axe: 18, archer: 18, spy: 9,
-            light: 10, marcher: 10, heavy: 11, ram: 30, catapult: 30,
-            knight: 10, snob: 35 };
+        const defesa = {spear: , sword: , axe: , archer: , spy: ,
+            light: , marcher: , heavy: , ram: , catapult: ,
+            knight: , snob:  };
         Object.keys(velocidadesUnidades).forEach(unidade => {
             document.getElementById(unidade).value = defesa[unidade] || 0;
         });
     };
 
     document.getElementById('preencherNobre').onclick = () => {
-        const nobre = {spear: 18, sword: 22, axe: 18, archer: 18, spy: 9,
-            light: 10, marcher: 10, heavy: 11, ram: 30, catapult: 30,
-            knight: 10, snob: 35 };
+        const nobre = {spear: , sword: , axe: , archer: , spy: ,
+            light: , marcher: , heavy: , ram: , catapult: ,
+            knight: , snob:  };
         Object.keys(velocidadesUnidades).forEach(unidade => {
             document.getElementById(unidade).value = nobre[unidade] || 0;
         });
