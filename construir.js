@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TW Auto Builder
-// @version      4.5
-// @description  Backend confiável v3.1 com interface moderna v4.0
+// @version      4.6
+// @description  Backend confiável v3.1 com interface moderna v4.0 — Corrigido v4.6
 // @author       You
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
@@ -43,9 +43,9 @@ class TWB_AutoBuilder {
             jitterRange: 0.3
         };
 
-        // ✅ BACKEND SIMPLES E FUNCIONAL (v3.1)
         this.state = {
             isRunning: false,
+            // FIX: currentVillageId agora lê apenas da URL, sem depender de chave nunca gravada
             currentVillageId: this.getCurrentVillageId(),
             selectedVillages: [],
             myVillages: [],
@@ -65,25 +65,28 @@ class TWB_AutoBuilder {
 
         this.iframe = null;
         this.currentBuild = null;
+
+        // FIX: lock para impedir dupla execução do loopWorker
+        this._loopRunning = false;
+
         this.init();
     }
 
-    // ========== MÉTODOS CORE (BACKEND v3.1) ==========
+    // ========== MÉTODOS CORE ==========
 
+    // FIX: removida leitura de 'twb_selected_village' que nunca era gravada
     getCurrentVillageId() {
-        const saved = localStorage.getItem('twb_selected_village');
-        if (saved) return parseInt(saved);
         const m = window.location.href.match(/village=(\d+)/);
         return m ? parseInt(m[1]) : null;
     }
 
     async init() {
-        console.log('🏗️ TW Auto Builder v4.5 - Backend Funcional + Frontend Bonito');
+        console.log('🏗️ TW Auto Builder v4.6 — Corrigido');
         this.createIframe();
         await this.loadSettings();
         await this.loadMyVillages();
         this.createPanel();
-        this.loadRunningState(); // ✅ PERSISTÊNCIA QUE FUNCIONA
+        this.loadRunningState();
     }
 
     async loadSettings() {
@@ -112,9 +115,20 @@ class TWB_AutoBuilder {
 
     async loadMyVillages() {
         try {
-            const playerId = (window.game_data && window.game_data.player && window.game_data.player.id) ? window.game_data.player.id : null;
-            const res = await fetch('/map/village.txt');
+            const playerId = (window.game_data && window.game_data.player && window.game_data.player.id)
+                ? parseInt(window.game_data.player.id)
+                : null;
 
+            // FIX: se playerId não estiver disponível, aborta o carregamento em vez de
+            // retornar todas as aldeias do servidor (potencialmente centenas de outros jogadores)
+            if (playerId === null) {
+                this.log('⚠️ game_data indisponível — aldeias não carregadas');
+                this.state.myVillages = [];
+                this.state.villagesLoaded = true;
+                return;
+            }
+
+            const res = await fetch('/map/village.txt');
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const text = await res.text();
@@ -133,7 +147,7 @@ class TWB_AutoBuilder {
                         bonus_id: bonus_id ? parseInt(bonus_id) : null
                     };
                 })
-                .filter(v => playerId === null ? true : v.player === playerId)
+                .filter(v => v.player === playerId)
                 .sort((a,b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
             this.state.villagesLoaded = true;
@@ -146,7 +160,7 @@ class TWB_AutoBuilder {
         }
     }
 
-    // ========== SISTEMA DE CONSTRUÇÃO (BACKEND v3.1) ==========
+    // ========== SISTEMA DE CONSTRUÇÃO ==========
 
     createIframe() {
         const old = document.getElementById('twb-builder-iframe');
@@ -160,14 +174,21 @@ class TWB_AutoBuilder {
         document.body.appendChild(this.iframe);
     }
 
+    // FIX: timeout implementado com AbortController — fetch nativo ignora a opção 'timeout'
     async fetchWithRetry(url, options = {}, retries = this.settings.maxRetries) {
         for (let attempt = 1; attempt <= retries; attempt++) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), options.timeout || 10000);
+
             try {
                 const response = await fetch(url, {
                     credentials: 'include',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    ...options
+                    ...options,
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
 
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -175,6 +196,7 @@ class TWB_AutoBuilder {
                 return await response.text();
 
             } catch (error) {
+                clearTimeout(timeoutId);
                 this.recordError();
                 if (attempt === retries) throw error;
 
@@ -205,6 +227,8 @@ class TWB_AutoBuilder {
         this.stats.lastErrorTime = Date.now();
     }
 
+    // FIX: promise é criada, adicionada ao Set e só então o .finally é registrado,
+    // evitando a referência frágil por closure na versão anterior
     async executeWithConcurrency(tasks, maxConcurrent = this.settings.maxConcurrentFetches) {
         const results = [];
         const executing = new Set();
@@ -212,12 +236,13 @@ class TWB_AutoBuilder {
         for (const task of tasks) {
             if (!this.state.isRunning) break;
 
-            if (executing.size >= maxConcurrent) {
+            while (executing.size >= maxConcurrent) {
                 await Promise.race(executing);
             }
 
-            const promise = task().finally(() => executing.delete(promise));
+            const promise = task();
             executing.add(promise);
+            promise.finally(() => executing.delete(promise));
             results.push(promise);
         }
 
@@ -261,13 +286,25 @@ class TWB_AutoBuilder {
                 const buildingId = row.id.replace('main_buildrow_', '');
                 if (!this.buildingsList[buildingId]) return;
 
-                const levelText = row.querySelector('span[style*="font-size: 0.9em"]')?.textContent || '';
+                // FIX: seletor de nível mais robusto — tenta múltiplas estratégias antes de
+                // depender apenas do estilo inline, que pode mudar com atualizações do jogo
+                const levelEl =
+                    row.querySelector('.level') ||
+                    row.querySelector('span[class*="level"]') ||
+                    row.querySelector('span[style*="font-size: 0.9em"]');
+                const levelText = levelEl?.textContent || '';
                 const currentLevel = this.extractLevel(levelText);
+
                 const buildButton = row.querySelector('.btn-build');
                 const buildLink = buildButton?.getAttribute('href') || '';
-                const errorMessage = row.querySelector('.inactive')?.textContent || '';
-                const hasBuildButton = buildButton && buildButton.style.display !== 'none';
-                const canBuildNow = hasBuildButton && !errorMessage.includes('Fazenda') && !errorMessage.includes('requer');
+                const hasBuildButton = !!buildButton && buildButton.style.display !== 'none';
+
+                // FIX: captura qualquer mensagem de erro/aviso na linha, não só as duas strings hardcoded
+                const inactiveEl = row.querySelector('.inactive, .error, [class*="error"]');
+                const errorMessage = inactiveEl?.textContent?.trim() || '';
+                const hasBlockingError = errorMessage.length > 0;
+
+                const canBuildNow = hasBuildButton && !hasBlockingError;
                 const canQueue = hasBuildButton && this.settings.allowQueue && buildLink !== '';
 
                 buildings[buildingId] = {
@@ -285,10 +322,15 @@ class TWB_AutoBuilder {
         return buildings;
     }
 
+    // FIX: usa seletor único para evitar dupla contagem quando um elemento
+    // satisfaz ambas as condições do seletor composto anterior
     parseQueueFromHTML(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        return doc.querySelectorAll('#buildqueue tr.lit, .build_order').length;
+        const inQueue = new Set();
+        doc.querySelectorAll('#buildqueue tr.lit').forEach(el => inQueue.add(el));
+        doc.querySelectorAll('.build_order').forEach(el => inQueue.add(el));
+        return inQueue.size;
     }
 
     extractLevel(levelText) {
@@ -364,63 +406,74 @@ class TWB_AutoBuilder {
         return null;
     }
 
-    // ========== LOOP PRINCIPAL (BACKEND v3.1) ==========
+    // ========== LOOP PRINCIPAL ==========
 
+    // FIX: _loopRunning impede que dois loops rodem em paralelo se loopWorker
+    // for chamado mais de uma vez antes do flag isRunning propagar
     async loopWorker() {
-        if (!this.state.selectedVillages.length) {
-            this.log('⚠️ Nenhuma aldeia marcada');
-            this.stop();
-            return;
-        }
+        if (this._loopRunning) return;
+        this._loopRunning = true;
 
-        this.log(`🔄 Executando ${this.state.selectedVillages.length} aldeias`);
-
-        while (this.state.isRunning) {
-            const startTime = Date.now();
-            let constructionsStarted = 0;
-
-            try {
-                const villagesData = await this.fetchMultipleVillagesData(this.state.selectedVillages);
-
-                for (const data of villagesData) {
-                    if (!this.state.isRunning) break;
-
-                    const village = this.state.myVillages.find(v => v.id === data.villageId) ||
-                                  {id: data.villageId, name: 'Aldeia ' + data.villageId};
-
-                    if (!data.buildings) {
-                        this.log(`❌ Sem dados para ${village.name}`);
-                        continue;
-                    }
-
-                    const availableSlots = Math.max(0, this.settings.maxQueueSlots - (data.queueCount || 0));
-                    if (availableSlots <= 0) {
-                        this.log(`⏳ Fila cheia em ${village.name}`);
-                        continue;
-                    }
-
-                    const nextBuilding = this.findNextBuilding(data.buildings);
-                    if (nextBuilding && await this.buildViaIframe(nextBuilding, village)) {
-                        constructionsStarted++;
-                        await this.sleep(1000);
-                    }
-                }
-            } catch (error) {
-                this.log(`❌ Erro no processamento`);
+        try {
+            if (!this.state.selectedVillages.length) {
+                this.log('⚠️ Nenhuma aldeia marcada');
+                this.stop();
+                return;
             }
 
-            const elapsed = Date.now() - startTime;
-            const waitTime = Math.max(2000, this.settings.multivillageInterval - elapsed);
+            this.log(`🔄 Executando ${this.state.selectedVillages.length} aldeias`);
 
-            this.log(`⏱️ Próxima verificação em ${Math.round(waitTime/1000)}s`);
-            await this.sleep(waitTime);
+            while (this.state.isRunning) {
+                const startTime = Date.now();
+                let constructionsStarted = 0;
+
+                try {
+                    const villagesData = await this.fetchMultipleVillagesData(this.state.selectedVillages);
+
+                    for (const data of villagesData) {
+                        if (!this.state.isRunning) break;
+
+                        const village = this.state.myVillages.find(v => v.id === data.villageId) ||
+                                      {id: data.villageId, name: 'Aldeia ' + data.villageId};
+
+                        if (!data.buildings) {
+                            this.log(`❌ Sem dados para ${village.name}`);
+                            continue;
+                        }
+
+                        const availableSlots = Math.max(0, this.settings.maxQueueSlots - (data.queueCount || 0));
+                        if (availableSlots <= 0) {
+                            this.log(`⏳ Fila cheia em ${village.name}`);
+                            continue;
+                        }
+
+                        const nextBuilding = this.findNextBuilding(data.buildings);
+                        if (nextBuilding && await this.buildViaIframe(nextBuilding, village)) {
+                            constructionsStarted++;
+                            await this.sleep(1000);
+                        }
+                    }
+                } catch (error) {
+                    this.log(`❌ Erro no processamento`);
+                }
+
+                const elapsed = Date.now() - startTime;
+                const waitTime = Math.max(2000, this.settings.multivillageInterval - elapsed);
+
+                this.log(`⏱️ Próxima verificação em ${Math.round(waitTime/1000)}s`);
+                await this.sleep(waitTime);
+            }
+        } finally {
+            this._loopRunning = false;
         }
     }
 
-    // ========== CONTROLES PRINCIPAIS (BACKEND v3.1) ==========
+    // ========== CONTROLES PRINCIPAIS ==========
 
+    // FIX: isRunning é definido como true ANTES de qualquer await,
+    // garantindo que cliques duplos rápidos não disparem dois loops
     start() {
-        if (this.state.isRunning) return;
+        if (this.state.isRunning || this._loopRunning) return;
         this.saveVillageSelection();
         if (!this.state.selectedVillages.length) {
             this.log('❗ Marque ao menos uma aldeia');
@@ -449,7 +502,7 @@ class TWB_AutoBuilder {
         return new Promise(r => setTimeout(r, ms));
     }
 
-    // ========== INTERFACE MODERNA (FRONTEND v4.0) ==========
+    // ========== INTERFACE ==========
 
     createPanel() {
         this.injectStyles();
@@ -474,7 +527,7 @@ class TWB_AutoBuilder {
                 <div class="twb-panel__header">
                     <div class="twb-panel__title">
                         <span class="twb-panel__icon">🏗️</span>
-                        <span>Construtor Automático v4.5</span>
+                        <span>Construtor Automático v4.6</span>
                     </div>
                 </div>
 
@@ -544,8 +597,8 @@ class TWB_AutoBuilder {
     }
 
     attachEvents() {
+        // FIX: removida a entrada 'toggle' órfã que não tinha elemento correspondente no HTML
         const actions = {
-            'toggle': () => this.toggle(),
             'toggle-villages': () => this.toggleVillages(),
             'mark-all': () => this.markAllVillages(true),
             'unmark-all': () => this.markAllVillages(false),
@@ -554,7 +607,10 @@ class TWB_AutoBuilder {
         };
 
         document.querySelectorAll('[data-action]').forEach(btn => {
-            btn.addEventListener('click', () => actions[btn.dataset.action]());
+            const action = btn.dataset.action;
+            if (actions[action]) {
+                btn.addEventListener('click', () => actions[action]());
+            }
         });
 
         const mainToggle = document.getElementById('twb-toggle-btn-main');
@@ -594,6 +650,7 @@ class TWB_AutoBuilder {
         container.innerHTML = this.state.myVillages.map(village => `
             <label class="twb-village">
                 <input type="checkbox" value="${village.id}"
+                       data-village-id="${village.id}"
                        ${this.state.selectedVillages.includes(village.id) ? 'checked' : ''}
                        onchange="window.twBuilder.toggleVillage(${village.id})">
                 <span class="twb-village__name">${village.x}|${village.y} ${village.name}</span>
@@ -606,6 +663,8 @@ class TWB_AutoBuilder {
         const container = document.getElementById('twb-buildings-grid');
         if (!container) return;
 
+        // FIX: adicionado data-building-id nos inputs para que saveSettings()
+        // possa selecioná-los de forma confiável, sem depender do atributo onchange como seletor
         container.innerHTML = Object.entries(this.buildingsList).map(([id, name]) => {
             const maxLevel = this.settings.maxLevels[id] || 0;
             const enabled = this.settings.enabledBuildings[id] !== false;
@@ -614,10 +673,12 @@ class TWB_AutoBuilder {
                 <div class="twb-building">
                     <label class="twb-building__label">
                         <input type="checkbox" ${enabled ? 'checked' : ''}
+                               data-building-id="${id}"
                                onchange="window.twBuilder.toggleBuilding('${id}')">
                         <span>${name}</span>
                     </label>
                     <input type="number" class="twb-building__input"
+                           data-building-max="${id}"
                            value="${maxLevel}" min="0" max="30"
                            onchange="window.twBuilder.setMaxLevel('${id}', this.value)">
                 </div>
@@ -666,9 +727,11 @@ class TWB_AutoBuilder {
         localStorage.setItem('twb_villages_collapsed', this.state.villagesCollapsed);
     }
 
+    // FIX: saveSettings() agora usa data-building-id para localizar os checkboxes,
+    // eliminando a dependência frágil do atributo onchange como seletor CSS
     saveSettings() {
         Object.keys(this.buildingsList).forEach(id => {
-            const cb = document.querySelector(`input[onchange*="${id}"]`);
+            const cb = document.querySelector(`input[data-building-id="${id}"]`);
             if (cb) {
                 this.settings.enabledBuildings[id] = cb.checked;
                 localStorage.setItem(`twb_build_${id}`, cb.checked);
@@ -699,7 +762,6 @@ class TWB_AutoBuilder {
         localStorage.setItem('twb_selected_villages', JSON.stringify(this.state.selectedVillages));
     }
 
-    // ✅ PERSISTÊNCIA QUE FUNCIONA (v3.1)
     loadRunningState() {
         if (localStorage.getItem('twb_running_state') === 'true') {
             this.start();
@@ -757,15 +819,12 @@ class TWB_AutoBuilder {
         if (logs) logs.innerHTML = '';
     }
 
-    // ========== CSS ESTILO UNIFICADO (FRONTEND v4.0) ==========
+    // ========== CSS ==========
 
     injectStyles() {
         if (document.getElementById('twb-styles')) return;
 
         const styles = `
-            /* ============================================ */
-            /* PAINEL PRINCIPAL - ESTILO UNIFICADO */
-            /* ============================================ */
             #twb-builder {
                 position: fixed;
                 top: 50px;
@@ -788,13 +847,6 @@ class TWB_AutoBuilder {
                 cursor: pointer;
             }
 
-            #twb-builder.twb-panel--hidden:hover {
-                transform: translateX(-400px);
-            }
-
-            /* ============================================ */
-            /* BOTÃO TOGGLE LATERAL */
-            /* ============================================ */
             #twb-toggle-btn {
                 position: absolute;
                 top: 10px;
@@ -820,12 +872,7 @@ class TWB_AutoBuilder {
                 transform: translateX(2px);
             }
 
-            /* ============================================ */
-            /* CONTEÚDO DO PAINEL */
-            /* ============================================ */
-            .twb-panel__content-wrapper {
-                width: 100%;
-            }
+            .twb-panel__content-wrapper { width: 100%; }
 
             .twb-panel__header {
                 padding: 16px 20px;
@@ -843,9 +890,7 @@ class TWB_AutoBuilder {
                 color: #d4b35d;
             }
 
-            .twb-panel__icon {
-                font-size: 20px;
-            }
+            .twb-panel__icon { font-size: 20px; }
 
             .twb-panel__content {
                 padding: 16px;
@@ -853,9 +898,6 @@ class TWB_AutoBuilder {
                 overflow-y: auto;
             }
 
-            /* ============================================ */
-            /* SEÇÕES */
-            /* ============================================ */
             .twb-section {
                 background: rgba(0,0,0,0.3);
                 border: 1px solid #654321;
@@ -875,9 +917,6 @@ class TWB_AutoBuilder {
                 gap: 8px;
             }
 
-            /* ============================================ */
-            /* STATUS */
-            /* ============================================ */
             .twb-status-line {
                 display: flex;
                 justify-content: space-between;
@@ -895,24 +934,14 @@ class TWB_AutoBuilder {
                 animation: pulse 2s infinite;
             }
 
-            .twb-status-indicator.ativo {
-                background: #2ecc71;
-                box-shadow: 0 0 8px #2ecc71;
-            }
-
-            .twb-status-indicator.inativo {
-                background: #e74c3c;
-                box-shadow: 0 0 8px #e74c3c;
-            }
+            .twb-status-indicator.ativo { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+            .twb-status-indicator.inativo { background: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
 
             @keyframes pulse {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.5; }
             }
 
-            /* ============================================ */
-            /* BOTÕES */
-            /* ============================================ */
             .twb-btn {
                 display: inline-block;
                 padding: 8px 16px;
@@ -935,59 +964,18 @@ class TWB_AutoBuilder {
                 box-shadow: 0 4px 8px rgba(0,0,0,0.3);
             }
 
-            .twb-btn:active {
-                transform: translateY(0);
-            }
+            .twb-btn:active { transform: translateY(0); }
+            .twb-btn.ativo { background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%); border-color: #2ecc71; }
+            .twb-btn.inativo { background: linear-gradient(135deg, #c0392b 0%, #a93226 100%); border-color: #e74c3c; }
+            .twb-btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border-color: #2563eb; }
+            .twb-btn-small { padding: 4px 8px; font-size: 11px; }
+            .twb-btn-saved { background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important; }
 
-            .twb-btn.ativo {
-                background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
-                border-color: #2ecc71;
-            }
+            .twb-controls { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+            .twb-controls .twb-btn { flex: 1; min-width: 80px; }
 
-            .twb-btn.inativo {
-                background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
-                border-color: #e74c3c;
-            }
-
-            .twb-btn-primary {
-                background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-                border-color: #2563eb;
-            }
-
-            .twb-btn-small {
-                padding: 4px 8px;
-                font-size: 11px;
-            }
-
-            .twb-btn-saved {
-                background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
-            }
-
-            /* ============================================ */
-            /* CONTROLES */
-            /* ============================================ */
-            .twb-controls {
-                display: flex;
-                gap: 6px;
-                margin-bottom: 10px;
-                flex-wrap: wrap;
-            }
-
-            .twb-controls .twb-btn {
-                flex: 1;
-                min-width: 80px;
-            }
-
-            /* ============================================ */
-            /* ALDEIAS */
-            /* ============================================ */
-            .twb-villages {
-                margin-top: 10px;
-            }
-
-            .twb-villages--collapsed .twb-villages__list {
-                display: none;
-            }
+            .twb-villages { margin-top: 10px; }
+            .twb-villages--collapsed .twb-villages__list { display: none; }
 
             .twb-villages__list {
                 max-height: 180px;
@@ -1009,33 +997,11 @@ class TWB_AutoBuilder {
                 transition: all 0.2s ease;
             }
 
-            .twb-village:hover {
-                background: rgba(255,255,255,0.1);
-                transform: translateX(4px);
-            }
+            .twb-village:hover { background: rgba(255,255,255,0.1); transform: translateX(4px); }
+            .twb-village__name { flex: 1; font-size: 12px; font-weight: 500; }
+            .twb-village__points { font-size: 10px; color: #95a5a6; background: rgba(0,0,0,0.3); padding: 3px 6px; border-radius: 4px; }
 
-            .twb-village__name {
-                flex: 1;
-                font-size: 12px;
-                font-weight: 500;
-            }
-
-            .twb-village__points {
-                font-size: 10px;
-                color: #95a5a6;
-                background: rgba(0,0,0,0.3);
-                padding: 3px 6px;
-                border-radius: 4px;
-            }
-
-            /* ============================================ */
-            /* EDIFÍCIOS */
-            /* ============================================ */
-            .twb-buildings__grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 6px;
-            }
+            .twb-buildings__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
             .twb-building {
                 display: flex;
@@ -1047,14 +1013,7 @@ class TWB_AutoBuilder {
                 border: 1px solid rgba(101, 67, 33, 0.3);
             }
 
-            .twb-building__label {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                font-size: 11px;
-                cursor: pointer;
-                flex: 1;
-            }
+            .twb-building__label { display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; flex: 1; }
 
             .twb-building__input {
                 width: 45px;
@@ -1067,12 +1026,7 @@ class TWB_AutoBuilder {
                 font-size: 11px;
             }
 
-            /* ============================================ */
-            /* LOGS */
-            /* ============================================ */
-            .twb-logs {
-                margin-top: 10px;
-            }
+            .twb-logs { margin-top: 10px; }
 
             .twb-logs__content {
                 max-height: 100px;
@@ -1084,24 +1038,10 @@ class TWB_AutoBuilder {
                 font-family: 'Courier New', monospace;
             }
 
-            .twb-log {
-                padding: 4px 0;
-                border-bottom: 1px solid rgba(101, 67, 33, 0.3);
-            }
+            .twb-log { padding: 4px 0; border-bottom: 1px solid rgba(101, 67, 33, 0.3); }
+            .twb-log:last-child { border-bottom: none; }
+            .twb-log__time { color: #95a5a6; font-size: 10px; margin-right: 6px; }
 
-            .twb-log:last-child {
-                border-bottom: none;
-            }
-
-            .twb-log__time {
-                color: #95a5a6;
-                font-size: 10px;
-                margin-right: 6px;
-            }
-
-            /* ============================================ */
-            /* FOOTER */
-            /* ============================================ */
             .twb-panel__footer {
                 padding: 12px 16px;
                 background: rgba(0,0,0,0.3);
@@ -1113,23 +1053,9 @@ class TWB_AutoBuilder {
                 gap: 12px;
             }
 
-            .twb-settings {
-                display: flex;
-                gap: 10px;
-                align-items: center;
-            }
-
-            .twb-setting {
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-            }
-
-            .twb-setting label {
-                font-size: 10px;
-                color: #95a5a6;
-                font-weight: 600;
-            }
+            .twb-settings { display: flex; gap: 10px; align-items: center; }
+            .twb-setting { display: flex; flex-direction: column; gap: 4px; }
+            .twb-setting label { font-size: 10px; color: #95a5a6; font-weight: 600; }
 
             .twb-input {
                 width: 55px;
@@ -1142,25 +1068,11 @@ class TWB_AutoBuilder {
                 font-size: 11px;
             }
 
-            /* ============================================ */
-            /* ESTADOS */
-            /* ============================================ */
-            .twb-empty {
-                text-align: center;
-                padding: 16px;
-                color: #95a5a6;
-                font-style: italic;
-                font-size: 12px;
-            }
+            .twb-empty { text-align: center; padding: 16px; color: #95a5a6; font-style: italic; font-size: 12px; }
 
-            /* ============================================ */
-            /* SCROLLBAR */
-            /* ============================================ */
             .twb-panel__content::-webkit-scrollbar,
             .twb-villages__list::-webkit-scrollbar,
-            .twb-logs__content::-webkit-scrollbar {
-                width: 6px;
-            }
+            .twb-logs__content::-webkit-scrollbar { width: 6px; }
 
             .twb-panel__content::-webkit-scrollbar-thumb,
             .twb-villages__list::-webkit-scrollbar-thumb,
@@ -1169,26 +1081,12 @@ class TWB_AutoBuilder {
                 border-radius: 3px;
             }
 
-            .twb-panel__content::-webkit-scrollbar-track {
-                background: rgba(0,0,0,0.3);
-                border-radius: 3px;
-            }
+            .twb-panel__content::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 3px; }
 
-            /* ============================================ */
-            /* RESPONSIVIDADE */
-            /* ============================================ */
             @media (max-height: 800px) {
-                .twb-panel__content {
-                    max-height: 60vh;
-                }
-
-                .twb-villages__list {
-                    max-height: 140px;
-                }
-
-                .twb-logs__content {
-                    max-height: 80px;
-                }
+                .twb-panel__content { max-height: 60vh; }
+                .twb-villages__list { max-height: 140px; }
+                .twb-logs__content { max-height: 80px; }
             }
         `;
 
@@ -1206,4 +1104,3 @@ if (typeof window.twBuilder === 'undefined') {
     const twBuilder = new TWB_AutoBuilder();
     window.twBuilder = twBuilder;
 }
-
