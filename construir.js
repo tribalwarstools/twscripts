@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         TW Auto Builder - Data-Driven (Corrigido v1.8)
-// @version      1.8
+// @name         TW Auto Builder - Data-Driven (Corrigido v1.9)
+// @version      1.9
 // @description  Automatizador de construções - versão final com URL nativa do jogo e validação completa
 // @author       You
 // @match        https://*.tribalwars.com.br/game.php*
@@ -51,7 +51,8 @@ class TW_AutoBuilder {
             myVillages: [],
             villagesLoaded: false,
             panelHidden: false,
-            villagesCollapsed: false
+            villagesCollapsed: false,
+            buildingsCollapsed: false  // [v1.9] novo estado para colapso de edifícios
         };
 
         this.stats = {
@@ -148,6 +149,7 @@ class TW_AutoBuilder {
         this.state.selectedVillages = JSON.parse(localStorage.getItem('twb_selected_villages') || '[]');
         this.state.panelHidden = localStorage.getItem('twb_panel_state') === 'hidden';
         this.state.villagesCollapsed = localStorage.getItem('twb_villages_collapsed') === 'true';
+        this.state.buildingsCollapsed = localStorage.getItem('twb_buildings_collapsed') === 'true'; // [v1.9]
 
         const savedConcurrent = localStorage.getItem('twb_max_concurrent');
         if (savedConcurrent) this.settings.maxConcurrentFetches = parseInt(savedConcurrent);
@@ -488,14 +490,6 @@ class TW_AutoBuilder {
         return queueFromData;
     }
 
-    async confirmBuildStarted(villageId, buildingId) {
-        await this.sleep(2000);
-        const freshData = await this.fetchVillageData(villageId);
-        if (!freshData?.buildings) return false;
-        const building = freshData.buildings[buildingId];
-        return building?.order != null;
-    }
-
     // ========== VALIDAÇÃO COMPLETA DE IMPEDIMENTOS ==========
 
     canBuildNow(building) {
@@ -541,7 +535,6 @@ class TW_AutoBuilder {
     async executeBuild(building, village, rawHtml = null) {
         try {
             const buildingId = building.id;
-            const villageId = village.id;
 
             // Extrai a URL de upgrade diretamente do HTML do jogo
             // Já contém ajaxaction= correto + CSRF embutido — sem necessidade de montar na mão
@@ -549,18 +542,6 @@ class TW_AutoBuilder {
             if (!baseLink) {
                 this.log(`❌ ${building.name}: Link de upgrade não encontrado no HTML`, 'error');
                 return { success: false, message: 'Link de upgrade não encontrado' };
-            }
-
-            const currentQueue = this.getQueueCount(building.buildings, rawHtml);
-            if (currentQueue >= this.settings.maxQueueSlots) {
-                this.log(`⏳ ${village.name}: Fila já está cheia (${currentQueue}/${this.settings.maxQueueSlots})`, 'info');
-                return { success: false, message: 'queue_full', queueCount: currentQueue };
-            }
-
-            const validation = this.canBuildNow(building);
-            if (!validation.can) {
-                this.log(`⏳ ${building.name} em ${village.name}: ${validation.reason}`, 'info');
-                return { success: false, message: validation.reason };
             }
 
             const upgradeUrl = `${baseLink}&id=${buildingId}`;
@@ -588,21 +569,11 @@ class TW_AutoBuilder {
                 return { success: false, message: json.response.error };
             }
 
-            await this.sleep(2000);
-            const confirmStarted = await this.confirmBuildStarted(villageId, buildingId);
-
-            if (confirmStarted) {
-                this.stats.totalSuccess++;
-                this.stats.totalConstructions++;
-                this.persistStats();
-
-                const queueNow = await this.getQueueCount(building.buildings, rawHtml);
-                this.log(`✅ ${building.name} em ${village.name}: entrou na fila (agora ${queueNow}/${this.settings.maxQueueSlots})`, 'success');
-                return { success: true, message: 'Construção iniciada' };
-            } else {
-                this.log(`⚠️ ${building.name} em ${village.name}: resposta positiva mas fila não aumentou`, 'warning');
-                return { success: false, message: 'queue_not_increased' };
-            }
+            this.stats.totalSuccess++;
+            this.stats.totalConstructions++;
+            this.persistStats();
+            this.log(`✅ ${building.name} em ${village.name}: construção iniciada`, 'success');
+            return { success: true, message: 'Construção iniciada' };
 
         } catch (error) {
             this.stats.totalErrors++;
@@ -693,12 +664,11 @@ class TW_AutoBuilder {
             const nextBuilding = this.findNextBuilding(buildings);
 
             if (nextBuilding) {
-                nextBuilding.buildings = buildings;
                 const result = await this.executeBuild(nextBuilding, village, rawHtml);
 
                 if (result.success) {
                     return { built: true, building: nextBuilding.name, result };
-                } else if (['queue_full', 'queue_not_increased'].includes(result.message)) {
+                } else if (result.message === 'queue_full') {
                     return { built: false, reason: 'queue_full' };
                 } else {
                     return { built: false, reason: result.message };
@@ -845,7 +815,7 @@ class TW_AutoBuilder {
         this.state.isRunning ? this.stop() : this.start();
     }
 
-    // ========== INTERFACE (mantida igual) ==========
+    // ========== INTERFACE ==========
 
     createPanel() {
         this.injectStyles();
@@ -869,7 +839,7 @@ class TW_AutoBuilder {
                 <div class="twb-panel__header">
                     <div class="twb-panel__title">
                         <span class="twb-panel__icon">🏗️</span>
-                        <span>Auto Builder v1.8</span>
+                        <span>Auto Builder v1.9</span>
                     </div>
                 </div>
 
@@ -913,8 +883,11 @@ class TW_AutoBuilder {
                         <div class="twb-controls">
                             <button class="twb-btn" data-action="mark-all-buildings">✓ Todos</button>
                             <button class="twb-btn" data-action="unmark-all-buildings">✗ Nenhum</button>
+                            <button class="twb-btn" data-action="toggle-buildings">
+                                ${this.state.buildingsCollapsed ? '▼ Mostrar' : '▲ Ocultar'}
+                            </button>
                         </div>
-                        <div class="twb-buildings">
+                        <div class="twb-buildings ${this.state.buildingsCollapsed ? 'twb-buildings--collapsed' : ''}">
                             <div class="twb-buildings__grid" id="twb-buildings-grid"></div>
                         </div>
                     </div>
@@ -1147,6 +1120,16 @@ class TW_AutoBuilder {
         localStorage.setItem('twb_villages_collapsed', this.state.villagesCollapsed);
     }
 
+    // [v1.9] Novo método: colapsar/expandir seção de edifícios
+    toggleBuildings() {
+        this.state.buildingsCollapsed = !this.state.buildingsCollapsed;
+        const buildingsDiv = document.querySelector('.twb-buildings');
+        const toggleBtn = document.querySelector('[data-action="toggle-buildings"]');
+        if (buildingsDiv) buildingsDiv.classList.toggle('twb-buildings--collapsed');
+        if (toggleBtn) toggleBtn.textContent = this.state.buildingsCollapsed ? '▼ Mostrar' : '▲ Ocultar';
+        localStorage.setItem('twb_buildings_collapsed', this.state.buildingsCollapsed);
+    }
+
     resetStats() {
         this.stats.totalConstructions = 0;
         this.stats.totalSuccess = 0;
@@ -1162,6 +1145,7 @@ class TW_AutoBuilder {
             'mark-all-buildings': () => this.markAllBuildings(true),
             'unmark-all-buildings': () => this.markAllBuildings(false),
             'toggle-villages': () => this.toggleVillages(),
+            'toggle-buildings': () => this.toggleBuildings(), // [v1.9]
             'save': () => this.saveSettings(),
             'clear-logs': () => this.clearLogs(),
             'reset-stats': () => this.resetStats()
@@ -1347,6 +1331,7 @@ class TW_AutoBuilder {
                 padding: 5px;
             }
             .twb-villages--collapsed .twb-villages__list { display: none; }
+            .twb-buildings--collapsed .twb-buildings__grid { display: none; }
             .twb-village {
                 display: flex;
                 align-items: center;
@@ -1464,11 +1449,11 @@ class TW_AutoBuilder {
     // ========== INICIALIZAÇÃO ==========
 
     async init() {
-        console.log('🏗️ TW Auto Builder v1.8');
+        console.log('🏗️ TW Auto Builder v1.9');
         await this.loadSettings();
         this.createPanel();
         await this.loadMyVillages();
-        this.log('Sistema inicializado (v1.8)', 'success');
+        this.log('Sistema inicializado (v1.9)', 'success');
     }
 }
 
