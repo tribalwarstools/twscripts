@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         TW Auto Builder - Data-Driven (Corrigido v1.9)
-// @version      1.9
+// @name         TW Auto Builder - Data-Driven (Corrigido v2.4)
+// @version      2.4
 // @description  Automatizador de construções - versão final com URL nativa do jogo e validação completa
 // @author       You
 // @match        https://*.tribalwars.com.br/game.php*
@@ -390,7 +390,7 @@ class TW_AutoBuilder {
                 buildings[id] = {
                     id,
                     name: this.buildingsList[id],
-                    level: this.safeParseInt(b.level, 0),
+                    level: this.safeParseInt(b.level, 0) + (b.order != null ? 1 : 0), // [v2.4] nível real após conclusão da fila
                     maxLevel: this.safeParseInt(b.max_level, 30),
                     canBuild: b.can_build === true,
                     error: errorMessage,
@@ -463,30 +463,19 @@ class TW_AutoBuilder {
     getQueueCount(buildings, htmlContent = null) {
         if (!buildings) return 0;
 
-        const queueFromData = Object.values(buildings).filter(b => b.order != null).length;
-
+        // [v2.1] Lê order_count diretamente do JS do jogo — fonte autoritativa da fila
         if (htmlContent) {
-            try {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlContent, 'text/html');
-                const queueItems = doc.querySelectorAll('#building_queue .queue-item');
-                const inProgress = doc.querySelector('#building_queue .in_progress');
-
-                if (queueItems.length > 0 || inProgress) {
-                    return Math.max(queueFromData, queueItems.length || 1);
-                }
-            } catch (e) {
-                console.error('Erro ao verificar fila no HTML:', e);
+            const match = htmlContent.match(/BuildingMain\.order_count\s*=\s*(\d+)/);
+            if (match) {
+                const count = parseInt(match[1]);
+                this.log(`Fila detectada via order_count: ${count}`, 'debug');
+                return count;
             }
         }
 
-        if (window.location.search.includes('screen=main')) {
-            const queueItems = document.querySelectorAll('#building_queue .queue-item');
-            if (queueItems.length > 0) {
-                return Math.max(queueFromData, queueItems.length);
-            }
-        }
-
+        // Fallback: conta pelos buildings com order definido
+        const queueFromData = Object.values(buildings).filter(b => b.order != null).length;
+        this.log(`Fila detectada via fallback: ${queueFromData}`, 'debug');
         return queueFromData;
     }
 
@@ -495,6 +484,7 @@ class TW_AutoBuilder {
     canBuildNow(building) {
         if (!building || !building.enabled) return { can: false, reason: 'disabled' };
         if (building.level >= (this.settings.maxLevels[building.id] || 0)) return { can: false, reason: 'max_level' };
+        if (building.order != null) return { can: false, reason: 'in_queue' }; // [v2.3] já está na fila
         if (!building.canBuild) return { can: false, reason: 'cannot_build' };
 
         if (building.forecast?.available === 'future') {
@@ -839,7 +829,7 @@ class TW_AutoBuilder {
                 <div class="twb-panel__header">
                     <div class="twb-panel__title">
                         <span class="twb-panel__icon">🏗️</span>
-                        <span>Auto Builder v1.9</span>
+                        <span>Auto Builder v2.4</span>
                     </div>
                 </div>
 
@@ -1449,11 +1439,11 @@ class TW_AutoBuilder {
     // ========== INICIALIZAÇÃO ==========
 
     async init() {
-        console.log('🏗️ TW Auto Builder v1.9');
+        console.log('🏗️ TW Auto Builder v2.4');
         await this.loadSettings();
         this.createPanel();
         await this.loadMyVillages();
-        this.log('Sistema inicializado (v1.9)', 'success');
+        this.log('Sistema inicializado (v2.4)', 'success');
     }
 }
 
