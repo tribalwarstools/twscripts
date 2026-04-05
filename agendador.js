@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Agendador de Ataques (Ultimate)
 // @namespace    http://tampermonkey.net/
-// @version      6.0
-// @description  Agende ataques com precisão - VERSÃO ULTIMATE COM REPETIR IMEDIATO
+// @version      7.0
+// @description  Agende ataques com precisão - COM PERSISTÊNCIA DE POSIÇÃO
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
@@ -12,7 +12,7 @@
     'use strict';
 
     // ============================================
-    // CONSTANTES - NOMES CORRETOS DAS UNIDADES EM PORTUGUÊS BR
+    // CONSTANTES
     // ============================================
     const TROOP_LIST = [
         { id: 'spear', nome: 'Lanceiro', icon: 'https://dsgvo.tribalwars.com.br/graphic/unit/unit_spear.png' },
@@ -32,14 +32,18 @@
     const TROOP_ICONS = Object.fromEntries(TROOP_LIST.map(t => [t.id, t.icon]));
     const TROOP_NAMES = Object.fromEntries(TROOP_LIST.map(t => [t.id, t.nome]));
 
+    // Chaves para localStorage
+    const STORAGE_KEYS = {
+        FORM_DATA: 'tws_form_data_v5',
+        ATTACKS: 'tws_ataques_v6',
+        TEMPLATES: 'tws_templates_v2',
+        PANEL_POSITION: 'tws_panel_position',
+        PANEL_MINIMIZED: 'tws_panel_minimized'
+    };
+
     const world = location.hostname.split('.')[0];
     const VILLAGE_TXT_URL = `https://${world}.tribalwars.com.br/map/village.txt`;
     let _villageMap = {};
-
-    // Chaves para localStorage
-    const FORM_DATA_KEY = 'tws_form_data_v5';
-    const ATTACKS_KEY = 'tws_ataques_v6';
-    const TEMPLATES_KEY = 'tws_templates_v2';
 
     // ============================================
     // SISTEMA DE EVENTOS
@@ -100,7 +104,7 @@
                     position: fixed;
                     top: 20px;
                     right: 20px;
-                    z-index: 100000;
+                    z-index: 999999;
                     display: flex;
                     flex-direction: column;
                     gap: 10px;
@@ -122,6 +126,7 @@
                 box-shadow: 0 2px 10px rgba(0,0,0,0.2);
                 animation: slideInRight 0.3s ease;
                 cursor: pointer;
+                z-index: 999999;
             `;
             toast.innerHTML = message;
             toast.onclick = () => toast.remove();
@@ -136,18 +141,24 @@
         info: function(message, duration) { this._show(message, 'info', duration); }
     };
 
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideOutRight {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-    `;
-    document.head.appendChild(style);
+    // ============================================
+    // ANIMAÇÕES CSS
+    // ============================================
+    if (!document.querySelector('#tws-animations')) {
+        const style = document.createElement('style');
+        style.id = 'tws-animations';
+        style.textContent = `
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOutRight {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
 
     // ============================================
     // CAIXA DE CONFIRMAÇÃO
@@ -162,7 +173,7 @@
                 width: 100%;
                 height: 100%;
                 background: rgba(0,0,0,0.5);
-                z-index: 100001;
+                z-index: 999999;
                 display: flex;
                 justify-content: center;
                 align-items: center;
@@ -176,6 +187,7 @@
                 max-width: 400px;
                 box-shadow: 0 5px 25px rgba(0,0,0,0.3);
                 border: 1px solid #ff9900;
+                z-index: 999999;
             `;
             box.innerHTML = `
                 <p style="color: #fff; margin-bottom: 20px; font-size: 14px;">${message}</p>
@@ -216,7 +228,7 @@
                 padding: 5px 10px;
                 border-radius: 5px;
                 font-size: 12px;
-                z-index: 100002;
+                z-index: 999999;
                 white-space: nowrap;
                 border: 1px solid #ff9900;
             `;
@@ -252,7 +264,7 @@
                     color: #ff9900;
                     padding: 20px 30px;
                     border-radius: 10px;
-                    z-index: 100003;
+                    z-index: 999999;
                     font-size: 16px;
                     font-weight: bold;
                     display: flex;
@@ -296,17 +308,77 @@
     }
 
     // ============================================
+    // PERSISTÊNCIA DO PAINEL
+    // ============================================
+    // ============================================
+// PERSISTÊNCIA DO PAINEL (CORRIGIDO)
+// ============================================
+
+function salvarPosicaoPainel(x, y) {
+    // Salvar posição relativa à janela (scroll compensado)
+    const scrollX = window.scrollX || window.pageXOffset;
+    const scrollY = window.scrollY || window.pageYOffset;
+    localStorage.setItem(STORAGE_KEYS.PANEL_POSITION, JSON.stringify({
+        x: x + scrollX,  // Salvar com scroll
+        y: y + scrollY
+    }));
+}
+
+function carregarPosicaoPainel(painel) {
+    const saved = localStorage.getItem(STORAGE_KEYS.PANEL_POSITION);
+    if (saved) {
+        try {
+            const { x, y } = JSON.parse(saved);
+            const scrollX = window.scrollX || window.pageXOffset;
+            const scrollY = window.scrollY || window.pageYOffset;
+
+            // Ajustar posição pelo scroll atual
+            let adjustedX = x - scrollX;
+            let adjustedY = y - scrollY;
+
+            // Validar limites da tela
+            const maxX = window.innerWidth - painel.offsetWidth;
+            const maxY = window.innerHeight - painel.offsetHeight;
+
+            adjustedX = Math.min(Math.max(0, adjustedX), maxX);
+            adjustedY = Math.min(Math.max(0, adjustedY), maxY);
+
+            // Verificar se está dentro da tela
+            if (adjustedX >= 0 && adjustedX <= maxX && adjustedY >= 0 && adjustedY <= maxY) {
+                painel.style.left = `${adjustedX}px`;
+                painel.style.top = `${adjustedY}px`;
+                painel.style.transform = 'none';
+                painel.style.right = 'auto';
+                painel.style.bottom = 'auto';
+                return true;
+            }
+        } catch (e) {}
+    }
+    return false;
+}
+
+
+    function salvarEstadoMinimizado(minimizado) {
+        localStorage.setItem(STORAGE_KEYS.PANEL_MINIMIZED, minimizado ? '1' : '0');
+    }
+
+    function carregarEstadoMinimizado() {
+        const saved = localStorage.getItem(STORAGE_KEYS.PANEL_MINIMIZED);
+        return saved === '1';
+    }
+
+    // ============================================
     // TEMPLATES DE TROPAS
     // ============================================
     let troopTemplates = [];
 
     function loadTemplates() {
-        const saved = localStorage.getItem(TEMPLATES_KEY);
+        const saved = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
         if (saved) troopTemplates = JSON.parse(saved);
     }
 
     function saveTemplates() {
-        localStorage.setItem(TEMPLATES_KEY, JSON.stringify(troopTemplates));
+        localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(troopTemplates));
     }
 
     function saveCurrentAsTemplate(name) {
@@ -361,78 +433,68 @@
     // ============================================
     // IMPORTAÇÃO BBCode
     // ============================================
-    // ============================================
-// IMPORTAÇÃO BBCode (COM INCREMENTO)
-// ============================================
-function importarBBCode() {
-    const texto = prompt('Cole o BBCode dos ataques (formato do jogo):\n\nExemplo:\n[*][url="https://...?att_spear=100&att_sword=50"]500|500[/url] → 510|510 25/12/2024 15:30:00');
-    if (!texto) return;
+    function importarBBCode() {
+        const texto = prompt('Cole o BBCode dos ataques (formato do jogo):\n\nExemplo:\n[*][url="https://...?att_spear=100&att_sword=50"]500|500[/url] → 510|510 25/12/2024 15:30:00');
+        if (!texto) return;
 
-    // PERGUNTAR SE QUER INCREMENTAR OU IGNORAR DUPLICADAS
-    const modo = confirm('Deseja adicionar ataques mesmo se já existirem?\n\n"OK" → Adicionar todos (pode criar duplicatas)\n"Cancelar" → Ignorar ataques já existentes');
+        const modo = confirm('Deseja adicionar ataques mesmo se já existirem?\n\n"OK" → Adicionar todos (pode criar duplicatas)\n"Cancelar" → Ignorar ataques já existentes');
 
-    const linhas = texto.split('[*]').filter(l => l.trim());
-    let importados = 0;
-    let ignorados = 0;
+        const linhas = texto.split('[*]').filter(l => l.trim());
+        let importados = 0;
+        let ignorados = 0;
 
-    for (const linha of linhas) {
-        // Extrair coordenadas
-        const coords = linha.match(/(\d{1,4}\|\d{1,4})/g);
-        if (!coords || coords.length < 2) continue;
+        for (const linha of linhas) {
+            const coords = linha.match(/(\d{1,4}\|\d{1,4})/g);
+            if (!coords || coords.length < 2) continue;
 
-        const origem = coords[0];
-        const alvo = coords[1];
+            const origem = coords[0];
+            const alvo = coords[1];
 
-        // Extrair data/hora (com ou sem segundos)
-        let dataMatch = linha.match(/(\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}(?::\d{2})?)/);
-        if (!dataMatch) continue;
+            let dataMatch = linha.match(/(\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}(?::\d{2})?)/);
+            if (!dataMatch) continue;
 
-        let datahora = dataMatch[1];
-        // Garantir segundos
-        if (datahora.split(':').length === 2) datahora += ':00';
+            let datahora = dataMatch[1];
+            if (datahora.split(':').length === 2) datahora += ':00';
 
-        // Extrair tropas da URL
-        const urlMatch = linha.match(/\[url=(.*?)\]/);
-        const tropas = {};
+            const urlMatch = linha.match(/\[url=(.*?)\]/);
+            const tropas = {};
 
-        if (urlMatch) {
-            const url = urlMatch[1];
-            const params = new URLSearchParams(url.split('?')[1] || '');
-            TROOP_IDS.forEach(t => {
-                const valor = params.get(`att_${t}`);
-                if (valor) tropas[t] = parseInt(valor);
-            });
+            if (urlMatch) {
+                const url = urlMatch[1];
+                const params = new URLSearchParams(url.split('?')[1] || '');
+                TROOP_IDS.forEach(t => {
+                    const valor = params.get(`att_${t}`);
+                    if (valor) tropas[t] = parseInt(valor);
+                });
+            }
+
+            const ataques = carregarAtaques();
+            const existe = ataques.some(a => a.origem === origem && a.alvo === alvo && a.datahora === datahora);
+
+            if (!modo && existe) {
+                ignorados++;
+                continue;
+            }
+
+            const novoAtaque = {
+                id: Date.now() + Math.random() + importados,
+                origem, alvo, datahora,
+                ...tropas,
+                enviado: false, travado: false, sucesso: null
+            };
+            ataques.push(novoAtaque);
+            salvarAtaques(ataques);
+            importados++;
         }
 
-        // Verificar se já existe ataque igual (apenas se NÃO for modo incremento)
-        const ataques = carregarAtaques();
-        const existe = ataques.some(a => a.origem === origem && a.alvo === alvo && a.datahora === datahora);
-
-        if (!modo && existe) {
-            ignorados++;
-            continue;
+        if (importados > 0) {
+            Toast.success(`✅ ${importados} ataques importados do BBCode!${ignorados > 0 ? ` (${ignorados} ignorados)` : ''}`);
+        } else if (ignorados > 0) {
+            Toast.info(`ℹ️ ${ignorados} ataques já existentes. Use "OK" no próximo prompt para adicionar mesmo assim.`);
+        } else {
+            Toast.error('❌ Nenhum ataque encontrado no BBCode!');
         }
-
-        // Criar novo ataque (com ID único, mesmo se duplicado)
-        const novoAtaque = {
-            id: Date.now() + Math.random() + importados,
-            origem, alvo, datahora,
-            ...tropas,
-            enviado: false, travado: false, sucesso: null
-        };
-        ataques.push(novoAtaque);
-        salvarAtaques(ataques);
-        importados++;
     }
-
-    if (importados > 0) {
-        Toast.success(`✅ ${importados} ataques importados do BBCode!${ignorados > 0 ? ` (${ignorados} ignorados)` : ''}`);
-    } else if (ignorados > 0) {
-        Toast.info(`ℹ️ ${ignorados} ataques já existentes. Use "OK" no próximo prompt para adicionar mesmo assim.`);
-    } else {
-        Toast.error('❌ Nenhum ataque encontrado no BBCode!');
-    }
-}
 
     // ============================================
     // FORMATAR TROPAS PARA EXIBIÇÃO
@@ -477,7 +539,7 @@ function importarBBCode() {
             border: 2px solid #ff9900;
             border-radius: 10px;
             padding: 20px;
-            z-index: 100004;
+            z-index: 999999;
             min-width: 300px;
             box-shadow: 0 5px 25px rgba(0,0,0,0.5);
         `;
@@ -502,7 +564,7 @@ function importarBBCode() {
     }
 
     // ============================================
-    // ENVIO IMEDIATO (para ataques no passado)
+    // ENVIO IMEDIATO
     // ============================================
     function enviarImediato(index) {
         const ataques = carregarAtaques();
@@ -513,7 +575,6 @@ function importarBBCode() {
             return;
         }
 
-        // Montar mensagem com as tropas configuradas
         let tropasMsg = '';
         TROOP_IDS.forEach(t => {
             if (ataque[t] && ataque[t] > 0) {
@@ -542,7 +603,7 @@ function importarBBCode() {
     }
 
     // ============================================
-    // REPETIR ATAQUE (envia imediatamente)
+    // REPETIR ATAQUE
     // ============================================
     window.repetirAtaque = async (index) => {
         const ataques = carregarAtaques();
@@ -553,7 +614,6 @@ function importarBBCode() {
             return;
         }
 
-        // Montar mensagem com as tropas configuradas
         let tropasMsg = '';
         TROOP_IDS.forEach(t => {
             if (ataqueOriginal[t] && ataqueOriginal[t] > 0) {
@@ -798,12 +858,12 @@ function importarBBCode() {
     // ARMAZENAMENTO
     // ============================================
     function salvarAtaques(ataques) {
-        localStorage.setItem(ATTACKS_KEY, JSON.stringify(ataques));
+        localStorage.setItem(STORAGE_KEYS.ATTACKS, JSON.stringify(ataques));
         renderizarLista();
     }
 
     function carregarAtaques() {
-        const dados = localStorage.getItem(ATTACKS_KEY);
+        const dados = localStorage.getItem(STORAGE_KEYS.ATTACKS);
         return dados ? JSON.parse(dados) : [];
     }
 
@@ -818,12 +878,12 @@ function importarBBCode() {
             const input = document.getElementById(t);
             if (input) dados[t] = input.value;
         });
-        localStorage.setItem(FORM_DATA_KEY, JSON.stringify(dados));
+        localStorage.setItem(STORAGE_KEYS.FORM_DATA, JSON.stringify(dados));
         Toast.success('✅ Dados do formulário salvos!');
     }
 
     function carregarDadosFormulario() {
-        const dados = localStorage.getItem(FORM_DATA_KEY);
+        const dados = localStorage.getItem(STORAGE_KEYS.FORM_DATA);
         if (!dados) return;
         try {
             const formData = JSON.parse(dados);
@@ -896,12 +956,17 @@ function importarBBCode() {
     // INTERFACE VISUAL
     // ============================================
     let offsetX, offsetY, dragging = false;
+    let painelElemento = null;
 
     function criarInterface() {
-        const painel = document.createElement('div');
-        painel.id = 'ataques-painel';
+        if (painelElemento) {
+            painelElemento.style.display = 'flex';
+            return;
+        }
 
-        // Gerar grid de tropas com ícones
+        painelElemento = document.createElement('div');
+        painelElemento.id = 'ataques-painel';
+
         const tropasGridHtml = TROOP_LIST.map(t => `
             <div class="tropa-item">
                 <span class="tropa-label">
@@ -911,17 +976,18 @@ function importarBBCode() {
             </div>
         `).join('');
 
-        painel.innerHTML = `
+        painelElemento.innerHTML = `
             <style>
                 #ataques-painel {
                     position: fixed;
-                    top: 10px;
-                    right: 10px;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
                     width: 520px;
                     background: #1e1e1e;
                     color: #fff;
                     border-radius: 10px;
-                    z-index: 9999;
+                    z-index: 999999;
                     font-family: Arial, sans-serif;
                     box-shadow: 0 5px 20px rgba(0,0,0,0.5);
                     border: 1px solid #333;
@@ -1165,42 +1231,74 @@ function importarBBCode() {
             </div>
         `;
 
-        document.body.appendChild(painel);
+        document.body.appendChild(painelElemento);
+
+        // Carregar posição salva (se existir)
+        const posicaoCarregada = carregarPosicaoPainel(painelElemento);
+        if (!posicaoCarregada) {
+            // Centralizar padrão
+            painelElemento.style.left = '50%';
+            painelElemento.style.top = '50%';
+            painelElemento.style.transform = 'translate(-50%, -50%)';
+        }
+
+        // Carregar estado minimizado
+        const estavaMinimizado = carregarEstadoMinimizado();
+        const conteudo = document.getElementById('painel-conteudo');
+        const minimizarBtn = document.getElementById('minimizarBtn');
+
+        if (estavaMinimizado) {
+            conteudo.style.display = 'none';
+            minimizarBtn.textContent = '+';
+        }
 
         // Arrastável
         const header = document.getElementById('painel-header');
-        const conteudo = document.getElementById('painel-conteudo');
-        const minimizarBtn = document.getElementById('minimizarBtn');
 
         header.addEventListener('mousedown', (e) => {
             if (e.target === minimizarBtn) return;
             dragging = true;
-            const rect = painel.getBoundingClientRect();
+            // Remover transform centralizado ao começar a arrastar
+            painelElemento.style.transform = 'none';
+            const rect = painelElemento.getBoundingClientRect();
             offsetX = e.clientX - rect.left;
             offsetY = e.clientY - rect.top;
             e.preventDefault();
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (dragging) {
+            if (dragging && painelElemento) {
                 const x = e.clientX - offsetX;
                 const y = e.clientY - offsetY;
-                const maxX = window.innerWidth - painel.offsetWidth;
-                const maxY = window.innerHeight - painel.offsetHeight;
-                painel.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
-                painel.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
-                painel.style.right = 'auto';
-                painel.style.bottom = 'auto';
+                const maxX = window.innerWidth - painelElemento.offsetWidth;
+                const maxY = window.innerHeight - painelElemento.offsetHeight;
+                const newX = Math.max(0, Math.min(x, maxX));
+                const newY = Math.max(0, Math.min(y, maxY));
+                painelElemento.style.left = `${newX}px`;
+                painelElemento.style.top = `${newY}px`;
+                painelElemento.style.right = 'auto';
+                painelElemento.style.bottom = 'auto';
             }
         });
 
-        document.addEventListener('mouseup', () => { dragging = false; });
+       document.addEventListener('mouseup', () => {
+    if (dragging && painelElemento) {
+        dragging = false;
+        // Salvar posição atual (sem scroll)
+        const left = parseInt(painelElemento.style.left);
+        const top = parseInt(painelElemento.style.top);
+        if (!isNaN(left) && !isNaN(top)) {
+            salvarPosicaoPainel(left, top);
+        }
+    }
+});
 
-        let minimizado = false;
+        let minimizado = estavaMinimizado;
         minimizarBtn.addEventListener('click', () => {
-            conteudo.style.display = minimizado ? 'block' : 'none';
-            minimizarBtn.textContent = minimizado ? '−' : '+';
             minimizado = !minimizado;
+            conteudo.style.display = minimizado ? 'none' : 'block';
+            minimizarBtn.textContent = minimizado ? '+' : '−';
+            salvarEstadoMinimizado(minimizado);
         });
 
         Tooltip.init();
@@ -1220,14 +1318,12 @@ function importarBBCode() {
         container.innerHTML = ataques.map((ataque, index) => {
             const tropasHtml = formatTroopsForDisplay(ataque);
 
-            // Verificar se é ataque no passado
             const [dataPart, horaPart] = ataque.datahora.split(' ');
             const [dia, mes, ano] = dataPart.split('/');
             const [hora, minuto, segundo = '00'] = horaPart.split(':');
             const dataAgendada = new Date(ano, mes-1, dia, hora, minuto, segundo);
             const isPast = !ataque.enviado && dataAgendada < agora;
 
-            // Botão de repetir (aparece apenas quando enviado com sucesso)
             const repetirBtn = ataque.enviado && ataque.sucesso ?
                 `<button class="btn-repetir" onclick="window.repetirAtaque(${index})">🔄 Repetir</button>` : '';
 
@@ -1358,13 +1454,21 @@ function importarBBCode() {
         renderizarLista();
 
         setTimeout(() => {
-            document.getElementById('agendarBtn').onclick = agendarAtaque;
-            document.getElementById('limparBtn').onclick = limparTudo;
-            document.getElementById('limparConcluidosBtn').onclick = limparConcluidos;
-            document.getElementById('salvarDadosBtn').onclick = salvarDadosFormulario;
-            document.getElementById('destravarBtn').onclick = destravarAtaques;
-            document.getElementById('templatesBtn').onclick = showTemplatePopup;
-            document.getElementById('importarBtn').onclick = importarBBCode;
+            const agendarBtn = document.getElementById('agendarBtn');
+            const limparBtn = document.getElementById('limparBtn');
+            const limparConcluidosBtn = document.getElementById('limparConcluidosBtn');
+            const salvarDadosBtn = document.getElementById('salvarDadosBtn');
+            const destravarBtn = document.getElementById('destravarBtn');
+            const templatesBtn = document.getElementById('templatesBtn');
+            const importarBtn = document.getElementById('importarBtn');
+
+            if (agendarBtn) agendarBtn.onclick = agendarAtaque;
+            if (limparBtn) limparBtn.onclick = limparTudo;
+            if (limparConcluidosBtn) limparConcluidosBtn.onclick = limparConcluidos;
+            if (salvarDadosBtn) salvarDadosBtn.onclick = salvarDadosFormulario;
+            if (destravarBtn) destravarBtn.onclick = destravarAtaques;
+            if (templatesBtn) templatesBtn.onclick = showTemplatePopup;
+            if (importarBtn) importarBtn.onclick = importarBBCode;
         }, 100);
     }
 
