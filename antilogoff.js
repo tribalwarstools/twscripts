@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TW Sistema Unificado - AntiBot + AntiLogoff
-// @version      3.3
-// @description  Sistema Anti-Bot e Anti-Logoff com painel padronizado
+// @version      3.5
+// @description  Sistema Anti-Bot e Anti-Logoff com painel minimizável em ícone circular
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -15,7 +15,8 @@
     const CONFIG = {
         antiLogoff: {
             intervalo: 4 * 60 * 1000, // 4 minutos
-            reloadAoDetectar: false
+            reloadAoDetectar: false,
+            reloadAoFinalizar: true
         },
         storage: {
             antibot: 'tw_antibot_enabled',
@@ -36,17 +37,21 @@
             ativo: false,
             tempoRestante: null,
             contadorAcoes: 0,
-            intervalo: null
+            intervalo: null,
+            reloadTimeout: null
         },
         wakelock: {
             lock: null,
             audioCtx: null,
             oscillator: null
+        },
+        painel: {
+            minimizado: true
         }
     };
 
     // ============================================
-    // CONTROLE DE BOTS (Para outros scripts)
+    // CONTROLE DE BOTS
     // ============================================
     window.TWBotControl = {
         pausado: false,
@@ -77,34 +82,53 @@
     };
 
     // ============================================
-    // CSS DO PAINEL (PADRONIZADO)
+    // CSS DO PAINEL
     // ============================================
     const style = document.createElement('style');
     style.textContent = `
-#tw-painel-unificado {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 320px;
-    background: #1e1e1e;
-    color: #fff;
-    border-radius: 10px;
-    z-index: 99999;
-    font-family: Arial, sans-serif;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
-    border: 1px solid #333;
-}
+        #tw-painel-unificado {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 320px;
+            background: #1e1e1e;
+            color: #fff;
+            border-radius: 10px;
+            z-index: 99999;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+        }
 
-        #tw-painel-unificado.aberto {
-            transform: translateX(0);
+        #tw-painel-unificado.minimizado {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            background: #ff9900;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        #tw-painel-unificado.minimizado .painel-header,
+        #tw-painel-unificado.minimizado .painel-conteudo {
+            display: none;
+        }
+
+        #tw-painel-unificado.minimizado::before {
+            content: "🛡️";
+            font-size: 28px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
         }
 
         .painel-header {
             background: #ff9900;
             padding: 10px 15px;
             border-radius: 10px 10px 0 0;
-            cursor: move;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -123,6 +147,12 @@
             padding: 2px 10px;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .painel-header button:hover {
+            background: rgba(0,0,0,0.5);
         }
 
         .painel-conteudo {
@@ -217,15 +247,6 @@
             color: #fff;
         }
 
-        .tw-btn.reset {
-            background: #555;
-            color: #fff;
-        }
-
-        .tw-btn.reset:hover {
-            background: #666;
-        }
-
         .tw-timer {
             font-size: 14px;
             font-weight: bold;
@@ -270,84 +291,6 @@
             opacity: 0.9;
         }
 
-        .tw-confirm-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 999999;
-        }
-
-        .tw-confirm-modal.ativo {
-            display: flex;
-        }
-
-        .tw-confirm-box {
-            background: #1e1e1e;
-            border: 2px solid #ff9900;
-            border-radius: 10px;
-            padding: 20px;
-            max-width: 350px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.5);
-        }
-
-        .tw-confirm-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #ff9900;
-            margin-bottom: 12px;
-            text-align: center;
-        }
-
-        .tw-confirm-text {
-            font-size: 12px;
-            color: #fff;
-            margin-bottom: 20px;
-            line-height: 1.5;
-        }
-
-        .tw-confirm-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        .tw-confirm-btn {
-            padding: 8px 20px;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-        }
-
-        .tw-confirm-btn.sim {
-            background: #990000;
-            color: white;
-        }
-
-        .tw-confirm-btn.sim:hover {
-            background: #cc0000;
-        }
-
-        .tw-confirm-btn.nao {
-            background: #555;
-            color: white;
-        }
-
-        .tw-confirm-btn.nao:hover {
-            background: #666;
-        }
-
-        hr {
-            border-color: #333;
-            margin: 10px 0;
-        }
-
         .info-text {
             font-size: 10px;
             color: #888;
@@ -355,14 +298,13 @@
             text-align: center;
         }
 
-        [data-tooltip] {
-            cursor: help;
-            border-bottom: 1px dotted #666;
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
         }
     `;
     document.head.appendChild(style);
@@ -415,32 +357,18 @@
         info: function(message) { this._show(message, 'info'); }
     };
 
-    // Adicionar animações
-    const animStyle = document.createElement('style');
-    animStyle.textContent = `
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideOutRight {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-    `;
-    document.head.appendChild(animStyle);
-
     // ============================================
-    // HTML DO PAINEL (PADRONIZADO)
+    // HTML DO PAINEL
     // ============================================
     const painel = document.createElement('div');
     painel.id = 'tw-painel-unificado';
+    painel.className = 'minimizado';
     painel.innerHTML = `
-        <div class="painel-header" id="tw-painel-header">
+        <div class="painel-header">
             <h3>🛡️ Sistema Anti-Bot + Anti-Logoff</h3>
             <button id="tw-minimizarBtn">−</button>
         </div>
-        <div class="painel-conteudo" id="tw-painel-conteudo">
-            <!-- ANTIBOT -->
+        <div class="painel-conteudo">
             <div class="tw-section">
                 <div class="tw-section-title">🤖 Anti-Bot Detector</div>
                 <div class="tw-status-line">
@@ -456,7 +384,6 @@
                 </div>
             </div>
 
-            <!-- ANTILOGOFF -->
             <div class="tw-section">
                 <div class="tw-section-title">⏰ Anti-Logoff</div>
                 <div class="tw-status-line">
@@ -474,44 +401,19 @@
 
             <div class="info-text">
                 💡 <strong>Anti-Bot:</strong> Detecta e evita captchas<br>
-                💡 <strong>Anti-Logoff:</strong> Mantém sua sessão ativa
+                💡 <strong>Anti-Logoff:</strong> Mantém sua sessão ativa<br>
+                💡 <strong>Reload:</strong> Recarrega ao final do cronômetro
             </div>
-
-            <button class="tw-btn reset" id="reset-btn">🔄 Reset Completo do Sistema</button>
         </div>
     `;
     document.body.appendChild(painel);
-
-    // Modal de confirmação
-    const modal = document.createElement('div');
-    modal.className = 'tw-confirm-modal';
-    modal.id = 'tw-confirm-modal';
-    modal.innerHTML = `
-        <div class="tw-confirm-box">
-            <div class="tw-confirm-title">⚠️ Confirmar Reset Completo</div>
-            <div class="tw-confirm-text">
-                Esta ação irá:<br>
-                • Desativar todos os sistemas<br>
-                • Limpar todas as configurações<br>
-                • Retornar ao estado inicial<br><br>
-                <strong>Deseja continuar?</strong>
-            </div>
-            <div class="tw-confirm-buttons">
-                <button class="tw-confirm-btn sim" id="confirm-sim">Sim, Resetar</button>
-                <button class="tw-confirm-btn nao" id="confirm-nao">Cancelar</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
 
     // ============================================
     // ELEMENTOS DO DOM
     // ============================================
     const UI = {
         painel: painel,
-        header: document.getElementById('tw-painel-header'),
         minimizarBtn: document.getElementById('tw-minimizarBtn'),
-        conteudo: document.getElementById('tw-painel-conteudo'),
         antibot: {
             indicator: document.getElementById('antibot-indicator'),
             statusText: document.getElementById('antibot-status-text'),
@@ -524,12 +426,6 @@
             toggleBtn: document.getElementById('antilogoff-toggle'),
             timer: document.getElementById('antilogoff-timer'),
             counter: document.getElementById('antilogoff-counter')
-        },
-        reset: {
-            btn: document.getElementById('reset-btn'),
-            modal: document.getElementById('tw-confirm-modal'),
-            confirmSim: document.getElementById('confirm-sim'),
-            confirmNao: document.getElementById('confirm-nao')
         }
     };
 
@@ -591,12 +487,25 @@
         }
 
         if (Estado.antilogoff.tempoRestante <= 0) {
-            UI.antilogoff.timer.textContent = 'Executando...';
+            UI.antilogoff.timer.textContent = 'Recarregando...';
         } else {
             UI.antilogoff.timer.textContent = formatarTempo(Estado.antilogoff.tempoRestante);
         }
 
         UI.antilogoff.counter.textContent = `Ações: ${Estado.antilogoff.contadorAcoes}`;
+    }
+
+    // ============================================
+    // FUNÇÃO DE RELOAD
+    // ============================================
+    function executarReload() {
+        if (CONFIG.antiLogoff.reloadAoFinalizar) {
+            console.log('🔄 Cronômetro finalizado! Recarregando a página...');
+            Toast.info('🔄 Recarregando página para manter sessão ativa...');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
     }
 
     // ============================================
@@ -680,17 +589,14 @@
         console.log(`🚨 ANTI-BOT DETECTADO! ${timestamp}`);
         Toast.error('⚠️ ANTI-BOT DETECTADO! Fazendo logout...');
 
-        // Som de alerta
         try {
             new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS99+aqVRILTKXh8sBvIA==').play();
         } catch (e) {}
 
-        // Desativar anti-logoff antes do logout
         if (Estado.antilogoff.ativo) {
             desativarAntiLogoff();
         }
 
-        // Aguarda 2 segundos e faz logout
         setTimeout(() => {
             fazerLogout();
         }, 2000);
@@ -698,20 +604,13 @@
 
     function fazerLogout() {
         console.log('🚪 Executando logout...');
-
-        // Resetar estado ANTES do logout
         Estado.antibot.pausado = false;
         Estado.antibot.ativo = false;
         localStorage.setItem(CONFIG.storage.antibot, '0');
         localStorage.setItem(CONFIG.storage.botPausado, '0');
-
-        // Atualizar UI para estado INATIVO
         atualizarUIAntiBot();
-
-        // Parar observer
         observerAntiBot.disconnect();
 
-        // Executar logout
         const logoutLink = document.querySelector("a[href*='logout']");
         if (logoutLink) {
             console.log('🚪 Logout via link encontrado');
@@ -722,14 +621,6 @@
         }
     }
 
-    function retomarSistema() {
-        window.TWBotControl.retomar();
-        Estado.antibot.pausado = false;
-        atualizarUIAntiBot();
-        Toast.success('✅ Sistema retomado!');
-    }
-
-    // Detector de Anti-Bot
     const observerAntiBot = new MutationObserver(() => {
         if (!Estado.antibot.ativo || Estado.antibot.pausado) return;
 
@@ -791,6 +682,11 @@
                 Estado.antilogoff.contadorAcoes++;
                 Estado.antilogoff.tempoRestante = CONFIG.antiLogoff.intervalo;
                 atualizarTimer();
+
+                if (Estado.antilogoff.reloadTimeout) {
+                    clearTimeout(Estado.antilogoff.reloadTimeout);
+                    Estado.antilogoff.reloadTimeout = null;
+                }
             } catch (e) {
                 console.error('❌ Erro na ação anti-logoff:', e);
             }
@@ -804,6 +700,10 @@
 
     function desativarAntiLogoff() {
         clearInterval(Estado.antilogoff.intervalo);
+        if (Estado.antilogoff.reloadTimeout) {
+            clearTimeout(Estado.antilogoff.reloadTimeout);
+            Estado.antilogoff.reloadTimeout = null;
+        }
         Estado.antilogoff.ativo = false;
         Estado.antilogoff.intervalo = null;
         Estado.antilogoff.tempoRestante = null;
@@ -817,113 +717,63 @@
         Toast.info('⏰ Anti-Logoff desativado');
     }
 
-    // Atualizar contador a cada segundo
     setInterval(() => {
         if (Estado.antilogoff.ativo && Estado.antilogoff.tempoRestante !== null) {
             Estado.antilogoff.tempoRestante -= 1000;
             if (Estado.antilogoff.tempoRestante < 0) {
                 Estado.antilogoff.tempoRestante = 0;
+
+                if (CONFIG.antiLogoff.reloadAoFinalizar && !Estado.antilogoff.reloadTimeout) {
+                    Estado.antilogoff.reloadTimeout = setTimeout(() => {
+                        executarReload();
+                    }, 1000);
+                }
             }
             atualizarTimer();
         }
     }, 1000);
 
     // ============================================
-    // RESET COMPLETO
+    // MINIMIZAR/MAXIMIZAR - VERSÃO CORRIGIDA
     // ============================================
-    function resetCompleto() {
-        console.log('🔄 Iniciando Reset Completo do Sistema...');
+    function togglePainel(event) {
+        event.stopPropagation();
 
-        // Desativar todos os sistemas
-        if (Estado.antibot.ativo) desativarAntiBot();
-        if (Estado.antilogoff.ativo) desativarAntiLogoff();
-
-        // Parar observer
-        observerAntiBot.disconnect();
-
-        // Limpar intervalos
-        if (Estado.antilogoff.intervalo) clearInterval(Estado.antilogoff.intervalo);
-
-        // Desativar WakeLock
-        desativarWakeLock();
-
-        // Limpar localStorage
-        localStorage.removeItem(CONFIG.storage.antibot);
-        localStorage.removeItem(CONFIG.storage.antilogoff);
-        localStorage.removeItem(CONFIG.storage.botPausado);
-
-        // Resetar estados
-        Estado.antibot.ativo = false;
-        Estado.antibot.pausado = false;
-        Estado.antilogoff.ativo = false;
-        Estado.antilogoff.tempoRestante = null;
-        Estado.antilogoff.contadorAcoes = 0;
-        Estado.antilogoff.intervalo = null;
-        Estado.wakelock.lock = null;
-        Estado.wakelock.audioCtx = null;
-        Estado.wakelock.oscillator = null;
-
-        // Resetar controle de bots
-        window.TWBotControl.pausado = false;
-
-        // Atualizar UI
-        atualizarUIAntiBot();
-        atualizarUIAntiLogoff();
-
-        console.log('✅ Reset Completo finalizado!');
-        Toast.success('✅ Sistema resetado com sucesso!');
-    }
-
-    function mostrarConfirmacao() {
-        UI.reset.modal.classList.add('ativo');
-    }
-
-    function esconderConfirmacao() {
-        UI.reset.modal.classList.remove('ativo');
-    }
-
-    // ============================================
-    // PAINEL ARRASTÁVEL
-    // ============================================
-    let offsetX, offsetY, dragging = false;
-
-    UI.header.addEventListener('mousedown', (e) => {
-        if (e.target === UI.minimizarBtn) return;
-        dragging = true;
-        const rect = painel.getBoundingClientRect();
-        offsetX = e.clientX - rect.left;
-        offsetY = e.clientY - rect.top;
-        e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (dragging && painel) {
-            const x = e.clientX - offsetX;
-            const y = e.clientY - offsetY;
-            const maxX = window.innerWidth - painel.offsetWidth;
-            const maxY = window.innerHeight - painel.offsetHeight;
-            painel.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
-            painel.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
-            painel.style.right = 'auto';
-            painel.style.bottom = 'auto';
+        if (Estado.painel.minimizado) {
+            // Maximizar
+            Estado.painel.minimizado = false;
+            painel.classList.remove('minimizado');
+            UI.minimizarBtn.textContent = '−';
+            console.log('📂 Painel maximizado');
+        } else {
+            // Minimizar
+            Estado.painel.minimizado = true;
+            painel.classList.add('minimizado');
+            UI.minimizarBtn.textContent = '+';
+            console.log('📁 Painel minimizado');
         }
-    });
+    }
 
-    document.addEventListener('mouseup', () => { dragging = false; });
+    // Clique no botão minimizar
+    if (UI.minimizarBtn) {
+        UI.minimizarBtn.addEventListener('click', togglePainel);
+    }
 
-    // Minimizar
-    let minimizado = false;
-    UI.minimizarBtn.addEventListener('click', () => {
-        UI.conteudo.style.display = minimizado ? 'block' : 'none';
-        UI.minimizarBtn.textContent = minimizado ? '−' : '+';
-        minimizado = !minimizado;
+    // Clique no painel quando minimizado (área do círculo)
+    painel.addEventListener('click', function(event) {
+        // Se estiver minimizado E não clicou no botão (já tratado acima)
+        if (Estado.painel.minimizado && event.target !== UI.minimizarBtn) {
+            event.stopPropagation();
+            Estado.painel.minimizado = false;
+            painel.classList.remove('minimizado');
+            UI.minimizarBtn.textContent = '−';
+            console.log('📂 Painel maximizado pelo clique no círculo');
+        }
     });
 
     // ============================================
     // EVENT LISTENERS
     // ============================================
-
-    // AntiBot
     UI.antibot.toggleBtn.addEventListener('click', () => {
         if (Estado.antibot.ativo) {
             desativarAntiBot();
@@ -933,26 +783,8 @@
         }
     });
 
-    // AntiLogoff
     UI.antilogoff.toggleBtn.addEventListener('click', () => {
         Estado.antilogoff.ativo ? desativarAntiLogoff() : ativarAntiLogoff();
-    });
-
-    // Reset - Abrir modal
-    UI.reset.btn.addEventListener('click', mostrarConfirmacao);
-
-    // Reset - Confirmar
-    UI.reset.confirmSim.addEventListener('click', () => {
-        esconderConfirmacao();
-        resetCompleto();
-    });
-
-    // Reset - Cancelar
-    UI.reset.confirmNao.addEventListener('click', esconderConfirmacao);
-
-    // Fechar modal ao clicar fora
-    UI.reset.modal.addEventListener('click', (e) => {
-        if (e.target === UI.reset.modal) esconderConfirmacao();
     });
 
     // ============================================
@@ -976,17 +808,20 @@
 
         atualizarUIAntiBot();
         atualizarUIAntiLogoff();
+
+        // Garantir que comece minimizado
+        Estado.painel.minimizado = true;
+        painel.classList.add('minimizado');
+        UI.minimizarBtn.textContent = '+';
     }
 
     // ============================================
     // INICIALIZAÇÃO
     // ============================================
-    console.log('🎮 Sistema TW Unificado 3.3 carregado!');
-    console.log('📡 API para scripts externos:');
-    console.log('   - window.TWBotControl.pausar()');
-    console.log('   - window.TWBotControl.retomar()');
-    console.log('   - window.TWBotControl.podeExecutar()');
-    console.log('   - Eventos: "tw:pausar" e "tw:retomar"');
+    console.log('🎮 Sistema TW Unificado 3.5 carregado!');
+    console.log('📍 Painel fixo no canto inferior direito');
+    console.log('🖱️ Clique no ícone 🛡️ para abrir/fechar o painel');
+    console.log('📡 API disponível: window.TWBotControl');
 
     restaurarEstado();
 
