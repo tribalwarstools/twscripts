@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Tribal Wars - Agendador de Ataques (Ultimate)
+// @name         Tribal Wars - Agendador de Ataques (Compatível Basic/Premium)
 // @namespace    http://tampermonkey.net/
-// @version      7.0
-// @description  Agende ataques com precisão - COM PERSISTÊNCIA DE POSIÇÃO
+// @version      14.0
+// @description  Agende ataques com precisão - Com SELECT de Aldeias Funcional
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
@@ -32,217 +32,214 @@
     const TROOP_ICONS = Object.fromEntries(TROOP_LIST.map(t => [t.id, t.icon]));
     const TROOP_NAMES = Object.fromEntries(TROOP_LIST.map(t => [t.id, t.nome]));
 
-    // Chaves para localStorage
     const STORAGE_KEYS = {
-        FORM_DATA: 'tws_form_data_v5',
-        ATTACKS: 'tws_ataques_v6',
-        TEMPLATES: 'tws_templates_v2',
+        FORM_DATA: 'tws_form_data_v6',
+        ATTACKS: 'tws_ataques_v7',
+        TEMPLATES: 'tws_templates_v3',
         PANEL_POSITION: 'tws_panel_position',
         PANEL_MINIMIZED: 'tws_panel_minimized'
     };
 
     const world = location.hostname.split('.')[0];
-    const VILLAGE_TXT_URL = `https://${world}.tribalwars.com.br/map/village.txt`;
+    const VILLAGE_TXT_URL = `/map/village.txt`;
     let _villageMap = {};
+    let _myVillages = [];
+
+    // ============================================
+    // DATA/HORA DO SERVIDOR
+    // ============================================
+
+    function getServerTimestampSeconds() {
+        if (window.Timing && typeof Timing.getCurrentServerTime === 'function') {
+            return Timing.getCurrentServerTime() / 1000;
+        }
+
+        const serverTimeSpan = document.getElementById('serverTime');
+        const serverDateSpan = document.getElementById('serverDate');
+
+        if (serverTimeSpan && serverDateSpan) {
+            const timeStr = serverTimeSpan.textContent;
+            const dateStr = serverDateSpan.textContent;
+            const [day, month, year] = dateStr.split('/');
+            const [hours, minutes, seconds] = timeStr.split(':');
+            const serverDate = new Date(year, month - 1, day, hours, minutes, seconds);
+            return serverDate.getTime() / 1000;
+        }
+
+        return Date.now() / 1000;
+    }
+
+    function getServerDate() {
+        return new Date(getServerTimestampSeconds() * 1000);
+    }
+
+    function formatDateToString(date) {
+        const pad = n => String(n).padStart(2, '0');
+        return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ` +
+               `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    }
+
+    function preencherDataHoraAutomatica() {
+        const dataInput = document.getElementById('data');
+        const horaInput = document.getElementById('hora');
+        if (!dataInput || !horaInput) return;
+        const now = getServerDate();
+        const pad = n => String(n).padStart(2, '0');
+        dataInput.value = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+        horaInput.value = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    }
+
+    function adicionarMinutos(minutos) {
+        const now = getServerDate();
+        now.setMinutes(now.getMinutes() + minutos);
+        return formatDateToString(now);
+    }
+
+    // ============================================
+    // BUSCAR SUAS ALDEIAS - MÉTODO SIMPLES E CORRETO
+    // ============================================
+    async function fetchMyVillages() {
+        try {
+            console.log('[TWS] Buscando aldeias...');
+
+            // 1. Carregar village.txt
+            const response = await fetch(VILLAGE_TXT_URL);
+            if (!response.ok) throw new Error('Falha ao carregar village.txt');
+
+            const data = await response.text();
+
+            // 2. Parse do CSV
+            const allVillages = data.trim().split('\n').map(line => {
+                const [id, name, x, y, player, points] = line.split(',');
+                return {
+                    id: id,
+                    name: decodeURIComponent(name.replace(/\+/g, ' ')),
+                    coord: `${x}|${y}`,
+                    x: parseInt(x),
+                    y: parseInt(y),
+                    player: parseInt(player),
+                    points: parseInt(points)
+                };
+            });
+
+            // 3. Filtrar suas aldeias (player ID = seu ID)
+            const meuId = window.game_data?.player?.id;
+            if (!meuId) {
+                console.warn('[TWS] game_data.player.id não encontrado');
+                return [];
+            }
+
+            _myVillages = allVillages.filter(v => v.player === meuId);
+
+            // 4. Ordenar por nome
+            _myVillages.sort((a, b) => a.name.localeCompare(b.name));
+
+            // 5. Criar mapa de coordenadas para ID (para execução de ataques)
+            _villageMap = {};
+            _myVillages.forEach(v => {
+                _villageMap[v.coord] = v.id;
+            });
+
+            console.log(`[TWS] ✅ ${_myVillages.length} aldeias encontradas!`);
+            return _myVillages;
+
+        } catch (err) {
+            console.error('[TWS] Erro ao buscar aldeias:', err);
+            _myVillages = [];
+            return [];
+        }
+    }
 
     // ============================================
     // SISTEMA DE EVENTOS
     // ============================================
     const EventSystem = {
         _events: {},
-        on: function(event, callback) {
-            if (!this._events[event]) this._events[event] = [];
-            this._events[event].push(callback);
-            return this;
-        },
-        off: function(event, callback) {
+        on(event, cb) { (this._events[event] = this._events[event] || []).push(cb); return this; },
+        off(event, cb) {
             if (!this._events[event]) return this;
-            if (!callback) {
-                delete this._events[event];
-            } else {
-                const index = this._events[event].indexOf(callback);
-                if (index > -1) this._events[event].splice(index, 1);
+            if (!cb) delete this._events[event];
+            else {
+                const i = this._events[event].indexOf(cb);
+                if (i > -1) this._events[event].splice(i, 1);
             }
             return this;
         },
-        trigger: function(event, data) {
-            if (!this._events[event]) return this;
-            this._events[event].forEach(callback => callback(data));
+        trigger(event, data) {
+            (this._events[event] || []).forEach(cb => cb(data));
             return this;
         }
     };
 
     // ============================================
-    // FORMATTAÇÃO
-    // ============================================
-    const Format = {
-        number: function(num) {
-            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        },
-        timeSpan: function(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        },
-        date: function(timestamp) {
-            const d = new Date(timestamp);
-            return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
-        }
-    };
-
-    // ============================================
-    // MENSAGENS TOAST
+    // TOAST
     // ============================================
     const Toast = {
         _container: null,
-        _getContainer: function() {
+        _getContainer() {
             if (!this._container) {
                 this._container = document.createElement('div');
                 this._container.id = 'tws-toast-container';
                 this._container.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    z-index: 999999;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                `;
+                    position:fixed;top:20px;right:20px;z-index:999999;
+                    display:flex;flex-direction:column;gap:10px;`;
                 document.body.appendChild(this._container);
             }
             return this._container;
         },
-        _show: function(message, type, duration = 3000) {
-            const toast = document.createElement('div');
-            toast.className = `tws-toast tws-toast-${type}`;
-            toast.style.cssText = `
-                background: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#ff9800'};
-                color: white;
-                padding: 12px 20px;
-                border-radius: 8px;
-                font-size: 14px;
-                font-family: Arial, sans-serif;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-                animation: slideInRight 0.3s ease;
-                cursor: pointer;
-                z-index: 999999;
-            `;
-            toast.innerHTML = message;
-            toast.onclick = () => toast.remove();
-            this._getContainer().appendChild(toast);
-            setTimeout(() => {
-                toast.style.animation = 'slideOutRight 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
+        _show(message, type, duration = 3000) {
+            const colors = { success: '#4caf50', error: '#f44336', info: '#ff9800' };
+            const el = document.createElement('div');
+            el.style.cssText = `
+                background:${colors[type]};color:white;padding:12px 20px;
+                border-radius:8px;font-size:14px;font-family:Arial,sans-serif;
+                box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;z-index:999999;
+                animation:slideInRight 0.3s ease;`;
+            el.innerHTML = message;
+            el.onclick = () => el.remove();
+            this._getContainer().appendChild(el);
+            setTimeout(() => el.remove(), duration);
         },
-        success: function(message, duration) { this._show(message, 'success', duration); },
-        error: function(message, duration) { this._show(message, 'error', duration); },
-        info: function(message, duration) { this._show(message, 'info', duration); }
+        success(m, d) { this._show(m, 'success', d); },
+        error(m, d) { this._show(m, 'error', d); },
+        info(m, d) { this._show(m, 'info', d); }
     };
 
-    // ============================================
-    // ANIMAÇÕES CSS
-    // ============================================
+    // CSS animations
     if (!document.querySelector('#tws-animations')) {
-        const style = document.createElement('style');
-        style.id = 'tws-animations';
-        style.textContent = `
-            @keyframes slideInRight {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes slideOutRight {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
+        const s = document.createElement('style');
+        s.id = 'tws-animations';
+        s.textContent = `
+            @keyframes tws-spin { to { transform:rotate(360deg); } }
+            @keyframes slideInRight { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+            @keyframes slideOutRight { from{transform:translateX(0);opacity:1} to{transform:translateX(100%);opacity:0} }
         `;
-        document.head.appendChild(style);
+        document.head.appendChild(s);
     }
 
     // ============================================
     // CAIXA DE CONFIRMAÇÃO
     // ============================================
     const ConfirmationBox = {
-        show: function(message, onConfirm, onCancel) {
+        show(message, onConfirm, onCancel) {
             const fader = document.createElement('div');
-            fader.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.5);
-                z-index: 999999;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-            `;
+            fader.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
+                background:rgba(0,0,0,.5);z-index:999999;display:flex;
+                justify-content:center;align-items:center;`;
             const box = document.createElement('div');
-            box.style.cssText = `
-                background: #2a2a2a;
-                border-radius: 10px;
-                padding: 20px;
-                min-width: 300px;
-                max-width: 400px;
-                box-shadow: 0 5px 25px rgba(0,0,0,0.3);
-                border: 1px solid #ff9900;
-                z-index: 999999;
-            `;
+            box.style.cssText = `background:#2a2a2a;border-radius:10px;padding:20px;
+                min-width:300px;max-width:400px;box-shadow:0 5px 25px rgba(0,0,0,.3);
+                border:1px solid #ff9900;z-index:999999;`;
             box.innerHTML = `
-                <p style="color: #fff; margin-bottom: 20px; font-size: 14px;">${message}</p>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button id="tws-confirm-no" style="background: #555; color: #fff; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">Não</button>
-                    <button id="tws-confirm-yes" style="background: #ff9900; color: #1a1a1a; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">Sim</button>
-                </div>
-            `;
+                <p style="color:#fff;margin-bottom:20px;font-size:14px;">${message}</p>
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button id="tws-confirm-no" style="background:#555;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;">Não</button>
+                    <button id="tws-confirm-yes" style="background:#ff9900;color:#1a1a1a;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;font-weight:bold;">Sim</button>
+                </div>`;
             fader.appendChild(box);
             document.body.appendChild(fader);
-            document.getElementById('tws-confirm-yes').onclick = () => { fader.remove(); if (onConfirm) onConfirm(); };
-            document.getElementById('tws-confirm-no').onclick = () => { fader.remove(); if (onCancel) onCancel(); };
-        }
-    };
-
-    // ============================================
-    // TOOLTIP
-    // ============================================
-    const Tooltip = {
-        init: function() {
-            document.addEventListener('mouseover', (e) => {
-                const target = e.target.closest('[data-tooltip]');
-                if (target) this.show(target, target.getAttribute('data-tooltip'));
-            });
-            document.addEventListener('mouseout', (e) => {
-                const target = e.target.closest('[data-tooltip]');
-                if (target) this.hide();
-            });
-        },
-        show: function(element, text) {
-            this.hide();
-            this.tooltip = document.createElement('div');
-            this.tooltip.className = 'tws-tooltip';
-            this.tooltip.style.cssText = `
-                position: absolute;
-                background: #333;
-                color: #ff9900;
-                padding: 5px 10px;
-                border-radius: 5px;
-                font-size: 12px;
-                z-index: 999999;
-                white-space: nowrap;
-                border: 1px solid #ff9900;
-            `;
-            this.tooltip.textContent = text;
-            document.body.appendChild(this.tooltip);
-            const rect = element.getBoundingClientRect();
-            this.tooltip.style.left = rect.left + (rect.width / 2) - (this.tooltip.offsetWidth / 2) + 'px';
-            this.tooltip.style.top = rect.top - this.tooltip.offsetHeight - 5 + 'px';
-        },
-        hide: function() {
-            if (this.tooltip) {
-                this.tooltip.remove();
-                this.tooltip = null;
-            }
+            document.getElementById('tws-confirm-yes').onclick = () => { fader.remove(); onConfirm && onConfirm(); };
+            document.getElementById('tws-confirm-no').onclick = () => { fader.remove(); onCancel && onCancel(); };
         }
     };
 
@@ -250,54 +247,32 @@
     // LOADING INDICATOR
     // ============================================
     const LoadingIndicator = {
-        _element: null,
-        show: function() {
-            if (!this._element) {
-                this._element = document.createElement('div');
-                this._element.id = 'tws-loading';
-                this._element.style.cssText = `
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: rgba(0,0,0,0.8);
-                    color: #ff9900;
-                    padding: 20px 30px;
-                    border-radius: 10px;
-                    z-index: 999999;
-                    font-size: 16px;
-                    font-weight: bold;
-                    display: flex;
-                    gap: 10px;
-                    align-items: center;
-                `;
-                this._element.innerHTML = '<div class="tws-spinner"></div> Enviando ataque...';
-                document.body.appendChild(this._element);
-                const spinnerStyle = document.createElement('style');
-                spinnerStyle.textContent = `
-                    .tws-spinner {
-                        width: 20px;
-                        height: 20px;
-                        border: 2px solid #ff9900;
-                        border-top-color: transparent;
-                        border-radius: 50%;
-                        animation: tws-spin 0.8s linear infinite;
-                    }
-                    @keyframes tws-spin {
-                        to { transform: rotate(360deg); }
-                    }
-                `;
-                document.head.appendChild(spinnerStyle);
+        _el: null,
+        show() {
+            if (!this._el) {
+                if (!document.querySelector('#tws-spinner-style')) {
+                    const s = document.createElement('style');
+                    s.id = 'tws-spinner-style';
+                    s.textContent = `.tws-spinner{width:20px;height:20px;border:2px solid #ff9900;
+                        border-top-color:transparent;border-radius:50%;
+                        animation:tws-spin .8s linear infinite;}`;
+                    document.head.appendChild(s);
+                }
+                this._el = document.createElement('div');
+                this._el.id = 'tws-loading';
+                this._el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+                    background:rgba(0,0,0,.8);color:#ff9900;padding:20px 30px;border-radius:10px;
+                    z-index:999999;font-size:16px;font-weight:bold;display:flex;gap:10px;align-items:center;`;
+                this._el.innerHTML = '<div class="tws-spinner"></div> Carregando aldeias...';
+                document.body.appendChild(this._el);
             }
-            this._element.style.display = 'flex';
+            this._el.style.display = 'flex';
         },
-        hide: function() {
-            if (this._element) this._element.style.display = 'none';
-        }
+        hide() { if (this._el) this._el.style.display = 'none'; }
     };
 
     // ============================================
-    // SCROLL CUSTOMIZADO
+    // SCROLL SLIM
     // ============================================
     function initSlimScroll(container) {
         if (!container) return;
@@ -310,62 +285,38 @@
     // ============================================
     // PERSISTÊNCIA DO PAINEL
     // ============================================
-    // ============================================
-// PERSISTÊNCIA DO PAINEL (CORRIGIDO)
-// ============================================
+    function salvarPosicaoPainel(x, y) {
+        localStorage.setItem(STORAGE_KEYS.PANEL_POSITION, JSON.stringify({
+            x: x + (window.scrollX || 0),
+            y: y + (window.scrollY || 0)
+        }));
+    }
 
-function salvarPosicaoPainel(x, y) {
-    // Salvar posição relativa à janela (scroll compensado)
-    const scrollX = window.scrollX || window.pageXOffset;
-    const scrollY = window.scrollY || window.pageYOffset;
-    localStorage.setItem(STORAGE_KEYS.PANEL_POSITION, JSON.stringify({
-        x: x + scrollX,  // Salvar com scroll
-        y: y + scrollY
-    }));
-}
-
-function carregarPosicaoPainel(painel) {
-    const saved = localStorage.getItem(STORAGE_KEYS.PANEL_POSITION);
-    if (saved) {
+    function carregarPosicaoPainel(painel) {
+        const saved = localStorage.getItem(STORAGE_KEYS.PANEL_POSITION);
+        if (!saved) return false;
         try {
             const { x, y } = JSON.parse(saved);
-            const scrollX = window.scrollX || window.pageXOffset;
-            const scrollY = window.scrollY || window.pageYOffset;
-
-            // Ajustar posição pelo scroll atual
-            let adjustedX = x - scrollX;
-            let adjustedY = y - scrollY;
-
-            // Validar limites da tela
+            const ax = x - (window.scrollX || 0);
+            const ay = y - (window.scrollY || 0);
             const maxX = window.innerWidth - painel.offsetWidth;
             const maxY = window.innerHeight - painel.offsetHeight;
-
-            adjustedX = Math.min(Math.max(0, adjustedX), maxX);
-            adjustedY = Math.min(Math.max(0, adjustedY), maxY);
-
-            // Verificar se está dentro da tela
-            if (adjustedX >= 0 && adjustedX <= maxX && adjustedY >= 0 && adjustedY <= maxY) {
-                painel.style.left = `${adjustedX}px`;
-                painel.style.top = `${adjustedY}px`;
+            const nx = Math.min(Math.max(0, ax), maxX);
+            const ny = Math.min(Math.max(0, ay), maxY);
+            if (nx >= 0 && nx <= maxX && ny >= 0 && ny <= maxY) {
+                painel.style.left = `${nx}px`;
+                painel.style.top = `${ny}px`;
                 painel.style.transform = 'none';
                 painel.style.right = 'auto';
                 painel.style.bottom = 'auto';
                 return true;
             }
-        } catch (e) {}
-    }
-    return false;
-}
-
-
-    function salvarEstadoMinimizado(minimizado) {
-        localStorage.setItem(STORAGE_KEYS.PANEL_MINIMIZED, minimizado ? '1' : '0');
+        } catch (_) { }
+        return false;
     }
 
-    function carregarEstadoMinimizado() {
-        const saved = localStorage.getItem(STORAGE_KEYS.PANEL_MINIMIZED);
-        return saved === '1';
-    }
+    function salvarEstadoMinimizado(v) { localStorage.setItem(STORAGE_KEYS.PANEL_MINIMIZED, v ? '1' : '0'); }
+    function carregarEstadoMinimizado() { return localStorage.getItem(STORAGE_KEYS.PANEL_MINIMIZED) === '1'; }
 
     // ============================================
     // TEMPLATES DE TROPAS
@@ -373,324 +324,164 @@ function carregarPosicaoPainel(painel) {
     let troopTemplates = [];
 
     function loadTemplates() {
-        const saved = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
-        if (saved) troopTemplates = JSON.parse(saved);
+        const s = localStorage.getItem(STORAGE_KEYS.TEMPLATES);
+        if (s) troopTemplates = JSON.parse(s);
     }
-
     function saveTemplates() {
         localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(troopTemplates));
     }
-
     function saveCurrentAsTemplate(name) {
         const tropas = {};
         TROOP_IDS.forEach(t => {
-            const input = document.getElementById(t);
-            if (input) tropas[t] = parseInt(input.value) || 0;
+            const inp = document.getElementById(t);
+            if (inp) tropas[t] = parseInt(inp.value) || 0;
         });
-        troopTemplates.push({ id: Date.now(), name: name, tropas: tropas });
+        troopTemplates.push({ id: Date.now(), name, tropas });
         saveTemplates();
         renderTemplateList();
-        Toast.success(`✅ Template "${name}" salvo com sucesso!`);
+        Toast.success(`✅ Template "${name}" salvo!`);
     }
-
-    function loadTemplate(templateId) {
-        const template = troopTemplates.find(t => t.id === templateId);
-        if (!template) return;
+    function loadTemplate(id) {
+        const tpl = troopTemplates.find(t => t.id === id);
+        if (!tpl) return;
         TROOP_IDS.forEach(t => {
-            const input = document.getElementById(t);
-            if (input && template.tropas[t] !== undefined) input.value = template.tropas[t];
+            const inp = document.getElementById(t);
+            if (inp && tpl.tropas[t] !== undefined) inp.value = tpl.tropas[t];
         });
-        Toast.success(`✅ Template "${template.name}" carregado!`);
+        Toast.success(`✅ Template "${tpl.name}" carregado!`);
     }
-
-    function deleteTemplate(templateId) {
-        ConfirmationBox.show('Tem certeza que deseja excluir este template?', () => {
-            troopTemplates = troopTemplates.filter(t => t.id !== templateId);
+    function deleteTemplate(id) {
+        ConfirmationBox.show('Excluir este template?', () => {
+            troopTemplates = troopTemplates.filter(t => t.id !== id);
             saveTemplates();
             renderTemplateList();
             Toast.success('✅ Template excluído!');
         });
     }
-
     function renderTemplateList() {
-        const container = document.getElementById('tws-template-list');
-        if (!container) return;
-        if (troopTemplates.length === 0) {
-            container.innerHTML = '<div style="color: #666; text-align: center; padding: 10px;">Nenhum template salvo</div>';
+        const c = document.getElementById('tws-template-list');
+        if (!c) return;
+        if (!troopTemplates.length) {
+            c.innerHTML = '<div style="color:#666;text-align:center;padding:10px;">Nenhum template salvo</div>';
             return;
         }
-        container.innerHTML = troopTemplates.map(t => `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; background: #333; margin-bottom: 5px; border-radius: 4px;">
-                <span style="font-size: 12px; cursor: pointer;" onclick="window.loadTemplate(${t.id})">📋 ${escapeHtml(t.name)}</span>
-                <button onclick="window.deleteTemplate(${t.id})" style="background: #990000; color: #fff; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer;">✖</button>
-            </div>
-        `).join('');
+        c.innerHTML = troopTemplates.map(t => `
+            <div style="display:flex;justify-content:space-between;align-items:center;
+                        padding:5px;background:#333;margin-bottom:5px;border-radius:4px;">
+                <span style="font-size:12px;cursor:pointer;" onclick="window.loadTemplate(${t.id})">
+                    📋 ${escapeHtml(t.name)}
+                </span>
+                <button onclick="window.deleteTemplate(${t.id})"
+                    style="background:#990000;color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;">✖</button>
+            </div>`).join('');
     }
-
     window.loadTemplate = loadTemplate;
     window.deleteTemplate = deleteTemplate;
 
     // ============================================
-    // IMPORTAÇÃO BBCode
+    // IMPORTAÇÃO BBCODE
     // ============================================
     function importarBBCode() {
-        const texto = prompt('Cole o BBCode dos ataques (formato do jogo):\n\nExemplo:\n[*][url="https://...?att_spear=100&att_sword=50"]500|500[/url] → 510|510 25/12/2024 15:30:00');
+        const texto = prompt('Cole o BBCode dos ataques:');
         if (!texto) return;
-
-        const modo = confirm('Deseja adicionar ataques mesmo se já existirem?\n\n"OK" → Adicionar todos (pode criar duplicatas)\n"Cancelar" → Ignorar ataques já existentes');
-
+        const modo = confirm('Adicionar mesmo se já existirem?\nOK = sim | Cancelar = ignorar duplicatas');
         const linhas = texto.split('[*]').filter(l => l.trim());
-        let importados = 0;
-        let ignorados = 0;
+        let importados = 0, ignorados = 0;
 
         for (const linha of linhas) {
             const coords = linha.match(/(\d{1,4}\|\d{1,4})/g);
             if (!coords || coords.length < 2) continue;
-
-            const origem = coords[0];
-            const alvo = coords[1];
-
-            let dataMatch = linha.match(/(\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}(?::\d{2})?)/);
+            const origem = coords[0], alvo = coords[1];
+            const dataMatch = linha.match(/(\d{2}\/\d{2}\/\d{4}\s\d{2}:\d{2}(?::\d{2})?)/);
             if (!dataMatch) continue;
-
             let datahora = dataMatch[1];
             if (datahora.split(':').length === 2) datahora += ':00';
-
             const urlMatch = linha.match(/\[url=(.*?)\]/);
             const tropas = {};
-
             if (urlMatch) {
-                const url = urlMatch[1];
-                const params = new URLSearchParams(url.split('?')[1] || '');
-                TROOP_IDS.forEach(t => {
-                    const valor = params.get(`att_${t}`);
-                    if (valor) tropas[t] = parseInt(valor);
-                });
+                const params = new URLSearchParams(urlMatch[1].split('?')[1] || '');
+                TROOP_IDS.forEach(t => { const v = params.get(`att_${t}`); if (v) tropas[t] = parseInt(v); });
             }
-
             const ataques = carregarAtaques();
             const existe = ataques.some(a => a.origem === origem && a.alvo === alvo && a.datahora === datahora);
-
-            if (!modo && existe) {
-                ignorados++;
-                continue;
-            }
-
-            const novoAtaque = {
-                id: Date.now() + Math.random() + importados,
-                origem, alvo, datahora,
-                ...tropas,
-                enviado: false, travado: false, sucesso: null
-            };
-            ataques.push(novoAtaque);
+            if (!modo && existe) { ignorados++; continue; }
+            ataques.push({ id: Date.now() + Math.random() + importados, origem, alvo, datahora, ...tropas,
+                enviado: false, travado: false, sucesso: null });
             salvarAtaques(ataques);
             importados++;
         }
-
-        if (importados > 0) {
-            Toast.success(`✅ ${importados} ataques importados do BBCode!${ignorados > 0 ? ` (${ignorados} ignorados)` : ''}`);
-        } else if (ignorados > 0) {
-            Toast.info(`ℹ️ ${ignorados} ataques já existentes. Use "OK" no próximo prompt para adicionar mesmo assim.`);
-        } else {
-            Toast.error('❌ Nenhum ataque encontrado no BBCode!');
-        }
+        if (importados > 0)
+            Toast.success(`✅ ${importados} ataques importados!${ignorados > 0 ? ` (${ignorados} ignorados)` : ''}`);
+        else if (ignorados > 0)
+            Toast.info(`ℹ️ ${ignorados} ataques já existentes.`);
+        else
+            Toast.error('❌ Nenhum ataque encontrado!');
     }
 
     // ============================================
-    // FORMATAR TROPAS PARA EXIBIÇÃO
+    // EXIBIÇÃO DE TROPAS
     // ============================================
     function formatTroopsForDisplay(tropas) {
-        const hasTroops = TROOP_IDS.some(t => (tropas[t] || 0) > 0);
-        if (!hasTroops) return '';
-        const troopsList = TROOP_IDS.filter(t => (tropas[t] || 0) > 0);
-        if (troopsList.length === 0) return '';
-        const displayTroops = troopsList.slice(0, 6);
-        const hasMore = troopsList.length > 6;
-        let troopsHtml = '<div class="troops-preview">';
-        displayTroops.forEach(t => {
-            const quantity = Format.number(tropas[t]);
-            troopsHtml += `<span style="background: #333; padding: 2px 5px; border-radius: 3px; display: inline-flex; align-items: center; gap: 3px;">
-                <img src="${TROOP_ICONS[t]}" style="width: 16px; height: 16px; vertical-align: middle;" title="${TROOP_NAMES[t]}">
-                ${quantity}
-            </span>`;
+        const list = TROOP_IDS.filter(t => (tropas[t] || 0) > 0);
+        if (!list.length) return '';
+        const show = list.slice(0, 6);
+        const hasMore = list.length > 6;
+        let html = '<div class="troops-preview">';
+        show.forEach(t => {
+            html += `<span style="background:#333;padding:2px 5px;border-radius:3px;
+                        display:inline-flex;align-items:center;gap:3px;">
+                        <img src="${TROOP_ICONS[t]}" style="width:16px;height:16px;" title="${TROOP_NAMES[t]}">
+                        ${number_format(tropas[t], '.')}
+                     </span>`;
         });
-        if (hasMore) troopsHtml += `<span style="background: #333; padding: 2px 5px; border-radius: 3px;">+${troopsList.length - 6}</span>`;
-        troopsHtml += '</div>';
-        return troopsHtml;
+        if (hasMore) html += `<span style="background:#333;padding:2px 5px;border-radius:3px;">+${list.length - 6}</span>`;
+        html += '</div>';
+        return html;
+    }
+
+    function number_format(n, sep) {
+        return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, sep);
     }
 
     // ============================================
     // POPUP TEMPLATES
     // ============================================
     function showTemplatePopup() {
-        let existing = document.getElementById('tws-template-popup');
-        if (existing) {
-            existing.style.display = existing.style.display === 'none' ? 'flex' : 'none';
-            return;
-        }
-        const popup = document.createElement('div');
+        let popup = document.getElementById('tws-template-popup');
+        if (popup) { popup.style.display = popup.style.display === 'none' ? 'flex' : 'none'; return; }
+        popup = document.createElement('div');
         popup.id = 'tws-template-popup';
-        popup.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #1e1e1e;
-            border: 2px solid #ff9900;
-            border-radius: 10px;
-            padding: 20px;
-            z-index: 999999;
-            min-width: 300px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.5);
-        `;
+        popup.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+            background:#1e1e1e;border:2px solid #ff9900;border-radius:10px;padding:20px;
+            z-index:999999;min-width:300px;box-shadow:0 5px 25px rgba(0,0,0,.5);`;
         popup.innerHTML = `
-            <h4 style="color: #ff9900; margin: 0 0 15px 0;">📋 Templates de Tropas</h4>
-            <div id="tws-template-list" style="margin-bottom: 15px; max-height: 300px; overflow-y: auto;"></div>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="tws-new-template-name" placeholder="Nome do template" style="flex: 1; background: #333; border: 1px solid #555; color: #fff; padding: 5px; border-radius: 4px;">
-                <button id="tws-save-template" style="background: #006600; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Salvar Atual</button>
+            <h4 style="color:#ff9900;margin:0 0 15px 0;">📋 Templates de Tropas</h4>
+            <div id="tws-template-list" style="margin-bottom:15px;max-height:300px;overflow-y:auto;"></div>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="tws-new-template-name" placeholder="Nome do template"
+                    style="flex:1;background:#333;border:1px solid #555;color:#fff;padding:5px;border-radius:4px;">
+                <button id="tws-save-template"
+                    style="background:#006600;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">
+                    Salvar Atual</button>
             </div>
-            <button id="tws-close-popup" style="position: absolute; top: 5px; right: 10px; background: none; border: none; color: #fff; cursor: pointer; font-size: 18px;">✖</button>
-        `;
+            <button id="tws-close-popup"
+                style="position:absolute;top:5px;right:10px;background:none;border:none;color:#fff;cursor:pointer;font-size:18px;">✖</button>`;
         document.body.appendChild(popup);
         renderTemplateList();
         initSlimScroll(document.getElementById('tws-template-list'));
         document.getElementById('tws-save-template').onclick = () => {
             const name = document.getElementById('tws-new-template-name').value.trim();
-            if (name) saveCurrentAsTemplate(name);
-            else Toast.error('Digite um nome para o template!');
+            name ? saveCurrentAsTemplate(name) : Toast.error('Digite um nome!');
         };
         document.getElementById('tws-close-popup').onclick = () => popup.remove();
     }
-
-    // ============================================
-    // ENVIO IMEDIATO
-    // ============================================
-    function enviarImediato(index) {
-        const ataques = carregarAtaques();
-        const ataque = ataques[index];
-
-        if (!ataque) {
-            Toast.error('Ataque não encontrado!');
-            return;
-        }
-
-        let tropasMsg = '';
-        TROOP_IDS.forEach(t => {
-            if (ataque[t] && ataque[t] > 0) {
-                tropasMsg += `\n${TROOP_NAMES[t]}: ${Format.number(ataque[t])}`;
-            }
-        });
-
-        ConfirmationBox.show(`Enviar ataque IMEDIATAMENTE?\n\n${ataque.origem} → ${ataque.alvo}${tropasMsg}`, async () => {
-            LoadingIndicator.show();
-            try {
-                const sucesso = await executeAttack(ataque);
-                const ataquesAtualizados = carregarAtaques();
-                ataquesAtualizados[index].enviado = true;
-                ataquesAtualizados[index].sucesso = sucesso;
-                ataquesAtualizados[index].dataEnvio = new Date().toISOString();
-                ataquesAtualizados[index].travado = false;
-                salvarAtaques(ataquesAtualizados);
-                if (sucesso) Toast.success(`✅ Ataque enviado com sucesso!`);
-                else Toast.error(`❌ Falha no envio do ataque`);
-            } catch (err) {
-                Toast.error(`❌ Erro: ${err.message}`);
-            } finally {
-                LoadingIndicator.hide();
-            }
-        });
-    }
-
-    // ============================================
-    // REPETIR ATAQUE
-    // ============================================
-    window.repetirAtaque = async (index) => {
-        const ataques = carregarAtaques();
-        const ataqueOriginal = ataques[index];
-
-        if (!ataqueOriginal) {
-            Toast.error('Ataque não encontrado!');
-            return;
-        }
-
-        let tropasMsg = '';
-        TROOP_IDS.forEach(t => {
-            if (ataqueOriginal[t] && ataqueOriginal[t] > 0) {
-                tropasMsg += `\n${TROOP_NAMES[t]}: ${Format.number(ataqueOriginal[t])}`;
-            }
-        });
-
-        ConfirmationBox.show(`Repetir e enviar IMEDIATAMENTE?\n\n${ataqueOriginal.origem} → ${ataqueOriginal.alvo}${tropasMsg}`, async () => {
-            LoadingIndicator.show();
-            try {
-                const sucesso = await executeAttack(ataqueOriginal);
-                if (sucesso) {
-                    Toast.success(`✅ Ataque repetido e enviado com sucesso!`);
-                } else {
-                    Toast.error(`❌ Falha no envio do ataque repetido`);
-                }
-            } catch (err) {
-                Toast.error(`❌ Erro: ${err.message}`);
-            } finally {
-                LoadingIndicator.hide();
-            }
-        });
-    };
 
     // ============================================
     // UTILITÁRIOS
     // ============================================
     function escapeHtml(str) {
         if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
-
-    async function safeFetch(url, options = {}, retries = 2) {
-        for (let i = 0; i <= retries; i++) {
-            try {
-                const res = await fetch(url, options);
-                if (res.ok || res.status === 302) return res;
-                if (i === retries) return res;
-                await new Promise(r => setTimeout(r, 200));
-            } catch (e) {
-                if (i === retries) throw e;
-                await new Promise(r => setTimeout(r, 200));
-            }
-        }
-    }
-
-    function safeTimeout(ms = 8000) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), ms);
-        return { controller, timeout };
-    }
-
-    // ============================================
-    // VILLAGE.TXT LOADER
-    // ============================================
-    async function loadVillageTxt() {
-        try {
-            const res = await fetch(VILLAGE_TXT_URL, { credentials: 'same-origin' });
-            if (!res.ok) throw new Error('Falha ao buscar village.txt');
-            const text = await res.text();
-            const map = {};
-            for (const line of text.trim().split('\n')) {
-                const [id, name, x, y, playerId] = line.split(',');
-                map[`${x}|${y}`] = id;
-            }
-            _villageMap = map;
-            console.log(`[TWS] Village.txt carregado: ${Object.keys(map).length} vilas`);
-            return map;
-        } catch (err) {
-            console.error('[TWS] Erro ao carregar village.txt:', err);
-            return {};
-        }
+        return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
     }
 
     // ============================================
@@ -698,22 +489,19 @@ function carregarPosicaoPainel(painel) {
     // ============================================
     async function getVillageTroops(villageId) {
         try {
-            const placeUrl = `${location.protocol}//${location.host}/game.php?village=${villageId}&screen=place`;
-            const res = await fetch(placeUrl, { credentials: 'same-origin' });
+            const url = `/game.php?village=${villageId}&screen=place`;
+            const res = await fetch(url, { credentials: 'same-origin' });
             if (!res.ok) throw new Error('Falha ao carregar /place');
             const html = await res.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
+            const doc = new DOMParser().parseFromString(html, 'text/html');
             const troops = {};
             TROOP_IDS.forEach(u => {
-                let availableEl = doc.querySelector(`#units_entry_all_${u}`) || doc.querySelector(`#units_home_${u}`);
-                let available = 0;
-                if (availableEl) {
-                    const txt = (availableEl.textContent || '').replace(/\./g, '').replace(/,/g, '').trim();
-                    const m = txt.match(/(\d+)/g);
-                    if (m) available = parseInt(m.join(''), 10);
-                }
-                troops[u] = available;
+                let el = doc.querySelector(`#units_entry_all_${u}`) ||
+                         doc.querySelector(`#units_home_${u}`) ||
+                         doc.querySelector(`.unit-input-faded a[data-unit="${u}"] + span`);
+                const txt = el ? (el.textContent || '').replace(/\./g, '').replace(/,/g, '').trim() : '0';
+                const m = txt.match(/(\d+)/g);
+                troops[u] = m ? parseInt(m.join(''), 10) : 0;
             });
             return troops;
         } catch (err) {
@@ -735,18 +523,24 @@ function carregarPosicaoPainel(painel) {
     // ============================================
     // DETECTAR CONFIRMAÇÃO
     // ============================================
-    function isAttackConfirmed(htmlText, responseUrl) {
-        if (responseUrl && responseUrl.includes('screen=info_command')) return true;
-        if (/<tr class="command-row">/i.test(htmlText) && /data-command-id=/i.test(htmlText)) return true;
-        const successPatterns = [
-            /attack sent/i, /attack in queue/i, /enviado/i, /ataque enviado/i,
-            /enfileirad/i, /A batalha começou/i, /march started/i, /comando enviado/i,
-            /tropas enviadas/i, /foi enfileirado/i, /command sent/i, /comando foi criado/i
+    function isAttackConfirmed(htmlText) {
+        const patterns = [
+            /<tr class="command-row">/i,
+            /class="command-row"/i,
+            /Movimento de tropas/i,
+            /Comando adicionado/i,
+            /ataque foi adicionado/i,
+            /command-row.*ataque/i
         ];
-        if (successPatterns.some(p => p.test(htmlText))) return true;
-        const errorPatterns = [/erro/i, /falha/i, /insuficiente/i, /not enough/i];
-        const hasError = errorPatterns.some(p => p.test(htmlText));
-        if (!hasError && htmlText.length > 500 && !htmlText.includes('screen=place')) return true;
+
+        for (const pattern of patterns) {
+            if (pattern.test(htmlText)) {
+                console.log('[TWS] ✅ ATAQUE CONFIRMADO!');
+                return true;
+            }
+        }
+
+        console.log('[TWS] ❌ Nenhum comando detectado na resposta');
         return false;
     }
 
@@ -754,99 +548,112 @@ function carregarPosicaoPainel(painel) {
     // EXECUTAR ATAQUE
     // ============================================
     async function executeAttack(cfg) {
-        const ATTACK_TIMEOUT = 5000;
         LoadingIndicator.show();
-        const origemId = _villageMap[cfg.origem];
-        if (!origemId) {
-            LoadingIndicator.hide();
-            throw new Error(`Vila origem ${cfg.origem} não encontrada`);
-        }
-        const [x, y] = (cfg.alvo || '').split('|');
-        if (!x || !y) {
-            LoadingIndicator.hide();
-            throw new Error(`Alvo inválido: ${cfg.alvo}`);
-        }
-        const availableTroops = await getVillageTroops(origemId);
-        if (availableTroops) {
-            const errors = validateTroops(cfg, availableTroops);
-            if (errors.length) {
-                LoadingIndicator.hide();
-                throw new Error(`Tropas insuficientes: ${errors.join(', ')}`);
-            }
-        }
-        const placeUrl = `${location.protocol}//${location.host}/game.php?village=${origemId}&screen=place`;
+
         try {
-            const { controller: c1, timeout: t1 } = safeTimeout(ATTACK_TIMEOUT);
-            const getRes = await safeFetch(placeUrl, { credentials: 'same-origin', signal: c1.signal });
-            clearTimeout(t1);
+            const origemId = _villageMap[cfg.origem];
+            if (!origemId) throw new Error(`Vila origem ${cfg.origem} não encontrada`);
+
+            const [x, y] = (cfg.alvo || '').split('|');
+            if (!x || !y) throw new Error(`Alvo inválido: ${cfg.alvo}`);
+
+            const availableTroops = await getVillageTroops(origemId);
+            if (availableTroops) {
+                const errors = validateTroops(cfg, availableTroops);
+                if (errors.length) {
+                    LoadingIndicator.hide();
+                    throw new Error(`Tropas insuficientes: ${errors.join(', ')}`);
+                }
+            }
+
+            const placeUrl = `/game.php?village=${origemId}&screen=place`;
+
+            const getRes = await fetch(placeUrl, { credentials: 'same-origin' });
             if (!getRes.ok) throw new Error(`GET /place falhou: ${getRes.status}`);
+
             const html = await getRes.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            let form = doc.querySelector('#command-data-form') || doc.querySelector('form[action*="screen=place"]') || doc.forms[0];
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+
+            let form = doc.querySelector('#command-data-form') ||
+                       doc.querySelector('form[action*="screen=place"]') ||
+                       doc.forms[0];
             if (!form) throw new Error('Formulário não encontrado');
-            const payloadObj = {};
+
+            const payload = {};
             form.querySelectorAll('input, select, textarea').forEach(inp => {
-                const name = inp.name;
-                if (!name) return;
+                if (!inp.name) return;
                 if (inp.type === 'checkbox' || inp.type === 'radio') {
-                    if (inp.checked) payloadObj[name] = inp.value || 'on';
+                    if (inp.checked) payload[inp.name] = inp.value || 'on';
                 } else {
-                    payloadObj[name] = inp.value || '';
+                    payload[inp.name] = inp.value || '';
                 }
             });
-            payloadObj['x'] = String(x);
-            payloadObj['y'] = String(y);
-            TROOP_IDS.forEach(u => payloadObj[u] = String(cfg[u] !== undefined ? cfg[u] : '0'));
-            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
-            if (submitBtn && submitBtn.name) payloadObj[submitBtn.name] = submitBtn.value || '';
-            const urlEncoded = Object.entries(payloadObj).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+
+            payload.x = String(x);
+            payload.y = String(y);
+            TROOP_IDS.forEach(u => { payload[u] = String(cfg[u] !== undefined ? cfg[u] : 0); });
+
+            payload.attack = 'Ataque';
+
             let postUrl = form.getAttribute('action') || placeUrl;
-            if (postUrl.startsWith('/')) postUrl = `${location.protocol}//${location.host}${postUrl}`;
-            const { controller: c2, timeout: t2 } = safeTimeout(ATTACK_TIMEOUT);
-            const postRes = await safeFetch(postUrl, {
+            if (postUrl.startsWith('/')) postUrl = postUrl;
+
+            const postRes = await fetch(postUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
-                signal: c2.signal,
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
-                body: urlEncoded
-            }, 1);
-            clearTimeout(t2);
-            if (!postRes.ok && postRes.status !== 302) throw new Error(`POST inicial falhou: ${postRes.status}`);
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                body: new URLSearchParams(payload).toString()
+            });
+
+            if (!postRes.ok && postRes.status !== 302)
+                throw new Error(`POST inicial falhou: ${postRes.status}`);
+
             const postText = await postRes.text();
-            const postDoc = parser.parseFromString(postText, 'text/html');
-            let confirmForm = postDoc.querySelector('form[action*="try=confirm"]') || postDoc.querySelector('#command-data-form') || postDoc.forms[0];
-            if (confirmForm && postText.includes('try=confirm')) {
-                const confirmPayload = {};
-                confirmForm.querySelectorAll('input, select, textarea').forEach(inp => {
-                    const name = inp.name;
-                    if (!name) return;
-                    if (inp.type === 'checkbox' || inp.type === 'radio') {
-                        if (inp.checked) confirmPayload[name] = inp.value || 'on';
-                    } else {
-                        confirmPayload[name] = inp.value || '';
-                    }
-                });
-                const confirmBtn = confirmForm.querySelector('#troop_confirm_submit, button[type="submit"], input[type="submit"]');
-                if (confirmBtn && confirmBtn.name) confirmPayload[confirmBtn.name] = confirmBtn.value || '';
-                const confirmEncoded = Object.entries(confirmPayload).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-                let confirmUrl = confirmForm.getAttribute('action') || postRes.url || placeUrl;
-                if (confirmUrl.startsWith('/')) confirmUrl = `${location.protocol}//${location.host}${confirmUrl}`;
-                const { controller: c3, timeout: t3 } = safeTimeout(ATTACK_TIMEOUT);
-                const confirmRes = await safeFetch(confirmUrl, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    signal: c3.signal,
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: confirmEncoded
-                }, 1);
-                clearTimeout(t3);
-                const finalText = await confirmRes.text();
-                LoadingIndicator.hide();
-                return isAttackConfirmed(finalText, confirmRes.url);
+
+            if (postText.includes('try=confirm') || postText.includes('confirmation')) {
+                const postDoc = new DOMParser().parseFromString(postText, 'text/html');
+                const confirmForm = postDoc.querySelector('form[action*="try=confirm"]') ||
+                                   postDoc.querySelector('#command-data-form');
+
+                if (confirmForm) {
+                    const confirmPayload = {};
+                    confirmForm.querySelectorAll('input, select, textarea').forEach(inp => {
+                        if (!inp.name) return;
+                        if (inp.type === 'checkbox' || inp.type === 'radio') {
+                            if (inp.checked) confirmPayload[inp.name] = inp.value || 'on';
+                        } else {
+                            confirmPayload[inp.name] = inp.value || '';
+                        }
+                    });
+
+                    const confirmBtn = confirmForm.querySelector('#troop_confirm_submit') ||
+                                      confirmForm.querySelector('button[type="submit"]') ||
+                                      confirmForm.querySelector('input[type="submit"]');
+                    if (confirmBtn?.name) confirmPayload[confirmBtn.name] = confirmBtn.value || '';
+
+                    let confirmUrl = confirmForm.getAttribute('action') || postRes.url || placeUrl;
+                    if (confirmUrl.startsWith('/')) confirmUrl = confirmUrl;
+
+                    const confirmRes = await fetch(confirmUrl, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        },
+                        body: new URLSearchParams(confirmPayload).toString()
+                    });
+
+                    const finalText = await confirmRes.text();
+                    LoadingIndicator.hide();
+                    return isAttackConfirmed(finalText);
+                }
             }
+
             LoadingIndicator.hide();
-            return isAttackConfirmed(postText, postRes.url);
+            return isAttackConfirmed(postText);
+
         } catch (err) {
             LoadingIndicator.hide();
             console.error('[TWS] executeAttack error:', err);
@@ -861,10 +668,9 @@ function carregarPosicaoPainel(painel) {
         localStorage.setItem(STORAGE_KEYS.ATTACKS, JSON.stringify(ataques));
         renderizarLista();
     }
-
     function carregarAtaques() {
-        const dados = localStorage.getItem(STORAGE_KEYS.ATTACKS);
-        return dados ? JSON.parse(dados) : [];
+        const d = localStorage.getItem(STORAGE_KEYS.ATTACKS);
+        return d ? JSON.parse(d) : [];
     }
 
     function salvarDadosFormulario() {
@@ -875,82 +681,141 @@ function carregarPosicaoPainel(painel) {
             hora: document.getElementById('hora')?.value || '00:00:00'
         };
         TROOP_IDS.forEach(t => {
-            const input = document.getElementById(t);
-            if (input) dados[t] = input.value;
+            const inp = document.getElementById(t);
+            if (inp) dados[t] = inp.value;
         });
         localStorage.setItem(STORAGE_KEYS.FORM_DATA, JSON.stringify(dados));
         Toast.success('✅ Dados do formulário salvos!');
     }
 
     function carregarDadosFormulario() {
-        const dados = localStorage.getItem(STORAGE_KEYS.FORM_DATA);
-        if (!dados) return;
+        const d = localStorage.getItem(STORAGE_KEYS.FORM_DATA);
+        if (!d) return;
         try {
-            const formData = JSON.parse(dados);
-            if (formData.origem) document.getElementById('origem').value = formData.origem;
-            if (formData.alvo) document.getElementById('alvo').value = formData.alvo;
-            if (formData.data) document.getElementById('data').value = formData.data;
-            if (formData.hora) document.getElementById('hora').value = formData.hora;
+            const f = JSON.parse(d);
+            if (f.origem) document.getElementById('origem').value = f.origem;
+            if (f.alvo) document.getElementById('alvo').value = f.alvo;
+            if (f.data) document.getElementById('data').value = f.data;
+            if (f.hora) document.getElementById('hora').value = f.hora;
             TROOP_IDS.forEach(t => {
-                if (formData[t] !== undefined) {
-                    const input = document.getElementById(t);
-                    if (input) input.value = formData[t];
+                if (f[t] !== undefined) {
+                    const inp = document.getElementById(t);
+                    if (inp) inp.value = f[t];
                 }
             });
-        } catch (e) {
-            console.error('[TWS] Erro ao carregar dados:', e);
-        }
+        } catch (e) { console.error('[TWS] Erro ao carregar dados:', e); }
     }
 
     // ============================================
     // SCHEDULER
     // ============================================
-    let schedulerInterval = null;
     const executando = new Set();
 
     function iniciarScheduler() {
-        if (schedulerInterval) clearInterval(schedulerInterval);
-        schedulerInterval = setInterval(async () => {
-            const ataques = carregarAtaques();
-            const agora = new Date();
-            for (const ataque of ataques) {
-                if (ataque.enviado || executando.has(ataque.id)) continue;
-                const [dataPart, horaPart] = ataque.datahora.split(' ');
-                const [dia, mes, ano] = dataPart.split('/');
-                const [hora, minuto, segundo = '00'] = horaPart.split(':');
-                const dataAgendada = new Date(ano, mes-1, dia, hora, minuto, segundo);
-                const diferenca = dataAgendada - agora;
-                if (Math.abs(diferenca) <= 1000) {
-                    executando.add(ataque.id);
-                    ataque.travado = true;
-                    salvarAtaques(ataques);
-                    (async () => {
-                        try {
-                            const sucesso = await executeAttack(ataque);
-                            ataque.enviado = true;
-                            ataque.sucesso = sucesso;
-                            ataque.dataEnvio = new Date().toISOString();
-                            if (sucesso) {
-                                Toast.success(`✅ Ataque ${ataque.origem} → ${ataque.alvo} enviado!`);
-                                EventSystem.trigger('attack_sent', ataque);
-                            } else {
-                                Toast.error(`❌ Falha no ataque ${ataque.origem} → ${ataque.alvo}`);
-                            }
-                        } catch (err) {
-                            ataque.enviado = true;
-                            ataque.sucesso = false;
-                            ataque.erro = err.message;
-                            Toast.error(`❌ Erro: ${err.message}`);
-                        } finally {
-                            ataque.travado = false;
-                            executando.delete(ataque.id);
-                            salvarAtaques(ataques);
-                        }
-                    })();
-                }
-            }
-        }, 500);
+        setInterval(verificarAtaques, 1000);
+        console.log('[TWS] Scheduler iniciado');
     }
+
+    async function verificarAtaques() {
+        const ataques = carregarAtaques();
+        const agora = getServerTimestampSeconds();
+
+        for (const ataque of ataques) {
+            if (ataque.enviado || executando.has(ataque.id)) continue;
+
+            const [dataPart, horaPart] = ataque.datahora.split(' ');
+            const [dia, mes, ano] = dataPart.split('/');
+            const [hora, minuto, segundo = '00'] = horaPart.split(':');
+            const dataAgendada = new Date(ano, mes - 1, dia, hora, minuto, segundo).getTime() / 1000;
+            const diferenca = dataAgendada - agora;
+
+            if (Math.abs(diferenca) <= 1) {
+                executando.add(ataque.id);
+                ataque.travado = true;
+                salvarAtaques(ataques);
+
+                (async () => {
+                    try {
+                        const sucesso = await executeAttack(ataque);
+                        ataque.enviado = true;
+                        ataque.sucesso = sucesso;
+                        ataque.dataEnvio = new Date().toISOString();
+                        if (sucesso) {
+                            Toast.success(`✅ Ataque ${ataque.origem} → ${ataque.alvo} enviado!`);
+                            EventSystem.trigger('attack_sent', ataque);
+                        } else {
+                            Toast.error(`❌ Falha no ataque ${ataque.origem} → ${ataque.alvo}`);
+                        }
+                    } catch (err) {
+                        ataque.enviado = true;
+                        ataque.sucesso = false;
+                        ataque.erro = err.message;
+                        Toast.error(`❌ Erro: ${err.message}`);
+                    } finally {
+                        ataque.travado = false;
+                        executando.delete(ataque.id);
+                        salvarAtaques(ataques);
+                    }
+                })();
+            }
+        }
+    }
+
+    // ============================================
+    // ENVIO IMEDIATO
+    // ============================================
+    function enviarImediato(index) {
+        const ataques = carregarAtaques();
+        const ataque = ataques[index];
+        if (!ataque) { Toast.error('Ataque não encontrado!'); return; }
+
+        let tropasMsg = '';
+        TROOP_IDS.forEach(t => {
+            if (ataque[t] && ataque[t] > 0) tropasMsg += `\n${TROOP_NAMES[t]}: ${number_format(ataque[t], '.')}`;
+        });
+
+        ConfirmationBox.show(`Enviar ataque IMEDIATAMENTE?\n\n${ataque.origem} → ${ataque.alvo}${tropasMsg}`,
+            async () => {
+                LoadingIndicator.show();
+                try {
+                    const sucesso = await executeAttack(ataque);
+                    ataques[index].enviado = true;
+                    ataques[index].sucesso = sucesso;
+                    ataques[index].dataEnvio = new Date().toISOString();
+                    ataques[index].travado = false;
+                    salvarAtaques(ataques);
+                    sucesso ? Toast.success('✅ Ataque enviado!') : Toast.error('❌ Falha no envio');
+                } catch (err) {
+                    Toast.error(`❌ Erro: ${err.message}`);
+                } finally {
+                    LoadingIndicator.hide();
+                }
+            });
+    }
+
+    window.enviarImediato = enviarImediato;
+
+    // ============================================
+    // REPETIR ATAQUE
+    // ============================================
+    window.repetirAtaque = async (index) => {
+        const ataques = carregarAtaques();
+        const ataqueOriginal = ataques[index];
+        if (!ataqueOriginal) { Toast.error('Ataque não encontrado!'); return; }
+
+        ConfirmationBox.show(`Repetir IMEDIATAMENTE?\n\n${ataqueOriginal.origem} → ${ataqueOriginal.alvo}`,
+            async () => {
+                LoadingIndicator.show();
+                try {
+                    const sucesso = await executeAttack(ataqueOriginal);
+                    sucesso ? Toast.success('✅ Ataque repetido!') : Toast.error('❌ Falha');
+                } catch (err) {
+                    Toast.error(`❌ Erro: ${err.message}`);
+                } finally {
+                    LoadingIndicator.hide();
+                }
+            });
+    };
 
     // ============================================
     // INTERFACE VISUAL
@@ -958,11 +823,36 @@ function carregarPosicaoPainel(painel) {
     let offsetX, offsetY, dragging = false;
     let painelElemento = null;
 
-    function criarInterface() {
-        if (painelElemento) {
-            painelElemento.style.display = 'flex';
+    function atualizarSelectAldeias() {
+        const select = document.getElementById('origemSelect');
+        if (!select) return;
+
+        if (_myVillages.length === 0) {
+            select.innerHTML = '<option value="">Nenhuma aldeia encontrada</option>';
             return;
         }
+
+        select.innerHTML = '<option value="">Selecione uma aldeia...</option>';
+
+        _myVillages.forEach(village => {
+            const option = document.createElement('option');
+            option.value = village.coord;
+            option.textContent = `${village.name} (${village.coord}) - ${number_format(village.points, '.')} pts`;
+            select.appendChild(option);
+        });
+
+        // Selecionar aldeia atual automaticamente
+        const currentCoord = window.game_data?.village?.coord;
+        if (currentCoord && _myVillages.some(v => v.coord === currentCoord)) {
+            select.value = currentCoord;
+            document.getElementById('origem').value = currentCoord;
+        }
+
+        console.log(`[TWS] Select atualizado com ${_myVillages.length} aldeias`);
+    }
+
+    function criarInterface() {
+        if (painelElemento) { painelElemento.style.display = 'flex'; return; }
 
         painelElemento = document.createElement('div');
         painelElemento.id = 'ataques-painel';
@@ -970,328 +860,204 @@ function carregarPosicaoPainel(painel) {
         const tropasGridHtml = TROOP_LIST.map(t => `
             <div class="tropa-item">
                 <span class="tropa-label">
-                    <img src="${t.icon}" style="width: 20px; height: 20px; vertical-align: middle;" title="${t.nome}">
+                    <img src="${t.icon}" style="width:20px;height:20px;vertical-align:middle;" title="${t.nome}">
                 </span>
                 <input type="number" id="${t.id}" value="0" min="0" step="1">
-            </div>
-        `).join('');
+            </div>`).join('');
 
         painelElemento.innerHTML = `
-            <style>
-                #ataques-painel {
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 520px;
-                    background: #1e1e1e;
-                    color: #fff;
-                    border-radius: 10px;
-                    z-index: 999999;
-                    font-family: Arial, sans-serif;
-                    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
-                    border: 1px solid #333;
-                }
-                .painel-header {
-                    background: #ff9900;
-                    padding: 10px 15px;
-                    border-radius: 10px 10px 0 0;
-                    cursor: move;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-                .painel-header h3 {
-                    margin: 0;
-                    color: #1a1a1a;
-                    font-size: 14px;
-                }
-                .painel-header button {
-                    background: rgba(0,0,0,0.3);
-                    color: white;
-                    border: none;
-                    padding: 2px 10px;
-                    border-radius: 5px;
-                    cursor: pointer;
-                }
-                .painel-conteudo {
-                    padding: 15px;
-                    max-height: 600px;
-                    overflow-y: auto;
-                }
-                .campo {
-                    margin-bottom: 10px;
-                }
-                .campo label {
-                    display: block;
-                    font-size: 11px;
-                    margin-bottom: 3px;
-                    color: #ff9900;
-                }
-                .campo input {
-                    width: 100%;
-                    padding: 6px;
-                    background: #333;
-                    border: 1px solid #555;
-                    color: #fff;
-                    border-radius: 4px;
-                    box-sizing: border-box;
-                }
-                .linha-dupla {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 10px;
-                }
-                .tropas-grid {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 8px;
-                    margin-bottom: 10px;
-                    background: #252525;
-                    padding: 10px;
-                    border-radius: 5px;
-                    max-height: 250px;
-                    overflow-y: auto;
-                }
-                .tropa-item {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    background: #333;
-                    padding: 5px 8px;
-                    border-radius: 4px;
-                }
-                .tropa-label {
-                    font-size: 11px;
-                    color: #ff9900;
-                    display: flex;
-                    align-items: center;
-                    gap: 5px;
-                }
-                .tropa-item input {
-                    width: 70px;
-                    padding: 3px;
-                    text-align: center;
-                    background: #1a1a1a;
-                    border: 1px solid #555;
-                    color: #fff;
-                    border-radius: 3px;
-                }
-                button {
-                    background: #ff9900;
-                    color: #1a1a1a;
-                    border: none;
-                    padding: 8px 12px;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    margin-right: 5px;
-                    margin-bottom: 5px;
-                    font-weight: bold;
-                }
-                button.danger {
-                    background: #990000;
-                    color: #fff;
-                }
-                button.success {
-                    background: #006600;
-                    color: #fff;
-                }
-                .ataque-item {
-                    background: #252525;
-                    padding: 8px;
-                    margin-bottom: 8px;
-                    border-radius: 4px;
-                    font-size: 11px;
-                    border-left: 3px solid #ff9900;
-                }
-                .ataque-item.sent {
-                    border-left-color: #00ff00;
-                    opacity: 0.7;
-                }
-                .ataque-item.failed {
-                    border-left-color: #ff0000;
-                }
-                .ataque-item.past {
-                    border-left-color: #ffaa00;
-                    background: #2a2a1a;
-                }
-                .status {
-                    font-size: 10px;
-                    color: #ff9900;
-                    margin-top: 3px;
-                }
-                .miniatura {
-                    text-align: center;
-                    padding: 20px;
-                    color: #666;
-                }
-                hr {
-                    border-color: #333;
-                    margin: 10px 0;
-                }
-                .botoes-linha {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 5px;
-                    margin-bottom: 10px;
-                }
-                [data-tooltip] {
-                    cursor: help;
-                    border-bottom: 1px dotted #666;
-                }
-                .troops-preview {
-                    font-size: 10px;
-                    margin-top: 4px;
-                    color: #aaa;
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 6px;
-                    align-items: center;
-                }
-                .troops-preview span {
-                    background: #333;
-                    padding: 2px 5px;
-                    border-radius: 3px;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 3px;
-                }
-                .btn-enviar-agora {
-                    background: #ff6600;
-                    color: #fff;
-                    font-size: 10px;
-                    padding: 2px 8px;
-                    margin-left: 5px;
-                    border-radius: 3px;
-                    cursor: pointer;
-                    border: none;
-                }
-                .btn-enviar-agora:hover {
-                    background: #ff4400;
-                }
-                .btn-repetir {
-                    background: #0066cc;
-                    color: #fff;
-                    font-size: 10px;
-                    padding: 2px 8px;
-                    margin-left: 5px;
-                    border-radius: 3px;
-                    cursor: pointer;
-                    border: none;
-                }
-                .btn-repetir:hover {
-                    background: #0055aa;
-                }
-            </style>
+        <style>
+            #ataques-painel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+                width:550px;background:#1e1e1e;color:#fff;border-radius:10px;z-index:999999;
+                font-family:Arial,sans-serif;box-shadow:0 5px 20px rgba(0,0,0,.5);border:1px solid #333;}
+            .painel-header{background:#ff9900;padding:10px 15px;border-radius:10px 10px 0 0;
+                cursor:move;display:flex;justify-content:space-between;align-items:center;}
+            .painel-header h3{margin:0;color:#1a1a1a;font-size:14px;}
+            .painel-header button{background:rgba(0,0,0,.3);color:white;border:none;
+                padding:2px 10px;border-radius:5px;cursor:pointer;}
+            .painel-conteudo{padding:15px;max-height:600px;overflow-y:auto;}
+            .campo{margin-bottom:10px;}
+            .campo label{display:block;font-size:11px;margin-bottom:3px;color:#ff9900;}
+            .campo input, .campo select{width:100%;padding:6px;background:#333;border:1px solid #555;
+                color:#fff;border-radius:4px;box-sizing:border-box;}
+            .linha-dupla{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+            .tropas-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+                margin-bottom:10px;background:#252525;padding:10px;border-radius:5px;
+                max-height:250px;overflow-y:auto;}
+            .tropa-item{display:flex;justify-content:space-between;align-items:center;
+                background:#333;padding:5px 8px;border-radius:4px;}
+            .tropa-label{font-size:11px;color:#ff9900;display:flex;align-items:center;gap:5px;}
+            .tropa-item input{width:70px;padding:3px;text-align:center;background:#1a1a1a;
+                border:1px solid #555;color:#fff;border-radius:3px;}
+            button{background:#ff9900;color:#1a1a1a;border:none;padding:8px 12px;border-radius:4px;
+                cursor:pointer;margin-right:5px;margin-bottom:5px;font-weight:bold;}
+            button.danger{background:#990000;color:#fff;}
+            button.success{background:#006600;color:#fff;}
+            .ataque-item{background:#252525;padding:8px;margin-bottom:8px;border-radius:4px;
+                font-size:11px;border-left:3px solid #ff9900;}
+            .ataque-item.sent{border-left-color:#00ff00;opacity:.7;}
+            .ataque-item.failed{border-left-color:#ff0000;}
+            .ataque-item.past{border-left-color:#ffaa00;background:#2a2a1a;}
+            .status{font-size:10px;color:#ff9900;margin-top:3px;}
+            .miniatura{text-align:center;padding:20px;color:#666;}
+            hr{border-color:#333;margin:10px 0;}
+            .botoes-linha{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+            .troops-preview{font-size:10px;margin-top:4px;color:#aaa;
+                display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+            .btn-enviar-agora{background:#ff6600;color:#fff;font-size:10px;padding:2px 8px;
+                margin-left:5px;border-radius:3px;cursor:pointer;border:none;}
+            .btn-repetir{background:#0066cc;color:#fff;font-size:10px;padding:2px 8px;
+                margin-left:5px;border-radius:3px;cursor:pointer;border:none;}
+            .btn-data-hora{background:#2980b9;color:white;font-size:10px;
+                padding:4px 8px;margin:0;width:auto;}
+            .btn-mais-hora{background:#27ae60;color:white;font-size:10px;
+                padding:4px 8px;margin:0;width:auto;}
+            .linha-hora{display:flex;gap:5px;align-items:center;}
+            .linha-hora input{flex:1;}
+            #tws-server-indicator{font-size:9px;color:#888;margin-left:4px;}
+            #tws-server-indicator.native{color:#4caf50;}
+            .village-count{font-size:10px;color:#ff9900;margin-left:5px;}
+        </style>
 
-            <div class="painel-header" id="painel-header">
-                <h3>⚔️ Agendador de Ataques</h3>
-                <button id="minimizarBtn">−</button>
+        <div class="painel-header" id="painel-header">
+            <h3>⚔️ Agendador de Ataques
+                <span id="tws-server-indicator" title="Fonte do horário do servidor">⏱</span>
+                <span id="villageCount" class="village-count"></span>
+            </h3>
+            <button id="minimizarBtn">−</button>
+        </div>
+
+        <div class="painel-conteudo" id="painel-conteudo">
+            <div class="campo">
+                <label>🏠 Vila Origem</label>
+                <select id="origemSelect" style="margin-bottom:5px;">
+                    <option value="">Carregando aldeias...</option>
+                </select>
+                <input type="text" id="origem" placeholder="Ou digite coordenadas manualmente (ex: 500|500)">
             </div>
-
-            <div class="painel-conteudo" id="painel-conteudo">
+            <div class="campo">
+                <label>🎯 Vila Alvo</label>
+                <input type="text" id="alvo" placeholder="Ex: 510|510">
+            </div>
+            <div class="linha-dupla">
                 <div class="campo">
-                    <label data-tooltip="Coordenadas da vila que vai enviar as tropas">🏠 Vila Origem</label>
-                    <input type="text" id="origem" placeholder="Ex: 500|500">
+                    <label>📅 Data</label>
+                    <input type="text" id="data" placeholder="25/12/2024">
                 </div>
-
                 <div class="campo">
-                    <label data-tooltip="Coordenadas da vila que será atacada">🎯 Vila Alvo</label>
-                    <input type="text" id="alvo" placeholder="Ex: 510|510">
-                </div>
-
-                <div class="linha-dupla">
-                    <div class="campo">
-                        <label data-tooltip="Data do ataque no formato DD/MM/AAAA">📅 Data</label>
-                        <input type="text" id="data" placeholder="25/12/2024">
-                    </div>
-                    <div class="campo">
-                        <label data-tooltip="Hora do ataque com segundos (HH:MM:SS)">⏰ Hora</label>
+                    <label>⏰ Hora</label>
+                    <div class="linha-hora">
                         <input type="text" id="hora" placeholder="15:30:00" value="00:00:00">
+                        <button id="btnAgora" class="btn-data-hora" title="Horário atual do servidor">Agora</button>
+                        <button id="btnMais1Hora" class="btn-mais-hora" title="+1 hora">+1h</button>
+                        <button id="btnMais30Min" class="btn-mais-hora" title="+30 min">+30m</button>
                     </div>
                 </div>
-
-                <div class="tropas-grid">
-                    ${tropasGridHtml}
-                </div>
-
-                <div class="botoes-linha">
-                    <button id="agendarBtn" data-tooltip="Agendar ataque para data/hora informada">📅 Agendar</button>
-                    <button id="importarBtn" class="success" data-tooltip="Importar ataques do BBCode">📋 Importar BBCode</button>
-                    <button id="templatesBtn" class="success" data-tooltip="Gerenciar templates de tropas">💾 Templates</button>
-                    <button id="salvarDadosBtn" class="success" data-tooltip="Salvar dados do formulário">💾 Salvar</button>
-                    <button id="limparBtn" class="danger" data-tooltip="Remover TODOS os ataques">🗑️ Limpar Tudo</button>
-                    <button id="limparConcluidosBtn" class="danger" data-tooltip="Remover apenas ataques concluídos">🧹 Limpar Concluídos</button>
-                    <button id="destravarBtn" class="danger" data-tooltip="Destravar ataques travados">🔓 Destravar</button>
-                </div>
-
-                <hr>
-                <h4 style="margin: 5px 0;">📋 Agendados</h4>
-                <div id="listaAtaques"></div>
             </div>
-        `;
+            <div class="tropas-grid">${tropasGridHtml}</div>
+            <div class="botoes-linha">
+                <button id="agendarBtn">📅 Agendar</button>
+                <button id="importarBtn" class="success">📋 Importar BBCode</button>
+                <button id="templatesBtn" class="success">💾 Templates</button>
+                <button id="salvarDadosBtn" class="success">💾 Salvar</button>
+                <button id="limparBtn" class="danger">🗑️ Limpar Tudo</button>
+                <button id="limparConcluidosBtn" class="danger">🧹 Limpar Concluídos</button>
+                <button id="destravarBtn" class="danger">🔓 Destravar</button>
+                <button id="resetPosicaoBtn" class="danger">🎯 Resetar Posição</button>
+                <button id="recarregarAldeiasBtn" class="success">🔄 Recarregar Aldeias</button>
+            </div>
+            <hr>
+            <h4 style="margin:5px 0;">📋 Agendados</h4>
+            <div id="listaAtaques"></div>
+        </div>`;
 
         document.body.appendChild(painelElemento);
 
-        // Carregar posição salva (se existir)
-        const posicaoCarregada = carregarPosicaoPainel(painelElemento);
-        if (!posicaoCarregada) {
-            // Centralizar padrão
-            painelElemento.style.left = '50%';
-            painelElemento.style.top = '50%';
-            painelElemento.style.transform = 'translate(-50%, -50%)';
+        // Configurar eventos do select de origem
+        const origemSelect = document.getElementById('origemSelect');
+        const origemInput = document.getElementById('origem');
+
+        if (origemSelect && origemInput) {
+            origemSelect.addEventListener('change', () => {
+                if (origemSelect.value) {
+                    origemInput.value = origemSelect.value;
+                }
+            });
+
+            origemInput.addEventListener('input', () => {
+                if (origemInput.value) {
+                    origemSelect.value = '';
+                }
+            });
         }
 
-        // Carregar estado minimizado
+        // Botão recarregar aldeias
+        document.getElementById('recarregarAldeiasBtn').onclick = async () => {
+            LoadingIndicator.show();
+            await fetchMyVillages();
+            atualizarSelectAldeias();
+            const countSpan = document.getElementById('villageCount');
+            if (countSpan) countSpan.textContent = `(${_myVillages.length})`;
+            LoadingIndicator.hide();
+            Toast.success(`✅ ${_myVillages.length} aldeias recarregadas!`);
+        };
+
+        // Indicador de fonte do horário
+        const indicator = document.getElementById('tws-server-indicator');
+        const hasTiming = window.Timing && typeof Timing.getCurrentServerTime === 'function';
+        if (hasTiming) {
+            indicator.textContent = '⏱ servidor nativo';
+            indicator.className = 'native';
+            indicator.title = 'Usando Timing.getCurrentServerTime() — máxima precisão';
+        } else {
+            indicator.textContent = '⏱ via HTML';
+            indicator.title = 'Timing não disponível — usando horário do elemento HTML';
+        }
+
+        // Posição
+        const posicaoCarregada = carregarPosicaoPainel(painelElemento);
+        if (!posicaoCarregada) {
+            painelElemento.style.left = '50%';
+            painelElemento.style.top = '50%';
+            painelElemento.style.transform = 'translate(-50%,-50%)';
+        }
+
+        // Estado minimizado
         const estavaMinimizado = carregarEstadoMinimizado();
         const conteudo = document.getElementById('painel-conteudo');
         const minimizarBtn = document.getElementById('minimizarBtn');
+        if (estavaMinimizado) { conteudo.style.display = 'none'; minimizarBtn.textContent = '+'; }
 
-        if (estavaMinimizado) {
-            conteudo.style.display = 'none';
-            minimizarBtn.textContent = '+';
-        }
-
-        // Arrastável
+        // Arrastar
         const header = document.getElementById('painel-header');
-
-        header.addEventListener('mousedown', (e) => {
+        header.addEventListener('mousedown', e => {
             if (e.target === minimizarBtn) return;
             dragging = true;
-            // Remover transform centralizado ao começar a arrastar
             painelElemento.style.transform = 'none';
             const rect = painelElemento.getBoundingClientRect();
             offsetX = e.clientX - rect.left;
             offsetY = e.clientY - rect.top;
             e.preventDefault();
         });
-
-        document.addEventListener('mousemove', (e) => {
+        document.addEventListener('mousemove', e => {
+            if (!dragging || !painelElemento) return;
+            const x = e.clientX - offsetX;
+            const y = e.clientY - offsetY;
+            const maxX = window.innerWidth - painelElemento.offsetWidth;
+            const maxY = window.innerHeight - painelElemento.offsetHeight;
+            painelElemento.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+            painelElemento.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+            painelElemento.style.right = 'auto';
+            painelElemento.style.bottom = 'auto';
+        });
+        document.addEventListener('mouseup', () => {
             if (dragging && painelElemento) {
-                const x = e.clientX - offsetX;
-                const y = e.clientY - offsetY;
-                const maxX = window.innerWidth - painelElemento.offsetWidth;
-                const maxY = window.innerHeight - painelElemento.offsetHeight;
-                const newX = Math.max(0, Math.min(x, maxX));
-                const newY = Math.max(0, Math.min(y, maxY));
-                painelElemento.style.left = `${newX}px`;
-                painelElemento.style.top = `${newY}px`;
-                painelElemento.style.right = 'auto';
-                painelElemento.style.bottom = 'auto';
+                dragging = false;
+                const l = parseInt(painelElemento.style.left);
+                const t = parseInt(painelElemento.style.top);
+                if (!isNaN(l) && !isNaN(t)) salvarPosicaoPainel(l, t);
             }
         });
-
-       document.addEventListener('mouseup', () => {
-    if (dragging && painelElemento) {
-        dragging = false;
-        // Salvar posição atual (sem scroll)
-        const left = parseInt(painelElemento.style.left);
-        const top = parseInt(painelElemento.style.top);
-        if (!isNaN(left) && !isNaN(top)) {
-            salvarPosicaoPainel(left, top);
-        }
-    }
-});
 
         let minimizado = estavaMinimizado;
         minimizarBtn.addEventListener('click', () => {
@@ -1301,53 +1067,99 @@ function carregarPosicaoPainel(painel) {
             salvarEstadoMinimizado(minimizado);
         });
 
-        Tooltip.init();
+        // Botões principais
+        document.getElementById('agendarBtn').onclick = agendarAtaque;
+        document.getElementById('limparBtn').onclick = limparTudo;
+        document.getElementById('limparConcluidosBtn').onclick = limparConcluidos;
+        document.getElementById('salvarDadosBtn').onclick = salvarDadosFormulario;
+        document.getElementById('destravarBtn').onclick = destravarAtaques;
+        document.getElementById('templatesBtn').onclick = showTemplatePopup;
+        document.getElementById('importarBtn').onclick = importarBBCode;
+        document.getElementById('resetPosicaoBtn').onclick = () => {
+            painelElemento.style.left = '50%';
+            painelElemento.style.top = '50%';
+            painelElemento.style.transform = 'translate(-50%,-50%)';
+            painelElemento.style.right = 'auto';
+            painelElemento.style.bottom = 'auto';
+            localStorage.removeItem(STORAGE_KEYS.PANEL_POSITION);
+            Toast.success('✅ Posição resetada!');
+        };
+
+        document.getElementById('btnAgora').onclick = () => {
+            preencherDataHoraAutomatica();
+            Toast.success('✅ Horário do servidor inserido!');
+        };
+        document.getElementById('btnMais1Hora').onclick = () => {
+            const [d, h] = adicionarMinutos(60).split(' ');
+            document.getElementById('data').value = d;
+            document.getElementById('hora').value = h;
+            Toast.success('✅ +1 hora adicionada!');
+        };
+        document.getElementById('btnMais30Min').onclick = () => {
+            const [d, h] = adicionarMinutos(30).split(' ');
+            document.getElementById('data').value = d;
+            document.getElementById('hora').value = h;
+            Toast.success('✅ +30 minutos adicionados!');
+        };
+
+        // Atualizar select com as aldeias carregadas
+        atualizarSelectAldeias();
+        const countSpan = document.getElementById('villageCount');
+        if (countSpan) countSpan.textContent = `(${_myVillages.length})`;
     }
 
+    // ============================================
+    // RENDERIZAR LISTA
+    // ============================================
     function renderizarLista() {
         const container = document.getElementById('listaAtaques');
         if (!container) return;
         const ataques = carregarAtaques();
-        const agora = new Date();
+        const agora = getServerTimestampSeconds();
 
-        if (ataques.length === 0) {
+        if (!ataques.length) {
             container.innerHTML = '<div class="miniatura">Nenhum ataque agendado</div>';
             return;
         }
 
         container.innerHTML = ataques.map((ataque, index) => {
             const tropasHtml = formatTroopsForDisplay(ataque);
-
             const [dataPart, horaPart] = ataque.datahora.split(' ');
             const [dia, mes, ano] = dataPart.split('/');
-            const [hora, minuto, segundo = '00'] = horaPart.split(':');
-            const dataAgendada = new Date(ano, mes-1, dia, hora, minuto, segundo);
+            const [hora, min, seg = '00'] = horaPart.split(':');
+            const dataAgendada = new Date(ano, mes - 1, dia, hora, min, seg).getTime() / 1000;
             const isPast = !ataque.enviado && dataAgendada < agora;
-
-            const repetirBtn = ataque.enviado && ataque.sucesso ?
-                `<button class="btn-repetir" onclick="window.repetirAtaque(${index})">🔄 Repetir</button>` : '';
+            const repetirBtn = ataque.enviado && ataque.sucesso
+                ? `<button class="btn-repetir" onclick="window.repetirAtaque(${index})">🔄 Repetir</button>`
+                : '';
 
             return `
             <div class="ataque-item ${ataque.enviado ? 'sent' : ''} ${ataque.sucesso === false ? 'failed' : ''} ${isPast ? 'past' : ''}">
                 <strong>${escapeHtml(ataque.origem)}</strong> → <strong>${escapeHtml(ataque.alvo)}</strong>
                 ${repetirBtn}
-                ${isPast ? `<button class="btn-enviar-agora" onclick="window.enviarImediato(${index})">▶ Enviar agora</button>` : ''}
-                <br>
-                📅 ${escapeHtml(ataque.datahora)}<br>
+                ${isPast && !ataque.enviado ? `<button class="btn-enviar-agora" onclick="window.enviarImediato(${index})">▶ Enviar agora</button>` : ''}
+                <br>📅 ${escapeHtml(ataque.datahora)}<br>
                 ${tropasHtml}
                 <span class="status">
-                    ${ataque.enviado ?
-                        (ataque.sucesso ? '✅ Enviado com sucesso' : `❌ Falhou: ${escapeHtml(ataque.erro || 'motivo desconhecido')}`) :
-                        (isPast ? '⏰ Atrasado - Clique em "Enviar agora"' : (ataque.travado ? '⏳ Enviando...' : '⏰ Agendado'))}
+                    ${ataque.enviado
+                        ? (ataque.sucesso
+                            ? '✅ Enviado com sucesso'
+                            : `❌ Falhou: ${escapeHtml(ataque.erro || 'motivo desconhecido')}`)
+                        : (isPast
+                            ? '⏰ Atrasado — clique em "Enviar agora"'
+                            : (ataque.travado ? '⏳ Enviando...' : '⏰ Agendado'))}
                 </span>
-                ${!ataque.enviado ? `<div style="margin-top:5px;"><button onclick="window.removerAtaque(${index})" style="padding:2px 6px;font-size:10px;">Remover</button></div>` : ''}
-            </div>
-        `}).join('');
+                ${!ataque.enviado
+                    ? `<div style="margin-top:5px;">
+                           <button onclick="window.removerAtaque(${index})" style="padding:2px 6px;font-size:10px;">Remover</button>
+                       </div>`
+                    : ''}
+            </div>`;
+        }).join('');
 
         initSlimScroll(container);
     }
 
-    // Expor funções globalmente
     window.removerAtaque = (index) => {
         ConfirmationBox.show('Remover este ataque?', () => {
             const ataques = carregarAtaques();
@@ -1357,69 +1169,56 @@ function carregarPosicaoPainel(painel) {
         });
     };
 
-    window.enviarImediato = enviarImediato;
-
+    // ============================================
+    // AGENDAR
+    // ============================================
     function agendarAtaque() {
         const origem = document.getElementById('origem').value.trim();
         const alvo = document.getElementById('alvo').value.trim();
         const data = document.getElementById('data').value.trim();
         const hora = document.getElementById('hora').value.trim();
 
-        if (!origem || !alvo || !data || !hora) {
-            Toast.error('Preencha todos os campos!');
-            return;
-        }
+        if (!origem || !alvo || !data || !hora) { Toast.error('Preencha todos os campos!'); return; }
 
         const datahora = `${data} ${hora}`;
 
         if (!/^\d{1,4}\|\d{1,4}$/.test(origem) || !/^\d{1,4}\|\d{1,4}$/.test(alvo)) {
-            Toast.error('Coordenadas inválidas! Use: 500|500');
-            return;
+            Toast.error('Coordenadas inválidas! Use: 500|500'); return;
         }
-
         if (!/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(datahora)) {
-            Toast.error('Data/hora inválida! Use: DD/MM/AAAA HH:MM:SS');
-            return;
+            Toast.error('Data/hora inválida! Use: DD/MM/AAAA HH:MM:SS'); return;
         }
 
         const tropas = {};
         TROOP_IDS.forEach(t => {
-            const input = document.getElementById(t);
-            tropas[t] = parseInt(input?.value || 0);
+            const inp = document.getElementById(t);
+            tropas[t] = parseInt(inp?.value || 0);
         });
 
         const novoAtaque = {
-            id: Date.now() + Math.random(),
-            origem,
-            alvo,
-            datahora,
-            ...tropas,
-            enviado: false,
-            travado: false,
-            sucesso: null
+            id: Date.now() + Math.random(), origem, alvo, datahora, ...tropas,
+            enviado: false, travado: false, sucesso: null
         };
 
         const ataques = carregarAtaques();
         ataques.push(novoAtaque);
         salvarAtaques(ataques);
-
         Toast.success(`✅ Ataque agendado para ${datahora}`);
         EventSystem.trigger('attack_scheduled', novoAtaque);
     }
 
     function limparTudo() {
-        ConfirmationBox.show('⚠️ ATENÇÃO! Isso irá remover TODOS os ataques agendados (inclusive os não enviados). Continuar?', () => {
+        ConfirmationBox.show('⚠️ Remover TODOS os ataques agendados?', () => {
             salvarAtaques([]);
-            Toast.success('🗑️ Todos os ataques foram removidos!');
+            Toast.success('🗑️ Todos os ataques removidos!');
         });
     }
 
     function limparConcluidos() {
         const ataques = carregarAtaques();
         const naoConcluidos = ataques.filter(a => !a.enviado);
-        const removidos = ataques.length - naoConcluidos.length;
         salvarAtaques(naoConcluidos);
-        Toast.success(`Removidos ${removidos} ataques concluídos`);
+        Toast.success(`Removidos ${ataques.length - naoConcluidos.length} ataques concluídos`);
     }
 
     function destravarAtaques() {
@@ -1428,15 +1227,12 @@ function carregarPosicaoPainel(painel) {
         for (const a of ataques) {
             if (a.travado && !a.enviado) {
                 a.travado = false;
-                a.enviado = true;
-                a.sucesso = true;
-                a.erro = null;
                 modificados++;
             }
         }
         if (modificados > 0) {
             salvarAtaques(ataques);
-            Toast.success(`✅ ${modificados} ataques travados foram destravados!`);
+            Toast.success(`✅ ${modificados} ataques destravados!`);
         } else {
             Toast.info('Nenhum ataque travado encontrado.');
         }
@@ -1446,36 +1242,66 @@ function carregarPosicaoPainel(painel) {
     // INICIALIZAÇÃO
     // ============================================
     async function inicializar() {
-        await loadVillageTxt();
-        loadTemplates();
-        criarInterface();
-        carregarDadosFormulario();
-        iniciarScheduler();
-        renderizarLista();
+        console.log('[TWS] Inicializando agendador...');
 
-        setTimeout(() => {
-            const agendarBtn = document.getElementById('agendarBtn');
-            const limparBtn = document.getElementById('limparBtn');
-            const limparConcluidosBtn = document.getElementById('limparConcluidosBtn');
-            const salvarDadosBtn = document.getElementById('salvarDadosBtn');
-            const destravarBtn = document.getElementById('destravarBtn');
-            const templatesBtn = document.getElementById('templatesBtn');
-            const importarBtn = document.getElementById('importarBtn');
+        // Mostrar loading
+        LoadingIndicator.show();
 
-            if (agendarBtn) agendarBtn.onclick = agendarAtaque;
-            if (limparBtn) limparBtn.onclick = limparTudo;
-            if (limparConcluidosBtn) limparConcluidosBtn.onclick = limparConcluidos;
-            if (salvarDadosBtn) salvarDadosBtn.onclick = salvarDadosFormulario;
-            if (destravarBtn) destravarBtn.onclick = destravarAtaques;
-            if (templatesBtn) templatesBtn.onclick = showTemplatePopup;
-            if (importarBtn) importarBtn.onclick = importarBBCode;
-        }, 100);
+        try {
+            // Buscar aldeias do jogador (método simples)
+            await fetchMyVillages();
+
+            // Carregar templates
+            loadTemplates();
+
+            // Criar interface
+            criarInterface();
+
+            // Carregar dados salvos do formulário
+            carregarDadosFormulario();
+
+            // Renderizar lista de ataques
+            renderizarLista();
+
+            // Preencher data/hora atual
+            setTimeout(() => {
+                preencherDataHoraAutomatica();
+            }, 500);
+
+            // Iniciar scheduler
+            iniciarScheduler();
+
+            // Esconder loading
+            LoadingIndicator.hide();
+
+            console.log('[TWS] Agendador inicializado com sucesso!');
+
+            if (_myVillages.length > 0) {
+                Toast.success(`✅ ${_myVillages.length} aldeias carregadas!`);
+            } else {
+                Toast.info('ℹ️ Nenhuma aldeia encontrada. Use o campo de texto para digitar coordenadas.');
+            }
+        } catch (err) {
+            console.error('[TWS] Erro na inicialização:', err);
+            LoadingIndicator.hide();
+            Toast.error('❌ Erro ao inicializar. Recarregue a página.');
+
+            // Mesmo com erro, tenta criar a interface básica
+            criarInterface();
+            iniciarScheduler();
+        }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', inicializar);
-    } else {
+    // Aguardar game_data estar disponível
+    if (window.game_data) {
         inicializar();
+    } else {
+        const checkGameData = setInterval(() => {
+            if (window.game_data) {
+                clearInterval(checkGameData);
+                inicializar();
+            }
+        }, 100);
     }
 
 })();
