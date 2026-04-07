@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Agendador de Ataques (Compatível Basic/Premium)
 // @namespace    http://tampermonkey.net/
-// @version      14.0
-// @description  Agende ataques com precisão - Com SELECT de Aldeias Funcional
+// @version      15.0
+// @description  Agende ataques com precisão - Com NT4 e NT5 na lista de ataques (envio instantâneo)
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
@@ -96,19 +96,17 @@
     }
 
     // ============================================
-    // BUSCAR SUAS ALDEIAS - MÉTODO SIMPLES E CORRETO
+    // BUSCAR SUAS ALDEIAS
     // ============================================
     async function fetchMyVillages() {
         try {
             console.log('[TWS] Buscando aldeias...');
 
-            // 1. Carregar village.txt
             const response = await fetch(VILLAGE_TXT_URL);
             if (!response.ok) throw new Error('Falha ao carregar village.txt');
 
             const data = await response.text();
 
-            // 2. Parse do CSV
             const allVillages = data.trim().split('\n').map(line => {
                 const [id, name, x, y, player, points] = line.split(',');
                 return {
@@ -122,7 +120,6 @@
                 };
             });
 
-            // 3. Filtrar suas aldeias (player ID = seu ID)
             const meuId = window.game_data?.player?.id;
             if (!meuId) {
                 console.warn('[TWS] game_data.player.id não encontrado');
@@ -130,11 +127,8 @@
             }
 
             _myVillages = allVillages.filter(v => v.player === meuId);
-
-            // 4. Ordenar por nome
             _myVillages.sort((a, b) => a.name.localeCompare(b.name));
 
-            // 5. Criar mapa de coordenadas para ID (para execução de ataques)
             _villageMap = {};
             _myVillages.forEach(v => {
                 _villageMap[v.coord] = v.id;
@@ -263,7 +257,7 @@
                 this._el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
                     background:rgba(0,0,0,.8);color:#ff9900;padding:20px 30px;border-radius:10px;
                     z-index:999999;font-size:16px;font-weight:bold;display:flex;gap:10px;align-items:center;`;
-                this._el.innerHTML = '<div class="tws-spinner"></div> Carregando aldeias...';
+                this._el.innerHTML = '<div class="tws-spinner"></div> Enviando ataques...';
                 document.body.appendChild(this._el);
             }
             this._el.style.display = 'flex';
@@ -548,8 +542,6 @@
     // EXECUTAR ATAQUE
     // ============================================
     async function executeAttack(cfg) {
-        LoadingIndicator.show();
-
         try {
             const origemId = _villageMap[cfg.origem];
             if (!origemId) throw new Error(`Vila origem ${cfg.origem} não encontrada`);
@@ -561,7 +553,6 @@
             if (availableTroops) {
                 const errors = validateTroops(cfg, availableTroops);
                 if (errors.length) {
-                    LoadingIndicator.hide();
                     throw new Error(`Tropas insuficientes: ${errors.join(', ')}`);
                 }
             }
@@ -646,20 +637,106 @@
                     });
 
                     const finalText = await confirmRes.text();
-                    LoadingIndicator.hide();
                     return isAttackConfirmed(finalText);
                 }
             }
 
-            LoadingIndicator.hide();
             return isAttackConfirmed(postText);
 
         } catch (err) {
-            LoadingIndicator.hide();
             console.error('[TWS] executeAttack error:', err);
             throw err;
         }
     }
+
+    // ============================================
+    // FUNÇÕES NT4 e NT5 NA LISTA DE ATAQUES (SEM DELAY)
+    // ============================================
+
+    /**
+     * Envia múltiplos ataques idênticos - INSTANTÂNEO (sem delay)
+     * @param {number} index - Índice do ataque na lista
+     * @param {number} quantidade - Número de ataques a enviar (4 ou 5)
+     */
+    async function enviarMultiplosDoAtaque(index, quantidade) {
+        const ataques = carregarAtaques();
+        const ataqueOriginal = ataques[index];
+
+        if (!ataqueOriginal) {
+            Toast.error('Ataque não encontrado!');
+            return;
+        }
+
+        // Verificar se o ataque original tem tropas
+        const hasTroops = TROOP_IDS.some(t => (ataqueOriginal[t] || 0) > 0);
+        if (!hasTroops) {
+            Toast.error('Este ataque não possui tropas configuradas!');
+            return;
+        }
+
+        // Montar mensagem de confirmação
+        let tropasMsg = '';
+        TROOP_IDS.forEach(t => {
+            if (ataqueOriginal[t] && ataqueOriginal[t] > 0) {
+                tropasMsg += `\n${TROOP_NAMES[t]}: ${number_format(ataqueOriginal[t], '.')}`;
+            }
+        });
+
+        ConfirmationBox.show(
+            `🚀 Enviar ${quantidade} ataques INSTANTÂNEOS (sem delay!):\n\n` +
+            `Origem: ${ataqueOriginal.origem}\n` +
+            `Alvo: ${ataqueOriginal.alvo}${tropasMsg}\n\n` +
+            `⚠️ Todos os ${quantidade} ataques serão disparados SIMULTANEAMENTE!`,
+            async () => {
+                LoadingIndicator.show();
+
+                // Disparar TODOS os ataques ao mesmo tempo (Promise.all)
+                const promises = [];
+                for (let i = 1; i <= quantidade; i++) {
+                    promises.push(
+                        executeAttack(ataqueOriginal)
+                            .then(sucesso => ({ index: i, sucesso }))
+                            .catch(err => ({ index: i, sucesso: false, error: err.message }))
+                    );
+                }
+
+                // Aguardar todos completarem
+                const results = await Promise.all(promises);
+
+                const sucessos = results.filter(r => r.sucesso === true).length;
+                const falhas = results.filter(r => r.sucesso === false).length;
+
+                LoadingIndicator.hide();
+
+                // Mostrar resultado resumido
+                results.forEach(r => {
+                    if (r.sucesso) {
+                        Toast.success(`✅ Ataque ${r.index}/${quantidade} enviado!`, 1500);
+                    } else {
+                        Toast.error(`❌ Ataque ${r.index}/${quantidade} falhou: ${r.error || 'motivo desconhecido'}`, 1500);
+                    }
+                });
+
+                if (sucessos === quantidade) {
+                    Toast.success(`🎯 PERFEITO! ${sucessos}/${quantidade} ataques simultâneos enviados!`);
+                } else {
+                    Toast.info(`📊 Resultado: ${sucessos} sucessos, ${falhas} falhas`);
+                }
+            }
+        );
+    }
+
+    function enviarNT4DoAtaque(index) {
+        enviarMultiplosDoAtaque(index, 4);
+    }
+
+    function enviarNT5DoAtaque(index) {
+        enviarMultiplosDoAtaque(index, 5);
+    }
+
+    // Expor funções globalmente
+    window.enviarNT4DoAtaque = enviarNT4DoAtaque;
+    window.enviarNT5DoAtaque = enviarNT5DoAtaque;
 
     // ============================================
     // ARMAZENAMENTO
@@ -841,7 +918,6 @@
             select.appendChild(option);
         });
 
-        // Selecionar aldeia atual automaticamente
         const currentCoord = window.game_data?.village?.coord;
         if (currentCoord && _myVillages.some(v => v.coord === currentCoord)) {
             select.value = currentCoord;
@@ -893,6 +969,9 @@
                 cursor:pointer;margin-right:5px;margin-bottom:5px;font-weight:bold;}
             button.danger{background:#990000;color:#fff;}
             button.success{background:#006600;color:#fff;}
+            .btn-nt{background:#cc6600;color:#fff;font-weight:bold;padding:2px 6px;font-size:10px;margin-left:5px;}
+            .btn-nt4{background:#b87333;color:#fff;}
+            .btn-nt5{background:#a0522d;color:#fff;}
             .ataque-item{background:#252525;padding:8px;margin-bottom:8px;border-radius:4px;
                 font-size:11px;border-left:3px solid #ff9900;}
             .ataque-item.sent{border-left-color:#00ff00;opacity:.7;}
@@ -917,6 +996,7 @@
             #tws-server-indicator{font-size:9px;color:#888;margin-left:4px;}
             #tws-server-indicator.native{color:#4caf50;}
             .village-count{font-size:10px;color:#ff9900;margin-left:5px;}
+            .botoes-ataque{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
         </style>
 
         <div class="painel-header" id="painel-header">
@@ -1109,7 +1189,7 @@
     }
 
     // ============================================
-    // RENDERIZAR LISTA
+    // RENDERIZAR LISTA - COM BOTÕES NT4 e NT5
     // ============================================
     function renderizarLista() {
         const container = document.getElementById('listaAtaques');
@@ -1129,18 +1209,34 @@
             const [hora, min, seg = '00'] = horaPart.split(':');
             const dataAgendada = new Date(ano, mes - 1, dia, hora, min, seg).getTime() / 1000;
             const isPast = !ataque.enviado && dataAgendada < agora;
+
+            // Botão Repetir (só aparece se já foi enviado com sucesso)
             const repetirBtn = ataque.enviado && ataque.sucesso
                 ? `<button class="btn-repetir" onclick="window.repetirAtaque(${index})">🔄 Repetir</button>`
                 : '';
 
+            // Botão Enviar Agora (aparece se está atrasado ou não enviado)
+            const enviarAgoraBtn = (!ataque.enviado || isPast)
+                ? `<button class="btn-enviar-agora" onclick="window.enviarImediato(${index})">▶ Enviar agora</button>`
+                : '';
+
+            // Botões NT4 e NT5 (aparecem para qualquer ataque que tenha tropas)
+            const nt4Btn = `<button class="btn-nt btn-nt4" onclick="window.enviarNT4DoAtaque(${index})" title="Enviar 4 ataques idênticos simultaneamente">⚡NT4</button>`;
+            const nt5Btn = `<button class="btn-nt btn-nt5" onclick="window.enviarNT5DoAtaque(${index})" title="Enviar 5 ataques idênticos simultaneamente">🔥NT5</button>`;
+
             return `
             <div class="ataque-item ${ataque.enviado ? 'sent' : ''} ${ataque.sucesso === false ? 'failed' : ''} ${isPast ? 'past' : ''}">
-                <strong>${escapeHtml(ataque.origem)}</strong> → <strong>${escapeHtml(ataque.alvo)}</strong>
-                ${repetirBtn}
-                ${isPast && !ataque.enviado ? `<button class="btn-enviar-agora" onclick="window.enviarImediato(${index})">▶ Enviar agora</button>` : ''}
-                <br>📅 ${escapeHtml(ataque.datahora)}<br>
+                <div><strong>${escapeHtml(ataque.origem)}</strong> → <strong>${escapeHtml(ataque.alvo)}</strong></div>
+                <div>📅 ${escapeHtml(ataque.datahora)}</div>
                 ${tropasHtml}
-                <span class="status">
+                <div class="botoes-ataque">
+                    ${repetirBtn}
+                    ${enviarAgoraBtn}
+                    ${nt4Btn}
+                    ${nt5Btn}
+                    ${!ataque.enviado ? `<button onclick="window.removerAtaque(${index})" style="background:#990000;color:#fff;font-size:10px;padding:2px 8px;border-radius:3px;cursor:pointer;border:none;">🗑️ Remover</button>` : ''}
+                </div>
+                <div class="status">
                     ${ataque.enviado
                         ? (ataque.sucesso
                             ? '✅ Enviado com sucesso'
@@ -1148,12 +1244,7 @@
                         : (isPast
                             ? '⏰ Atrasado — clique em "Enviar agora"'
                             : (ataque.travado ? '⏳ Enviando...' : '⏰ Agendado'))}
-                </span>
-                ${!ataque.enviado
-                    ? `<div style="margin-top:5px;">
-                           <button onclick="window.removerAtaque(${index})" style="padding:2px 6px;font-size:10px;">Remover</button>
-                       </div>`
-                    : ''}
+                </div>
             </div>`;
         }).join('');
 
@@ -1244,34 +1335,20 @@
     async function inicializar() {
         console.log('[TWS] Inicializando agendador...');
 
-        // Mostrar loading
         LoadingIndicator.show();
 
         try {
-            // Buscar aldeias do jogador (método simples)
             await fetchMyVillages();
-
-            // Carregar templates
             loadTemplates();
-
-            // Criar interface
             criarInterface();
-
-            // Carregar dados salvos do formulário
             carregarDadosFormulario();
-
-            // Renderizar lista de ataques
             renderizarLista();
 
-            // Preencher data/hora atual
             setTimeout(() => {
                 preencherDataHoraAutomatica();
             }, 500);
 
-            // Iniciar scheduler
             iniciarScheduler();
-
-            // Esconder loading
             LoadingIndicator.hide();
 
             console.log('[TWS] Agendador inicializado com sucesso!');
@@ -1286,13 +1363,11 @@
             LoadingIndicator.hide();
             Toast.error('❌ Erro ao inicializar. Recarregue a página.');
 
-            // Mesmo com erro, tenta criar a interface básica
             criarInterface();
             iniciarScheduler();
         }
     }
 
-    // Aguardar game_data estar disponível
     if (window.game_data) {
         inicializar();
     } else {
