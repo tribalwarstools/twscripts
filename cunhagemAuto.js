@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Tribal Wars - Cunhagem Automática Contínua
+// @name         Tribal Wars - Cunhagem Automática
 // @namespace    http://tampermonkey.net/
-// @version      4.0
-// @description  Passa por todas as aldeias em loop contínuo cunhando moedas
+// @version      10.0
+// @description  Cunhagem automática com painel melhorado, validação e log
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -11,276 +11,314 @@
     'use strict';
 
     // ============================================
-    // CONFIGURAÇÕES PADRÃO
+    // CONFIGURAÇÕES
     // ============================================
-    const CONFIG_PADRAO = {
-        cunharMaximo: false,
-        quantidade: 1,
-        pausaEntreAldeias: 2000,
-        pausaEntreCiclos: 30000
-    };
+    let ATIVADO = false;
+    let QUANTIDADE = 1;
+    let CUNHAR_MAXIMO = true;
+    let PAUSA_ENTRE_ALDEIAS = 2000;
+    let PAUSA_ENTRE_CICLOS = 30000;
 
-    // ============================================
-    // VARIÁVEIS
-    // ============================================
-    let CONFIG = { ...CONFIG_PADRAO };
     let rodando = false;
     let cicloAtivo = false;
     let painel = null;
     let custoMoeda = { wood: 28000, stone: 30000, iron: 25000 };
     let totalCunhado = 0;
-    let totalCiclos = 0;
+    let cicloAtual = 0;
 
     // ============================================
-    // PERSISTÊNCIA (localStorage)
+    // PERSISTÊNCIA
     // ============================================
-    const STORAGE_KEY = 'tws_cunhagem_config';
+    const STORAGE_KEY = 'tws_cunhagem_botao';
 
-    function salvarConfig() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                config: CONFIG,
-                totalCunhado: totalCunhado,
-                totalCiclos: totalCiclos,
-                ultimaAtualizacao: Date.now()
-            }));
-            console.log('[Cunhagem] Configurações salvas');
-        } catch (err) {
-            console.error('[Cunhagem] Erro ao salvar:', err);
+    function salvarEstado() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            ativado: ATIVADO,
+            quantidade: QUANTIDADE,
+            cunharMaximo: CUNHAR_MAXIMO,
+            totalCunhado: totalCunhado,
+            pausaAldeias: PAUSA_ENTRE_ALDEIAS,
+            pausaCiclos: PAUSA_ENTRE_CICLOS
+        }));
+    }
+
+    function carregarEstado() {
+        const salvo = localStorage.getItem(STORAGE_KEY);
+        if (salvo) {
+            const dados = JSON.parse(salvo);
+            ATIVADO              = dados.ativado || false;
+            QUANTIDADE           = dados.quantidade || 1;
+            CUNHAR_MAXIMO        = dados.cunharMaximo !== undefined ? dados.cunharMaximo : true;
+            totalCunhado         = dados.totalCunhado || 0;
+            PAUSA_ENTRE_ALDEIAS  = dados.pausaAldeias || 2000;
+            PAUSA_ENTRE_CICLOS   = dados.pausaCiclos  || 30000;
+            console.log('[Cunhagem] Estado carregado:', ATIVADO ? 'LIGADO' : 'DESLIGADO');
+            if (ATIVADO) setTimeout(() => iniciar(), 2000);
         }
     }
 
-    function carregarConfig() {
-        try {
-            const salvo = localStorage.getItem(STORAGE_KEY);
-            if (salvo) {
-                const dados = JSON.parse(salvo);
-                CONFIG = { ...CONFIG_PADRAO, ...dados.config };
-                totalCunhado = dados.totalCunhado || 0;
-                totalCiclos = dados.totalCiclos || 0;
-                console.log('[Cunhagem] Configurações carregadas');
-                console.log('  - Cunhar máximo:', CONFIG.cunharMaximo);
-                console.log('  - Quantidade:', CONFIG.quantidade);
-                console.log('  - Pausa entre aldeias:', CONFIG.pausaEntreAldeias);
-                console.log('  - Pausa entre ciclos:', CONFIG.pausaEntreCiclos);
-                console.log('  - Total já cunhado:', totalCunhado);
-            }
-        } catch (err) {
-            console.error('[Cunhagem] Erro ao carregar:', err);
-        }
-    }
-
-    function resetarConfig() {
-        CONFIG = { ...CONFIG_PADRAO };
-        totalCunhado = 0;
-        totalCiclos = 0;
-        salvarConfig();
-        
-        // Atualizar interface
-        if (painel) {
-            const maximoCheck = document.getElementById('tws-maximo');
-            const quantidadeDiv = document.getElementById('tws-quantidade-div');
-            const quantidadeInput = document.getElementById('tws-quantidade');
-            const pausaInput = document.getElementById('tws-pausa');
-            const pausaCicloInput = document.getElementById('tws-pausa-ciclo');
-            
-            if (maximoCheck) maximoCheck.checked = CONFIG.cunharMaximo;
-            if (quantidadeDiv) quantidadeDiv.style.display = CONFIG.cunharMaximo ? 'none' : 'block';
-            if (quantidadeInput) quantidadeInput.value = CONFIG.quantidade;
-            if (pausaInput) pausaInput.value = CONFIG.pausaEntreAldeias;
-            if (pausaCicloInput) pausaCicloInput.value = CONFIG.pausaEntreCiclos;
-        }
-        
-        atualizarStatus(`🔄 Configurações resetadas! Total cunhado zerado.`);
-        console.log('[Cunhagem] Configurações resetadas');
-    }
-
     // ============================================
-    // FUNÇÕES
+    // UTILITÁRIOS
     // ============================================
     function formatarNumero(num) {
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
-    function atualizarStatus(texto) {
-        const statusDiv = document.getElementById('tws-status');
-        if (statusDiv) {
-            statusDiv.innerHTML = texto;
-        }
-    }
-
     function extrairRecursos(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        
-        const wood = doc.getElementById('wood');
+        const wood  = doc.getElementById('wood');
         const stone = doc.getElementById('stone');
-        const iron = doc.getElementById('iron');
-        
+        const iron  = doc.getElementById('iron');
         return {
-            wood: wood ? parseInt(wood.textContent.replace(/\./g, '')) : 0,
+            wood:  wood  ? parseInt(wood.textContent.replace(/\./g, ''))  : 0,
             stone: stone ? parseInt(stone.textContent.replace(/\./g, '')) : 0,
-            iron: iron ? parseInt(iron.textContent.replace(/\./g, '')) : 0
+            iron:  iron  ? parseInt(iron.textContent.replace(/\./g, ''))  : 0
         };
     }
 
     function calcularMaximo(resources) {
-        const maxWood = Math.floor(resources.wood / custoMoeda.wood);
+        const maxWood  = Math.floor(resources.wood  / custoMoeda.wood);
         const maxStone = Math.floor(resources.stone / custoMoeda.stone);
-        const maxIron = Math.floor(resources.iron / custoMoeda.iron);
+        const maxIron  = Math.floor(resources.iron  / custoMoeda.iron);
         return Math.min(maxWood, maxStone, maxIron);
     }
 
     function podeCunhar(resources, quantidade) {
-        return resources.wood >= custoMoeda.wood * quantidade &&
+        return resources.wood  >= custoMoeda.wood  * quantidade &&
                resources.stone >= custoMoeda.stone * quantidade &&
-               resources.iron >= custoMoeda.iron * quantidade;
+               resources.iron  >= custoMoeda.iron  * quantidade;
     }
 
-    async function cunharMoeda(villageId, villageName, quantidade) {
+    // ============================================
+    // VALIDAÇÃO
+    // ============================================
+    function validarCampos() {
+        let ok = true;
+
+        if (!CUNHAR_MAXIMO) {
+            const inpQtd = document.getElementById('tws-quantidade');
+            const v = parseInt(inpQtd?.value);
+            const valid = !isNaN(v) && v >= 1 && v <= 999;
+            if (inpQtd) inpQtd.style.borderColor = valid ? '#555' : '#e24b4a';
+            const err = document.getElementById('tws-err-qtd');
+            if (err) err.style.display = valid ? 'none' : 'block';
+            if (!valid) ok = false;
+        }
+
+        const inpAldeias = document.getElementById('tws-pausa-aldeias');
+        const va = parseInt(inpAldeias?.value);
+        const validA = !isNaN(va) && va >= 500;
+        if (inpAldeias) inpAldeias.style.borderColor = validA ? '#555' : '#e24b4a';
+        const errA = document.getElementById('tws-err-aldeias');
+        if (errA) errA.style.display = validA ? 'none' : 'block';
+        if (!validA) ok = false;
+
+        const inpCiclos = document.getElementById('tws-pausa-ciclos');
+        const vc = parseInt(inpCiclos?.value);
+        const validC = !isNaN(vc) && vc >= 10;
+        if (inpCiclos) inpCiclos.style.borderColor = validC ? '#555' : '#e24b4a';
+        const errC = document.getElementById('tws-err-ciclos');
+        if (errC) errC.style.display = validC ? 'none' : 'block';
+        if (!validC) ok = false;
+
+        return ok;
+    }
+
+    // ============================================
+    // LOG NO PAINEL
+    // ============================================
+    function adicionarLog(msg, tipo) {
+        const log = document.getElementById('tws-log');
+        if (!log) return;
+        const t = new Date().toTimeString().slice(0, 5);
+        const cores = { ok: '#22a55a', err: '#e24b4a', warn: '#c97c00' };
+        const cor = cores[tipo] || '#888';
+        if (log.children.length === 1 && log.children[0].dataset.placeholder) log.innerHTML = '';
+        const entry = document.createElement('div');
+        entry.style.cssText = 'display:flex;gap:6px;';
+        entry.innerHTML = `<span style="color:#555;flex-shrink:0;">${t}</span><span style="color:${cor};">${msg}</span>`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+        if (log.children.length > 30) log.removeChild(log.children[0]);
+    }
+
+    // ============================================
+    // LÓGICA DE CUNHAGEM
+    // ============================================
+    async function cunharMoeda(villageId, quantidade) {
         try {
             const response = await fetch(`/game.php?village=${villageId}&screen=snob`, {
                 credentials: 'same-origin'
             });
-            
             if (!response.ok) return false;
-            
+
             const html = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            
-            const form = doc.querySelector('form[action*="screen=snob&action=coin"]');
-            if (!form) return false;
-            
-            const formData = new FormData();
-            formData.append('count', quantidade);
-            
             const csrfMatch = html.match(/name="h" value="([^"]+)"/);
+            const formData = new URLSearchParams();
+            formData.append('count', quantidade);
             if (csrfMatch) formData.append('h', csrfMatch[1]);
-            
-            const result = await fetch(form.action, {
+
+            const actionMatch = html.match(/form[^>]*action="([^"]*screen=snob&action=coin[^"]*)"/i);
+            const url = actionMatch ? actionMatch[1] : `/game.php?village=${villageId}&screen=snob&action=coin`;
+
+            const result = await fetch(url, {
                 method: 'POST',
                 credentials: 'same-origin',
-                body: formData
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
             });
-            
+
             return result.ok;
-            
         } catch (err) {
-            console.error(`Erro ao cunhar em ${villageName}:`, err);
             return false;
         }
     }
 
     async function escanearECunhar() {
-        if (!rodando) return;
+        if (!ATIVADO) return;
         if (cicloAtivo) return;
-        
+
         cicloAtivo = true;
-        totalCiclos++;
-        salvarConfig();
-        
-        atualizarStatus(`🔄 Ciclo ${totalCiclos} - Buscando aldeias...`);
-        
+        cicloAtual++;
+
+        atualizarMetricas();
+        adicionarLog(`Ciclo ${cicloAtual} iniciado.`);
+
+        console.log('');
+        console.log(`╔═══════════════════════════════════════╗`);
+        console.log(`║  CICLO ${cicloAtual} - ${new Date().toLocaleTimeString()}`);
+        console.log(`╚═══════════════════════════════════════╝`);
+
         try {
             const resposta = await fetch('/map/village.txt');
             const dados = await resposta.text();
             const meuId = window.game_data?.player?.id;
-            
-            const todasAldeias = dados.trim().split('\n').map(line => {
-                const [id, name, x, y, player, points] = line.split(',');
-                return {
-                    id: parseInt(id),
-                    name: decodeURIComponent(name.replace(/\+/g, ' ')),
-                    coord: `${x}|${y}`,
-                    player: parseInt(player),
-                    pontos: parseInt(points)
-                };
-            });
-            
-            const minhasAldeias = todasAldeias.filter(v => v.player === meuId);
-            
-            atualizarStatus(`🔍 Verificando ${minhasAldeias.length} aldeias... | Cunhado: ${totalCunhado} moedas`);
-            
+
+            const minhasAldeias = dados.trim().split('\n')
+                .map(line => {
+                    const [id, name, x, y, player] = line.split(',');
+                    return {
+                        id: parseInt(id),
+                        name: decodeURIComponent(name.replace(/\+/g, ' ')),
+                        coord: `${x}|${y}`,
+                        player: parseInt(player)
+                    };
+                })
+                .filter(v => v.player === meuId);
+
+            console.log(`Aldeias encontradas: ${minhasAldeias.length}`);
+
+            let index = 0;
             for (const aldeia of minhasAldeias) {
-                if (!rodando) break;
-                
-                atualizarStatus(`📍 Verificando ${aldeia.name} (${aldeia.coord})...`);
-                
+                if (!ATIVADO) break;
+                index++;
+
                 const overview = await fetch(`/game.php?village=${aldeia.id}&screen=overview`, {
                     credentials: 'same-origin'
                 });
-                
-                if (!overview.ok) continue;
-                
-                const html = await overview.text();
-                const recursos = extrairRecursos(html);
-                
-                let quantidadeCunhar = CONFIG.quantidade;
-                
-                if (CONFIG.cunharMaximo) {
+
+                if (!overview.ok) {
+                    console.log(`[${index}] ${aldeia.name} — falha ao carregar recursos`);
+                    adicionarLog(`${aldeia.name}: falha ao carregar.`, 'err');
+                    continue;
+                }
+
+                const recursos = extrairRecursos(await overview.text());
+
+                let quantidadeCunhar = QUANTIDADE;
+                if (CUNHAR_MAXIMO) {
                     quantidadeCunhar = calcularMaximo(recursos);
                 }
-                
+
+                console.log(`[${index}/${minhasAldeias.length}] ${aldeia.name} (${aldeia.coord}) — cunhando ${quantidadeCunhar}`);
+
                 if (quantidadeCunhar > 0 && podeCunhar(recursos, quantidadeCunhar)) {
-                    atualizarStatus(`💰 CUNHANDO ${quantidadeCunhar} moeda(s) em ${aldeia.name}...`);
-                    
-                    const sucesso = await cunharMoeda(aldeia.id, aldeia.name, quantidadeCunhar);
-                    
+                    const sucesso = await cunharMoeda(aldeia.id, quantidadeCunhar);
+
                     if (sucesso) {
                         totalCunhado += quantidadeCunhar;
-                        salvarConfig();
-                        atualizarStatus(`✅ ${quantidadeCunhar} moeda(s) cunhada(s) em ${aldeia.name}! Total: ${totalCunhado} moedas`);
-                        console.log(`[Cunhagem] ✅ ${quantidadeCunhar} moedas em ${aldeia.name} (${aldeia.coord}) - Total: ${totalCunhado}`);
+                        salvarEstado();
+                        atualizarMetricas();
+                        adicionarLog(`${aldeia.name}: +${quantidadeCunhar} moeda(s).`, 'ok');
+                        console.log(`  ✓ Cunhou ${quantidadeCunhar} moeda(s). Total: ${totalCunhado}`);
                     } else {
-                        atualizarStatus(`❌ Falha ao cunhar em ${aldeia.name}`);
-                        console.log(`[Cunhagem] ❌ Falha em ${aldeia.name}`);
+                        adicionarLog(`${aldeia.name}: falha ao cunhar.`, 'err');
+                        console.log(`  ✗ Falha ao cunhar`);
                     }
+                } else {
+                    const motivo = quantidadeCunhar === 0 ? 'sem recursos' : 'insuficiente';
+                    adicionarLog(`${aldeia.name}: ${motivo}.`, 'warn');
+                    console.log(`  ⚠ Recursos insuficientes`);
                 }
-                
-                await new Promise(r => setTimeout(r, CONFIG.pausaEntreAldeias));
+
+                await new Promise(r => setTimeout(r, PAUSA_ENTRE_ALDEIAS));
             }
-            
-            if (rodando) {
-                atualizarStatus(`✅ Ciclo ${totalCiclos} concluído! Aguardando ${CONFIG.pausaEntreCiclos/1000}s... | Total cunhado: ${totalCunhado} moedas`);
-                console.log(`[Cunhagem] Ciclo ${totalCiclos} concluído. Total cunhado: ${totalCunhado}`);
-            }
-            
+
+            adicionarLog(`Ciclo ${cicloAtual} concluído. Total: ${totalCunhado}.`, 'ok');
+            console.log(`\nCiclo ${cicloAtual} finalizado. Próximo em ${PAUSA_ENTRE_CICLOS / 1000}s\n`);
+
         } catch (err) {
+            adicionarLog('Erro inesperado no ciclo.', 'err');
             console.error('[Cunhagem] Erro:', err);
-            atualizarStatus(`❌ Erro: ${err.message}`);
         }
-        
+
         cicloAtivo = false;
-        
-        if (rodando) {
-            await new Promise(r => setTimeout(r, CONFIG.pausaEntreCiclos));
-            if (rodando) {
-                escanearECunhar();
-            }
+
+        if (ATIVADO) {
+            await new Promise(r => setTimeout(r, PAUSA_ENTRE_CICLOS));
+            if (ATIVADO) escanearECunhar();
         }
     }
 
     function iniciar() {
-        if (rodando) {
-            atualizarStatus('⚠️ Já está rodando!');
-            return;
-        }
-        
+        if (rodando) return;
         rodando = true;
-        
-        atualizarStatus('🚀 INICIADO! Verificando aldeias...');
-        console.log('[Cunhagem] Iniciado!');
-        console.log(`[Cunhagem] Modo: ${CONFIG.cunharMaximo ? 'Cunhar MÁXIMO' : `Cunhar ${CONFIG.quantidade} moeda(s) por vez`}`);
-        
+        console.log('[Cunhagem] Iniciado. Modo:', CUNHAR_MAXIMO ? 'MÁXIMO' : `${QUANTIDADE} por vez`);
         escanearECunhar();
     }
 
     function parar() {
         rodando = false;
-        atualizarStatus('⏹️ PARADO. Clique em "INICIAR" para recomeçar.');
         console.log('[Cunhagem] Parado. Total cunhado:', totalCunhado);
-        salvarConfig();
+    }
+
+    function toggle() {
+        ATIVADO = !ATIVADO;
+        if (ATIVADO) {
+            iniciar();
+        } else {
+            parar();
+        }
+        atualizarBotao(ATIVADO);
+        salvarEstado();
+    }
+
+    // ============================================
+    // ATUALIZAÇÃO DO PAINEL
+    // ============================================
+    function atualizarMetricas() {
+        const metT = document.getElementById('tws-met-total');
+        const metC = document.getElementById('tws-met-ciclos');
+        if (metT) metT.textContent = totalCunhado;
+        if (metC) metC.textContent = cicloAtual;
+    }
+
+    function atualizarBotao(ativo) {
+        const btn  = document.getElementById('tws-botao');
+        const dot  = document.getElementById('tws-dot');
+        const stat = document.getElementById('tws-status');
+
+        if (dot)  dot.style.background = ativo ? '#22a55a' : '#e24b4a';
+        if (stat) stat.textContent = ativo
+            ? `Rodando — ciclo ${cicloAtual}`
+            : `Parado — ${totalCunhado} moedas cunhadas`;
+        if (btn) {
+            btn.textContent = ativo ? '⏹ Desativar cunhagem' : '▶ Ativar cunhagem';
+            btn.style.background = ativo ? '#c0392b' : '#27ae60';
+        }
+
+        atualizarMetricas();
     }
 
     // ============================================
@@ -288,113 +326,186 @@
     // ============================================
     function criarPainel() {
         if (painel) return;
-        
+
+        const inputStyle = 'width:100%;padding:5px 8px;background:#2a2a2a;border:1px solid #555;color:#eee;border-radius:5px;font-size:12px;box-sizing:border-box;';
+        const labelStyle = 'font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:3px;';
+        const errStyle   = 'display:none;font-size:10px;color:#e24b4a;margin-top:2px;';
+
         painel = document.createElement('div');
         painel.style.cssText = `
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 280px;
+            width: 270px;
             background: #1e1e1e;
-            border: 2px solid #ff9900;
+            border: 1px solid #3a3a3a;
             border-radius: 10px;
-            padding: 12px;
             z-index: 999999;
             font-family: Arial, sans-serif;
-            color: #fff;
             font-size: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            color: #eee;
         `;
-        
+
         painel.innerHTML = `
-            <div style="margin-bottom: 10px; font-weight: bold; color: #ff9900; text-align: center;">
-                💰 Cunhagem Automática Contínua
+            <div id="tws-header" style="background:#b86e00;padding:8px 12px;border-radius:9px 9px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:move;user-select:none;">
+                <span style="font-weight:bold;color:#fff;font-size:12px;">💰 Cunhagem automática</span>
+                <button id="tws-minimizar" style="background:rgba(0,0,0,0.25);border:none;color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:13px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">−</button>
             </div>
-            <div style="margin-bottom: 8px;">
-                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <input type="checkbox" id="tws-maximo" ${CONFIG.cunharMaximo ? 'checked' : ''}>
-                    <span>Cunhar MÁXIMO possível em cada aldeia</span>
-                </label>
-            </div>
-            <div id="tws-quantidade-div" style="margin-bottom: 8px; ${CONFIG.cunharMaximo ? 'display: none;' : ''}">
-                <label style="display: block; margin-bottom: 3px;">Quantidade por cunhagem:</label>
-                <input type="number" id="tws-quantidade" value="${CONFIG.quantidade}" min="1" max="100" 
-                       style="width: 100%; padding: 4px; background: #333; border: 1px solid #555; color: #fff; border-radius: 3px;">
-            </div>
-            <div style="margin-bottom: 8px;">
-                <label style="display: block; margin-bottom: 3px;">Pausa entre aldeias (ms):</label>
-                <input type="number" id="tws-pausa" value="${CONFIG.pausaEntreAldeias}" min="500" max="10000" step="500"
-                       style="width: 100%; padding: 4px; background: #333; border: 1px solid #555; color: #fff; border-radius: 3px;">
-            </div>
-            <div style="margin-bottom: 12px;">
-                <label style="display: block; margin-bottom: 3px;">Pausa entre ciclos (ms):</label>
-                <input type="number" id="tws-pausa-ciclo" value="${CONFIG.pausaEntreCiclos}" min="5000" max="300000" step="5000"
-                       style="width: 100%; padding: 4px; background: #333; border: 1px solid #555; color: #fff; border-radius: 3px;">
-            </div>
-            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <button id="tws-iniciar" style="flex: 1; background: #4caf50; color: #fff; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                    ▶ INICIAR
+            <div id="tws-body" style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+
+                <div style="display:flex;align-items:center;gap:8px;background:#2a2a2a;border-radius:6px;padding:7px 10px;font-size:11px;color:#aaa;">
+                    <div id="tws-dot" style="width:8px;height:8px;border-radius:50%;background:#e24b4a;flex-shrink:0;transition:background .3s;"></div>
+                    <span id="tws-status">Parado — aguardando ativação</span>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                    <div style="background:#2a2a2a;border-radius:6px;padding:7px 10px;">
+                        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px;">Cunhadas</div>
+                        <div id="tws-met-total" style="font-size:18px;font-weight:bold;color:#eee;">${totalCunhado}</div>
+                        <div style="font-size:10px;color:#555;">moedas</div>
+                    </div>
+                    <div style="background:#2a2a2a;border-radius:6px;padding:7px 10px;">
+                        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px;">Ciclos</div>
+                        <div id="tws-met-ciclos" style="font-size:18px;font-weight:bold;color:#eee;">${cicloAtual}</div>
+                        <div style="font-size:10px;color:#555;">executados</div>
+                    </div>
+                </div>
+
+                <hr style="border:none;border-top:1px solid #333;margin:0;">
+
+                <div>
+                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Modo de cunhagem</div>
+                    <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                        <span>Cunhar máximo possível</span>
+                        <input type="checkbox" id="tws-maximo" ${CUNHAR_MAXIMO ? 'checked' : ''} style="width:15px;height:15px;cursor:pointer;">
+                    </label>
+                </div>
+
+                <div id="tws-quantidade-div" style="${CUNHAR_MAXIMO ? 'display:none;' : ''}flex-direction:column;gap:3px;">
+                    <label style="${labelStyle}" for="tws-quantidade">Quantidade por aldeia</label>
+                    <input type="number" id="tws-quantidade" value="${QUANTIDADE}" min="1" max="999" step="1" style="${inputStyle}">
+                    <span id="tws-err-qtd" style="${errStyle}">Informe um valor entre 1 e 999</span>
+                </div>
+
+                <hr style="border:none;border-top:1px solid #333;margin:0;">
+
+                <div>
+                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Intervalos</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <div>
+                            <label style="${labelStyle}" for="tws-pausa-aldeias">Entre aldeias (ms)</label>
+                            <input type="number" id="tws-pausa-aldeias" value="${PAUSA_ENTRE_ALDEIAS}" min="500" max="30000" step="100" style="${inputStyle}">
+                            <span id="tws-err-aldeias" style="${errStyle}">Mín. 500 ms</span>
+                        </div>
+                        <div>
+                            <label style="${labelStyle}" for="tws-pausa-ciclos">Entre ciclos (s)</label>
+                            <input type="number" id="tws-pausa-ciclos" value="${PAUSA_ENTRE_CICLOS / 1000}" min="10" max="3600" step="1" style="${inputStyle}">
+                            <span id="tws-err-ciclos" style="${errStyle}">Mín. 10 s</span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border:none;border-top:1px solid #333;margin:0;">
+
+                <button id="tws-botao" style="width:100%;padding:9px;border:none;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;background:${ATIVADO ? '#c0392b' : '#27ae60'};color:#fff;transition:opacity .15s;">
+                    ${ATIVADO ? '⏹ Desativar cunhagem' : '▶ Ativar cunhagem'}
                 </button>
-                <button id="tws-parar" style="flex: 1; background: #f44336; color: #fff; border: none; padding: 8px; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                    ⏹️ PARAR
-                </button>
-            </div>
-            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                <button id="tws-resetar" style="flex: 1; background: #ff9800; color: #fff; border: none; padding: 6px; border-radius: 5px; cursor: pointer; font-size: 11px;">
-                    🔄 RESETAR CONFIG
-                </button>
-            </div>
-            <div id="tws-status" style="margin-top: 8px; padding: 6px; background: #2a2a2a; border-radius: 4px; font-size: 10px; color: #ff9900; text-align: center; min-height: 50px;">
-                ⏸️ Parado | Total já cunhado: ${totalCunhado} moedas
+
+                <div>
+                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Log recente</div>
+                    <div id="tws-log" style="background:#111;border-radius:5px;padding:7px 9px;font-size:10px;font-family:monospace;color:#888;max-height:80px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;">
+                        <div data-placeholder="1" style="color:#555;">Aguardando...</div>
+                    </div>
+                </div>
+
             </div>
         `;
-        
+
         document.body.appendChild(painel);
-        
-        // Eventos
-        const maximoCheck = document.getElementById('tws-maximo');
+
+        // --- Eventos ---
+        const maximoCheck   = document.getElementById('tws-maximo');
         const quantidadeDiv = document.getElementById('tws-quantidade-div');
-        const quantidadeInput = document.getElementById('tws-quantidade');
-        const pausaInput = document.getElementById('tws-pausa');
-        const pausaCicloInput = document.getElementById('tws-pausa-ciclo');
-        
+        const inpQtd        = document.getElementById('tws-quantidade');
+        const inpAldeias    = document.getElementById('tws-pausa-aldeias');
+        const inpCiclos     = document.getElementById('tws-pausa-ciclos');
+
         maximoCheck.addEventListener('change', () => {
-            CONFIG.cunharMaximo = maximoCheck.checked;
-            quantidadeDiv.style.display = CONFIG.cunharMaximo ? 'none' : 'block';
-            salvarConfig();
+            CUNHAR_MAXIMO = maximoCheck.checked;
+            quantidadeDiv.style.display = CUNHAR_MAXIMO ? 'none' : 'flex';
+            salvarEstado();
         });
-        
-        quantidadeInput.addEventListener('change', () => {
-            CONFIG.quantidade = parseInt(quantidadeInput.value) || 1;
-            salvarConfig();
+
+        inpQtd.addEventListener('input', () => {
+            QUANTIDADE = parseInt(inpQtd.value) || 1;
+            validarCampos();
+            salvarEstado();
         });
-        
-        pausaInput.addEventListener('change', () => {
-            CONFIG.pausaEntreAldeias = parseInt(pausaInput.value) || 2000;
-            salvarConfig();
+
+        inpAldeias.addEventListener('input', () => {
+            const v = parseInt(inpAldeias.value);
+            if (!isNaN(v) && v >= 500) { PAUSA_ENTRE_ALDEIAS = v; salvarEstado(); }
+            validarCampos();
         });
-        
-        pausaCicloInput.addEventListener('change', () => {
-            CONFIG.pausaEntreCiclos = parseInt(pausaCicloInput.value) || 30000;
-            salvarConfig();
+
+        inpCiclos.addEventListener('input', () => {
+            const v = parseInt(inpCiclos.value);
+            if (!isNaN(v) && v >= 10) { PAUSA_ENTRE_CICLOS = v * 1000; salvarEstado(); }
+            validarCampos();
         });
-        
-        document.getElementById('tws-iniciar').onclick = iniciar;
-        document.getElementById('tws-parar').onclick = parar;
-        document.getElementById('tws-resetar').onclick = resetarConfig;
+
+        document.getElementById('tws-botao').addEventListener('click', () => {
+            if (!ATIVADO && !validarCampos()) {
+                adicionarLog('Corrija os campos antes de ativar.', 'err');
+                return;
+            }
+            toggle();
+        });
+
+        document.getElementById('tws-minimizar').addEventListener('click', () => {
+            const body = document.getElementById('tws-body');
+            const btn  = document.getElementById('tws-minimizar');
+            const visivel = body.style.display !== 'none';
+            body.style.display = visivel ? 'none' : 'flex';
+            btn.textContent    = visivel ? '+' : '−';
+            painel.style.borderRadius = visivel ? '10px' : '10px 10px 0 0';
+        });
+
+        // --- Arrastar ---
+        const header = document.getElementById('tws-header');
+        let dragging = false, offsetX, offsetY;
+
+        header.addEventListener('mousedown', e => {
+            if (e.target.id === 'tws-minimizar') return;
+            dragging = true;
+            const r = painel.getBoundingClientRect();
+            offsetX = e.clientX - r.left;
+            offsetY = e.clientY - r.top;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            const x = Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth  - painel.offsetWidth));
+            const y = Math.max(0, Math.min(e.clientY - offsetY, window.innerHeight - painel.offsetHeight));
+            painel.style.left   = x + 'px';
+            painel.style.top    = y + 'px';
+            painel.style.right  = 'auto';
+            painel.style.bottom = 'auto';
+        });
+
+        document.addEventListener('mouseup', () => { dragging = false; });
     }
-    
-    function iniciarScript() {
-        console.log('[Cunhagem] Script carregado');
-        carregarConfig();
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', criarPainel);
-        } else {
-            criarPainel();
-        }
+
+    // ============================================
+    // INICIALIZAÇÃO
+    // ============================================
+    carregarEstado();
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', criarPainel);
+    } else {
+        criarPainel();
     }
-    
-    iniciarScript();
-    
+
 })();
