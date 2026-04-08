@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Cunhagem Automática
 // @namespace    http://tampermonkey.net/
-// @version      10.0
-// @description  Cunhagem automática com painel melhorado, validação e log
+// @version      13.0
+// @description  Cunhagem automática - só tenta cunhar em aldeias com Academia
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -25,6 +25,9 @@
     let custoMoeda = { wood: 28000, stone: 30000, iron: 25000 };
     let totalCunhado = 0;
     let cicloAtual = 0;
+
+    // Cache de aldeias com academia (para não verificar toda hora)
+    let cacheAcademia = {};
 
     // ============================================
     // PERSISTÊNCIA
@@ -91,6 +94,49 @@
     }
 
     // ============================================
+    // VERIFICAR SE TEM ACADEMIA
+    // ============================================
+    async function temAcademia(villageId) {
+        // Verificar cache primeiro
+        if (cacheAcademia[villageId] !== undefined) {
+            return cacheAcademia[villageId];
+        }
+        
+        try {
+            const url = `/game.php?village=${villageId}&screen=snob`;
+            const response = await fetch(url, { credentials: 'same-origin' });
+            
+            if (!response.ok) {
+                cacheAcademia[villageId] = false;
+                return false;
+            }
+            
+            const html = await response.text();
+            
+            // Verificar se tem o formulário de cunhagem ou a seção de moedas
+            const temFormulario = html.includes('screen=snob&amp;action=coin') || 
+                                  html.includes('Moedas de ouro') ||
+                                  html.includes('gold-overview') ||
+                                  html.includes('Cunhar moedas');
+            
+            // Verificar se NÃO tem academia (mensagem de erro ou construção)
+            const semAcademia = html.includes('Academia') === false || 
+                               (html.includes('construir') && html.includes('Academia'));
+            
+            const resultado = temFormulario && !semAcademia;
+            cacheAcademia[villageId] = resultado;
+            
+            console.log(`[Cunhagem] Academia em ${villageId}: ${resultado ? 'SIM' : 'NÃO'}`);
+            return resultado;
+            
+        } catch (err) {
+            console.error(`[Cunhagem] Erro ao verificar academia:`, err);
+            cacheAcademia[villageId] = false;
+            return false;
+        }
+    }
+
+    // ============================================
     // VALIDAÇÃO
     // ============================================
     function validarCampos() {
@@ -148,30 +194,44 @@
     // ============================================
     async function cunharMoeda(villageId, quantidade) {
         try {
-            const response = await fetch(`/game.php?village=${villageId}&screen=snob`, {
-                credentials: 'same-origin'
-            });
-            if (!response.ok) return false;
-
-            const html = await response.text();
-            const csrfMatch = html.match(/name="h" value="([^"]+)"/);
+            console.log(`[Cunhagem] 🪙 Cunhando ${quantidade} moeda(s) em ${villageId}`);
+            
+            const csrf = window.game_data?.csrf || '';
+            
+            if (!csrf) {
+                return { success: false, reason: 'CSRF não encontrado' };
+            }
+            
+            const url = `/game.php?village=${villageId}&screen=snob&action=coin&h=${csrf}`;
+            
             const formData = new URLSearchParams();
-            formData.append('count', quantidade);
-            if (csrfMatch) formData.append('h', csrfMatch[1]);
-
-            const actionMatch = html.match(/form[^>]*action="([^"]*screen=snob&action=coin[^"]*)"/i);
-            const url = actionMatch ? actionMatch[1] : `/game.php?village=${villageId}&screen=snob&action=coin`;
-
-            const result = await fetch(url, {
+            formData.append('count', quantidade.toString());
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: formData.toString()
             });
-
-            return result.ok;
+            
+            if (response.ok) {
+                const texto = await response.text();
+                
+                if (texto.includes('insuficiente') || 
+                    texto.includes('erro') || 
+                    texto.includes('não pode')) {
+                    return { success: false, reason: 'erro_no_servidor' };
+                }
+                
+                return { success: true, reason: 'sucesso' };
+            }
+            
+            return { success: false, reason: `HTTP ${response.status}` };
         } catch (err) {
-            return false;
+            return { success: false, reason: err.message };
         }
     }
 
@@ -195,6 +255,13 @@
             const dados = await resposta.text();
             const meuId = window.game_data?.player?.id;
 
+            if (!meuId) {
+                console.error('[Cunhagem] ❌ Não foi possível obter seu ID de jogador');
+                adicionarLog('Erro: ID do jogador não encontrado', 'err');
+                cicloAtivo = false;
+                return;
+            }
+
             const minhasAldeias = dados.trim().split('\n')
                 .map(line => {
                     const [id, name, x, y, player] = line.split(',');
@@ -208,55 +275,74 @@
                 .filter(v => v.player === meuId);
 
             console.log(`Aldeias encontradas: ${minhasAldeias.length}`);
+            adicionarLog(`${minhasAldeias.length} aldeias encontradas.`, 'ok');
 
             let index = 0;
             for (const aldeia of minhasAldeias) {
                 if (!ATIVADO) break;
                 index++;
 
+                console.log(`\n[${index}/${minhasAldeias.length}] Verificando ${aldeia.name} (${aldeia.coord})...`);
+                
+                // VERIFICAR SE TEM ACADEMIA PRIMEIRO
+                const temAcad = await temAcademia(aldeia.id);
+                
+                if (!temAcad) {
+                    console.log(`  ⏭️ Sem Academia - ignorando`);
+                    adicionarLog(`${aldeia.name}: sem Academia nível 1. ⏭️`, 'warn');
+                    continue;
+                }
+                
+                // SÓ CONTINUA SE TIVER ACADEMIA
                 const overview = await fetch(`/game.php?village=${aldeia.id}&screen=overview`, {
                     credentials: 'same-origin'
                 });
 
                 if (!overview.ok) {
-                    console.log(`[${index}] ${aldeia.name} — falha ao carregar recursos`);
+                    console.log(`  ❌ Falha ao carregar recursos`);
                     adicionarLog(`${aldeia.name}: falha ao carregar.`, 'err');
                     continue;
                 }
 
                 const recursos = extrairRecursos(await overview.text());
+                console.log(`  📦 Recursos: 🪵 ${formatarNumero(recursos.wood)} | 🧱 ${formatarNumero(recursos.stone)} | ⚙️ ${formatarNumero(recursos.iron)}`);
 
                 let quantidadeCunhar = QUANTIDADE;
                 if (CUNHAR_MAXIMO) {
                     quantidadeCunhar = calcularMaximo(recursos);
+                    console.log(`  📊 Máximo possível: ${quantidadeCunhar} moeda(s)`);
+                } else {
+                    console.log(`  📊 Quantidade configurada: ${quantidadeCunhar} moeda(s)`);
                 }
 
-                console.log(`[${index}/${minhasAldeias.length}] ${aldeia.name} (${aldeia.coord}) — cunhando ${quantidadeCunhar}`);
-
                 if (quantidadeCunhar > 0 && podeCunhar(recursos, quantidadeCunhar)) {
-                    const sucesso = await cunharMoeda(aldeia.id, quantidadeCunhar);
-
-                    if (sucesso) {
+                    console.log(`  ✅ Recursos suficientes! Cunhando...`);
+                    adicionarLog(`${aldeia.name}: cunhando ${quantidadeCunhar} moeda(s)...`, 'warn');
+                    
+                    const resultado = await cunharMoeda(aldeia.id, quantidadeCunhar);
+                    
+                    if (resultado.success) {
                         totalCunhado += quantidadeCunhar;
                         salvarEstado();
                         atualizarMetricas();
-                        adicionarLog(`${aldeia.name}: +${quantidadeCunhar} moeda(s).`, 'ok');
-                        console.log(`  ✓ Cunhou ${quantidadeCunhar} moeda(s). Total: ${totalCunhado}`);
+                        adicionarLog(`${aldeia.name}: +${quantidadeCunhar} moeda(s). ✅`, 'ok');
+                        console.log(`  ✅ Sucesso! Total: ${totalCunhado} moedas`);
                     } else {
-                        adicionarLog(`${aldeia.name}: falha ao cunhar.`, 'err');
-                        console.log(`  ✗ Falha ao cunhar`);
+                        adicionarLog(`${aldeia.name}: falha ao cunhar. ❌`, 'err');
+                        console.log(`  ❌ Falha ao cunhar`);
                     }
                 } else {
-                    const motivo = quantidadeCunhar === 0 ? 'sem recursos' : 'insuficiente';
+                    const motivo = quantidadeCunhar === 0 ? 'recursos insuficientes' : 'recursos insuficientes';
                     adicionarLog(`${aldeia.name}: ${motivo}.`, 'warn');
-                    console.log(`  ⚠ Recursos insuficientes`);
+                    console.log(`  ⚠️ ${motivo}`);
                 }
 
                 await new Promise(r => setTimeout(r, PAUSA_ENTRE_ALDEIAS));
             }
 
-            adicionarLog(`Ciclo ${cicloAtual} concluído. Total: ${totalCunhado}.`, 'ok');
-            console.log(`\nCiclo ${cicloAtual} finalizado. Próximo em ${PAUSA_ENTRE_CICLOS / 1000}s\n`);
+            adicionarLog(`Ciclo ${cicloAtual} concluído. Total: ${totalCunhado} moedas.`, 'ok');
+            console.log(`\n✅ Ciclo ${cicloAtual} finalizado. Total cunhado: ${totalCunhado}`);
+            console.log(`⏰ Próximo ciclo em ${PAUSA_ENTRE_CICLOS / 1000} segundos\n`);
 
         } catch (err) {
             adicionarLog('Erro inesperado no ciclo.', 'err');
@@ -274,13 +360,17 @@
     function iniciar() {
         if (rodando) return;
         rodando = true;
-        console.log('[Cunhagem] Iniciado. Modo:', CUNHAR_MAXIMO ? 'MÁXIMO' : `${QUANTIDADE} por vez`);
+        // Limpar cache de academia ao iniciar novo ciclo
+        cacheAcademia = {};
+        console.log('[Cunhagem] 🚀 Iniciado. Modo:', CUNHAR_MAXIMO ? 'MÁXIMO' : `${QUANTIDADE} por vez`);
+        adicionarLog(`Iniciando em modo ${CUNHAR_MAXIMO ? 'MÁXIMO' : `${QUANTIDADE} por vez`}`, 'ok');
         escanearECunhar();
     }
 
     function parar() {
         rodando = false;
-        console.log('[Cunhagem] Parado. Total cunhado:', totalCunhado);
+        console.log('[Cunhagem] ⏹️ Parado. Total cunhado:', totalCunhado);
+        adicionarLog(`Parado. Total cunhado: ${totalCunhado} moedas`, 'warn');
     }
 
     function toggle() {
