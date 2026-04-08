@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Cunhagem Automatica
 // @namespace    http://tampermonkey.net/
-// @version      18.0
-// @description  Cunhagem automatica - Formulario nativo + painel melhorado
+// @version      19.0
+// @description  Cunhagem automatica - Formulario nativo + reset completo
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -11,19 +11,28 @@
     'use strict';
 
     // ============================================
-    // CONFIGURACOES
+    // CONFIGURACOES PADRAO
     // ============================================
-    let ATIVADO = false;
-    let QUANTIDADE = 1;
-    let CUNHAR_MAXIMO = true;
-    let PAUSA_ENTRE_ALDEIAS = 2000;
-    let PAUSA_ENTRE_CICLOS = 30000;
+    const DEFAULTS = {
+        ativado:       false,
+        quantidade:    1,
+        cunharMaximo:  true,
+        totalCunhado:  0,
+        pausaAldeias:  2000,
+        pausaCiclos:   30000
+    };
 
-    let rodando = false;
-    let cicloAtivo = false;
-    let painel = null;
-    let totalCunhado = 0;
-    let cicloAtual = 0;
+    let ATIVADO             = DEFAULTS.ativado;
+    let QUANTIDADE          = DEFAULTS.quantidade;
+    let CUNHAR_MAXIMO       = DEFAULTS.cunharMaximo;
+    let PAUSA_ENTRE_ALDEIAS = DEFAULTS.pausaAldeias;
+    let PAUSA_ENTRE_CICLOS  = DEFAULTS.pausaCiclos;
+
+    let rodando      = false;
+    let cicloAtivo   = false;
+    let painel       = null;
+    let totalCunhado = DEFAULTS.totalCunhado;
+    let cicloAtual   = 0;
     let cacheAcademia = {};
 
     // ============================================
@@ -33,12 +42,12 @@
 
     function salvarEstado() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
-            ativado: ATIVADO,
-            quantidade: QUANTIDADE,
+            ativado:      ATIVADO,
+            quantidade:   QUANTIDADE,
             cunharMaximo: CUNHAR_MAXIMO,
             totalCunhado: totalCunhado,
             pausaAldeias: PAUSA_ENTRE_ALDEIAS,
-            pausaCiclos: PAUSA_ENTRE_CICLOS
+            pausaCiclos:  PAUSA_ENTRE_CICLOS
         }));
     }
 
@@ -46,15 +55,68 @@
         const salvo = localStorage.getItem(STORAGE_KEY);
         if (salvo) {
             const dados = JSON.parse(salvo);
-            ATIVADO             = dados.ativado || false;
-            QUANTIDADE          = dados.quantidade || 1;
-            CUNHAR_MAXIMO       = dados.cunharMaximo !== undefined ? dados.cunharMaximo : true;
-            totalCunhado        = dados.totalCunhado || 0;
-            PAUSA_ENTRE_ALDEIAS = dados.pausaAldeias || 2000;
-            PAUSA_ENTRE_CICLOS  = dados.pausaCiclos  || 30000;
+            ATIVADO             = dados.ativado       || DEFAULTS.ativado;
+            QUANTIDADE          = dados.quantidade    || DEFAULTS.quantidade;
+            CUNHAR_MAXIMO       = dados.cunharMaximo  !== undefined ? dados.cunharMaximo : DEFAULTS.cunharMaximo;
+            totalCunhado        = dados.totalCunhado  || DEFAULTS.totalCunhado;
+            PAUSA_ENTRE_ALDEIAS = dados.pausaAldeias  || DEFAULTS.pausaAldeias;
+            PAUSA_ENTRE_CICLOS  = dados.pausaCiclos   || DEFAULTS.pausaCiclos;
             console.log('[Cunhagem] Estado carregado:', ATIVADO ? 'LIGADO' : 'DESLIGADO');
             if (ATIVADO) setTimeout(() => iniciar(), 2000);
         }
+    }
+
+    function resetarTudo() {
+        // Para o script se estiver rodando
+        if (ATIVADO) {
+            ATIVADO = false;
+            rodando = false;
+            cicloAtivo = false;
+        }
+
+        // Volta às configurações padrão
+        QUANTIDADE          = DEFAULTS.quantidade;
+        CUNHAR_MAXIMO       = DEFAULTS.cunharMaximo;
+        PAUSA_ENTRE_ALDEIAS = DEFAULTS.pausaAldeias;
+        PAUSA_ENTRE_CICLOS  = DEFAULTS.pausaCiclos;
+        totalCunhado        = DEFAULTS.totalCunhado;
+        cicloAtual          = 0;
+        cacheAcademia       = {};
+
+        // Limpa o localStorage
+        localStorage.removeItem(STORAGE_KEY);
+
+        // Atualiza a UI
+        aplicarEstadoNaUI();
+        adicionarLog('Reset completo. Configurações restauradas.', 'warn');
+        console.log('[Cunhagem] Reset completo. localStorage limpo.');
+    }
+
+    function aplicarEstadoNaUI() {
+        const inpMaximo  = document.getElementById('tws-maximo');
+        const inpQtd     = document.getElementById('tws-quantidade');
+        const inpAldeias = document.getElementById('tws-pausa-aldeias');
+        const inpCiclos  = document.getElementById('tws-pausa-ciclos');
+        const qtdDiv     = document.getElementById('tws-quantidade-div');
+
+        if (inpMaximo)  inpMaximo.checked     = CUNHAR_MAXIMO;
+        if (inpQtd)     inpQtd.value          = QUANTIDADE;
+        if (inpAldeias) inpAldeias.value       = PAUSA_ENTRE_ALDEIAS;
+        if (inpCiclos)  inpCiclos.value        = PAUSA_ENTRE_CICLOS / 1000;
+        if (qtdDiv)     qtdDiv.style.display   = CUNHAR_MAXIMO ? 'none' : 'flex';
+
+        atualizarBotao(false);
+        atualizarMetricas();
+
+        // Limpa erros de validação
+        ['tws-err-qtd', 'tws-err-aldeias', 'tws-err-ciclos'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        ['tws-quantidade', 'tws-pausa-aldeias', 'tws-pausa-ciclos'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.borderColor = '#444';
+        });
     }
 
     // ============================================
@@ -197,7 +259,7 @@
             if (quantidadeCunhar === 0) return { success: false, reason: 'Quantidade invalida', maximo };
 
             const resultado = await cunharMoedaViaFormulario(villageId, quantidadeCunhar);
-            resultado.maximo = maximo;
+            resultado.maximo    = maximo;
             resultado.quantidade = quantidadeCunhar;
             return resultado;
 
@@ -242,11 +304,10 @@
         atualizarMetricas();
         adicionarLog(`Ciclo ${cicloAtual} iniciado`, 'ok');
 
-        console.log('');
-        console.log(`=========================================`);
+        console.log(`\n========================================`);
         console.log(`CICLO ${cicloAtual} - ${new Date().toLocaleTimeString()}`);
         console.log(`Modo: ${CUNHAR_MAXIMO ? 'MAXIMO' : `${QUANTIDADE} por vez`}`);
-        console.log(`=========================================`);
+        console.log(`========================================`);
 
         try {
             const response = await fetch('/map/village.txt', { credentials: 'same-origin' });
@@ -265,9 +326,9 @@
                 .map(line => {
                     const [id, name, x, y, player] = line.split(',');
                     return {
-                        id: parseInt(id),
-                        name: decodeURIComponent(name.replace(/\+/g, ' ')),
-                        coord: `${x}|${y}`,
+                        id:     parseInt(id),
+                        name:   decodeURIComponent(name.replace(/\+/g, ' ')),
+                        coord:  `${x}|${y}`,
                         player: parseInt(player)
                     };
                 })
@@ -298,9 +359,9 @@
                 } else {
                     const msgs = {
                         recursos_insuficientes: 'recursos insuficientes',
-                        limite_atingido: 'limite de nobres atingido'
+                        limite_atingido:        'limite de nobres atingido'
                     };
-                    const motivo = msgs[resultado.reason] || resultado.reason;
+                    const motivo  = msgs[resultado.reason] || resultado.reason;
                     const tipoLog = resultado.reason === 'recursos_insuficientes' ? 'warn' : 'err';
                     adicionarLog(`${aldeia.name}: ${motivo}`, tipoLog);
                     console.log(`[${index}] ${aldeia.name} - ${motivo}`);
@@ -371,7 +432,7 @@
         if (dot)  dot.style.background = ativo ? '#22a55a' : '#e24b4a';
         if (stat) stat.textContent = ativo ? `Rodando - Ciclo ${cicloAtual}` : `Parado - ${totalCunhado} moedas`;
         if (btn) {
-            btn.innerHTML = ativo ? '⏹ Desativar' : '▶ Ativar';
+            btn.innerHTML    = ativo ? '⏹ Desativar' : '▶ Ativar';
             btn.style.background = ativo ? '#c0392b' : '#27ae60';
         }
         atualizarMetricas();
@@ -410,11 +471,13 @@
 
             <div id="tws-body" style="padding:14px;display:flex;flex-direction:column;gap:12px;">
 
+                <!-- Status -->
                 <div style="display:flex;align-items:center;gap:10px;background:#252525;border-radius:8px;padding:8px 12px;">
                     <div id="tws-dot" style="width:10px;height:10px;border-radius:50%;background:#e24b4a;flex-shrink:0;transition:background .3s;"></div>
                     <span id="tws-status" style="font-weight:500;font-size:12px;">Parado</span>
                 </div>
 
+                <!-- Métricas -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <div style="background:#252525;border-radius:8px;padding:10px;text-align:center;">
                         <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Moedas</div>
@@ -428,6 +491,7 @@
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
+                <!-- Modo -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Modo de cunhagem</div>
                     <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#252525;border-radius:8px;padding:8px 12px;">
@@ -444,6 +508,7 @@
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
+                <!-- Intervalos -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Intervalos</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -462,10 +527,17 @@
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
-                <button id="tws-botao" style="width:100%;padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#27ae60;color:#fff;transition:opacity .15s;">
-                    ▶ Ativar
-                </button>
+                <!-- Botões ativar + reset -->
+                <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch;">
+                    <button id="tws-botao" style="padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#27ae60;color:#fff;transition:opacity .15s;">
+                        ▶ Ativar
+                    </button>
+                    <button id="tws-reset" title="Resetar tudo e limpar dados salvos" style="padding:10px 12px;border:none;border-radius:8px;font-size:12px;cursor:pointer;background:#2e2e2e;color:#e24b4a;border:1px solid #3a3a3a;font-weight:bold;white-space:nowrap;">
+                        ↺ Reset
+                    </button>
+                </div>
 
+                <!-- Log -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Log recente</div>
                     <div id="tws-log" style="background:#0f0f0f;border-radius:6px;padding:8px;font-family:monospace;color:#888;max-height:120px;overflow-y:auto;min-height:60px;display:flex;flex-direction:column;gap:2px;">
@@ -478,6 +550,7 @@
 
         document.body.appendChild(painel);
 
+        // --- Eventos ---
         const maximoCheck   = document.getElementById('tws-maximo');
         const quantidadeDiv = document.getElementById('tws-quantidade-div');
         const inpQtd        = document.getElementById('tws-quantidade');
@@ -516,6 +589,14 @@
             toggle();
         });
 
+        // Botão reset com confirmação
+        document.getElementById('tws-reset').addEventListener('click', () => {
+            if (confirm('Resetar tudo? Isso vai parar a cunhagem, zerar contadores e apagar as configurações salvas.')) {
+                resetarTudo();
+            }
+        });
+
+        // Minimizar
         const minimizar = document.getElementById('tws-minimizar');
         const body      = document.getElementById('tws-body');
         minimizar.addEventListener('click', () => {
@@ -524,6 +605,7 @@
             minimizar.textContent = visivel ? '+' : '−';
         });
 
+        // Arrastar
         const header = document.getElementById('tws-header');
         let dragging = false, startX, startY, startLeft, startTop;
 
