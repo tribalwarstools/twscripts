@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tribal Wars - Cunhagem Automática Contínua
 // @namespace    http://tampermonkey.net/
-// @version      3.0
+// @version      4.0
 // @description  Passa por todas as aldeias em loop contínuo cunhando moedas
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
@@ -11,22 +11,89 @@
     'use strict';
 
     // ============================================
-    // CONFIGURAÇÕES
+    // CONFIGURAÇÕES PADRÃO
     // ============================================
-    let QUANTIDADE = 1;              // Quantidade de moedas por cunhagem (ou "max" se ativado)
-    let CUNHAR_MAXIMO = false;       // Cunhar o máximo possível em cada aldeia?
-    let PAUSA_ENTRE_ALDEIAS = 2000;  // 2 segundos entre cada aldeia
-    let PAUSA_ENTRE_CICLOS = 30000;  // 30 segundos entre cada ciclo completo
+    const CONFIG_PADRAO = {
+        cunharMaximo: false,
+        quantidade: 1,
+        pausaEntreAldeias: 2000,
+        pausaEntreCiclos: 30000
+    };
 
     // ============================================
     // VARIÁVEIS
     // ============================================
+    let CONFIG = { ...CONFIG_PADRAO };
     let rodando = false;
     let cicloAtivo = false;
     let painel = null;
     let custoMoeda = { wood: 28000, stone: 30000, iron: 25000 };
     let totalCunhado = 0;
     let totalCiclos = 0;
+
+    // ============================================
+    // PERSISTÊNCIA (localStorage)
+    // ============================================
+    const STORAGE_KEY = 'tws_cunhagem_config';
+
+    function salvarConfig() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                config: CONFIG,
+                totalCunhado: totalCunhado,
+                totalCiclos: totalCiclos,
+                ultimaAtualizacao: Date.now()
+            }));
+            console.log('[Cunhagem] Configurações salvas');
+        } catch (err) {
+            console.error('[Cunhagem] Erro ao salvar:', err);
+        }
+    }
+
+    function carregarConfig() {
+        try {
+            const salvo = localStorage.getItem(STORAGE_KEY);
+            if (salvo) {
+                const dados = JSON.parse(salvo);
+                CONFIG = { ...CONFIG_PADRAO, ...dados.config };
+                totalCunhado = dados.totalCunhado || 0;
+                totalCiclos = dados.totalCiclos || 0;
+                console.log('[Cunhagem] Configurações carregadas');
+                console.log('  - Cunhar máximo:', CONFIG.cunharMaximo);
+                console.log('  - Quantidade:', CONFIG.quantidade);
+                console.log('  - Pausa entre aldeias:', CONFIG.pausaEntreAldeias);
+                console.log('  - Pausa entre ciclos:', CONFIG.pausaEntreCiclos);
+                console.log('  - Total já cunhado:', totalCunhado);
+            }
+        } catch (err) {
+            console.error('[Cunhagem] Erro ao carregar:', err);
+        }
+    }
+
+    function resetarConfig() {
+        CONFIG = { ...CONFIG_PADRAO };
+        totalCunhado = 0;
+        totalCiclos = 0;
+        salvarConfig();
+        
+        // Atualizar interface
+        if (painel) {
+            const maximoCheck = document.getElementById('tws-maximo');
+            const quantidadeDiv = document.getElementById('tws-quantidade-div');
+            const quantidadeInput = document.getElementById('tws-quantidade');
+            const pausaInput = document.getElementById('tws-pausa');
+            const pausaCicloInput = document.getElementById('tws-pausa-ciclo');
+            
+            if (maximoCheck) maximoCheck.checked = CONFIG.cunharMaximo;
+            if (quantidadeDiv) quantidadeDiv.style.display = CONFIG.cunharMaximo ? 'none' : 'block';
+            if (quantidadeInput) quantidadeInput.value = CONFIG.quantidade;
+            if (pausaInput) pausaInput.value = CONFIG.pausaEntreAldeias;
+            if (pausaCicloInput) pausaCicloInput.value = CONFIG.pausaEntreCiclos;
+        }
+        
+        atualizarStatus(`🔄 Configurações resetadas! Total cunhado zerado.`);
+        console.log('[Cunhagem] Configurações resetadas');
+    }
 
     // ============================================
     // FUNÇÕES
@@ -111,6 +178,7 @@
         
         cicloAtivo = true;
         totalCiclos++;
+        salvarConfig();
         
         atualizarStatus(`🔄 Ciclo ${totalCiclos} - Buscando aldeias...`);
         
@@ -148,9 +216,9 @@
                 const html = await overview.text();
                 const recursos = extrairRecursos(html);
                 
-                let quantidadeCunhar = QUANTIDADE;
+                let quantidadeCunhar = CONFIG.quantidade;
                 
-                if (CUNHAR_MAXIMO) {
+                if (CONFIG.cunharMaximo) {
                     quantidadeCunhar = calcularMaximo(recursos);
                 }
                 
@@ -161,6 +229,7 @@
                     
                     if (sucesso) {
                         totalCunhado += quantidadeCunhar;
+                        salvarConfig();
                         atualizarStatus(`✅ ${quantidadeCunhar} moeda(s) cunhada(s) em ${aldeia.name}! Total: ${totalCunhado} moedas`);
                         console.log(`[Cunhagem] ✅ ${quantidadeCunhar} moedas em ${aldeia.name} (${aldeia.coord}) - Total: ${totalCunhado}`);
                     } else {
@@ -169,11 +238,11 @@
                     }
                 }
                 
-                await new Promise(r => setTimeout(r, PAUSA_ENTRE_ALDEIAS));
+                await new Promise(r => setTimeout(r, CONFIG.pausaEntreAldeias));
             }
             
             if (rodando) {
-                atualizarStatus(`✅ Ciclo ${totalCiclos} concluído! Aguardando ${PAUSA_ENTRE_CICLOS/1000}s... | Total cunhado: ${totalCunhado} moedas`);
+                atualizarStatus(`✅ Ciclo ${totalCiclos} concluído! Aguardando ${CONFIG.pausaEntreCiclos/1000}s... | Total cunhado: ${totalCunhado} moedas`);
                 console.log(`[Cunhagem] Ciclo ${totalCiclos} concluído. Total cunhado: ${totalCunhado}`);
             }
             
@@ -185,7 +254,7 @@
         cicloAtivo = false;
         
         if (rodando) {
-            await new Promise(r => setTimeout(r, PAUSA_ENTRE_CICLOS));
+            await new Promise(r => setTimeout(r, CONFIG.pausaEntreCiclos));
             if (rodando) {
                 escanearECunhar();
             }
@@ -199,12 +268,10 @@
         }
         
         rodando = true;
-        totalCunhado = 0;
-        totalCiclos = 0;
         
         atualizarStatus('🚀 INICIADO! Verificando aldeias...');
         console.log('[Cunhagem] Iniciado!');
-        console.log(`[Cunhagem] Modo: ${CUNHAR_MAXIMO ? 'Cunhar MÁXIMO' : `Cunhar ${QUANTIDADE} moeda(s) por vez`}`);
+        console.log(`[Cunhagem] Modo: ${CONFIG.cunharMaximo ? 'Cunhar MÁXIMO' : `Cunhar ${CONFIG.quantidade} moeda(s) por vez`}`);
         
         escanearECunhar();
     }
@@ -213,6 +280,7 @@
         rodando = false;
         atualizarStatus('⏹️ PARADO. Clique em "INICIAR" para recomeçar.');
         console.log('[Cunhagem] Parado. Total cunhado:', totalCunhado);
+        salvarConfig();
     }
 
     // ============================================
@@ -244,23 +312,23 @@
             </div>
             <div style="margin-bottom: 8px;">
                 <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <input type="checkbox" id="tws-maximo" ${CUNHAR_MAXIMO ? 'checked' : ''}>
+                    <input type="checkbox" id="tws-maximo" ${CONFIG.cunharMaximo ? 'checked' : ''}>
                     <span>Cunhar MÁXIMO possível em cada aldeia</span>
                 </label>
             </div>
-            <div id="tws-quantidade-div" style="margin-bottom: 8px; ${CUNHAR_MAXIMO ? 'display: none;' : ''}">
+            <div id="tws-quantidade-div" style="margin-bottom: 8px; ${CONFIG.cunharMaximo ? 'display: none;' : ''}">
                 <label style="display: block; margin-bottom: 3px;">Quantidade por cunhagem:</label>
-                <input type="number" id="tws-quantidade" value="${QUANTIDADE}" min="1" max="100" 
+                <input type="number" id="tws-quantidade" value="${CONFIG.quantidade}" min="1" max="100" 
                        style="width: 100%; padding: 4px; background: #333; border: 1px solid #555; color: #fff; border-radius: 3px;">
             </div>
             <div style="margin-bottom: 8px;">
                 <label style="display: block; margin-bottom: 3px;">Pausa entre aldeias (ms):</label>
-                <input type="number" id="tws-pausa" value="${PAUSA_ENTRE_ALDEIAS}" min="500" max="10000" step="500"
+                <input type="number" id="tws-pausa" value="${CONFIG.pausaEntreAldeias}" min="500" max="10000" step="500"
                        style="width: 100%; padding: 4px; background: #333; border: 1px solid #555; color: #fff; border-radius: 3px;">
             </div>
             <div style="margin-bottom: 12px;">
                 <label style="display: block; margin-bottom: 3px;">Pausa entre ciclos (ms):</label>
-                <input type="number" id="tws-pausa-ciclo" value="${PAUSA_ENTRE_CICLOS}" min="5000" max="300000" step="5000"
+                <input type="number" id="tws-pausa-ciclo" value="${CONFIG.pausaEntreCiclos}" min="5000" max="300000" step="5000"
                        style="width: 100%; padding: 4px; background: #333; border: 1px solid #555; color: #fff; border-radius: 3px;">
             </div>
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
@@ -271,8 +339,13 @@
                     ⏹️ PARAR
                 </button>
             </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <button id="tws-resetar" style="flex: 1; background: #ff9800; color: #fff; border: none; padding: 6px; border-radius: 5px; cursor: pointer; font-size: 11px;">
+                    🔄 RESETAR CONFIG
+                </button>
+            </div>
             <div id="tws-status" style="margin-top: 8px; padding: 6px; background: #2a2a2a; border-radius: 4px; font-size: 10px; color: #ff9900; text-align: center; min-height: 50px;">
-                ⏸️ Parado
+                ⏸️ Parado | Total já cunhado: ${totalCunhado} moedas
             </div>
         `;
         
@@ -286,28 +359,34 @@
         const pausaCicloInput = document.getElementById('tws-pausa-ciclo');
         
         maximoCheck.addEventListener('change', () => {
-            CUNHAR_MAXIMO = maximoCheck.checked;
-            quantidadeDiv.style.display = CUNHAR_MAXIMO ? 'none' : 'block';
+            CONFIG.cunharMaximo = maximoCheck.checked;
+            quantidadeDiv.style.display = CONFIG.cunharMaximo ? 'none' : 'block';
+            salvarConfig();
         });
         
         quantidadeInput.addEventListener('change', () => {
-            QUANTIDADE = parseInt(quantidadeInput.value) || 1;
+            CONFIG.quantidade = parseInt(quantidadeInput.value) || 1;
+            salvarConfig();
         });
         
         pausaInput.addEventListener('change', () => {
-            PAUSA_ENTRE_ALDEIAS = parseInt(pausaInput.value) || 2000;
+            CONFIG.pausaEntreAldeias = parseInt(pausaInput.value) || 2000;
+            salvarConfig();
         });
         
         pausaCicloInput.addEventListener('change', () => {
-            PAUSA_ENTRE_CICLOS = parseInt(pausaCicloInput.value) || 30000;
+            CONFIG.pausaEntreCiclos = parseInt(pausaCicloInput.value) || 30000;
+            salvarConfig();
         });
         
         document.getElementById('tws-iniciar').onclick = iniciar;
         document.getElementById('tws-parar').onclick = parar;
+        document.getElementById('tws-resetar').onclick = resetarConfig;
     }
     
     function iniciarScript() {
         console.log('[Cunhagem] Script carregado');
+        carregarConfig();
         
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', criarPainel);
