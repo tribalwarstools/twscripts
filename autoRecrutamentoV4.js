@@ -90,10 +90,19 @@ function carregarEstado() {
         totalRecrutado      = d.totalRecrutado || DEFAULTS.totalRecrutado;
         configAldeias       = d.configAldeias  || {};
         
-        // 🔄 REATIVAR AUTOMATICAMENTE SE ESTAVA LIGADO
-        if (ATIVADO && !rodando) {
-            setTimeout(() => iniciar(), 2000);
-        }
+        // Aguarda o painel ser criado para atualizar a UI
+        const aguardarPainel = setInterval(() => {
+            if (painel) {
+                clearInterval(aguardarPainel);
+                atualizarBotao(ATIVADO);
+                atualizarMetricas();
+                atualizarContadorAldeias();
+                
+                if (ATIVADO && !rodando) {
+                    setTimeout(() => iniciar(), 2000);
+                }
+            }
+        }, 100);
     }
 }
 
