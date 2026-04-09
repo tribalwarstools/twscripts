@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Recrutamento Automático
 // @namespace    http://tampermonkey.net/
-// @version      2.0
-// @description  Recrutamento automático via formulário nativo
+// @version      3.0
+// @description  Recrutamento automático por aldeia com até 3 unidades configuráveis
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -27,52 +27,53 @@
         knight:   { nome: 'Paladino',      tela: 'statue'   }
     };
 
+    const SELECT_UNIDADE_OPTIONS = `<option value="">— nenhuma —</option>` +
+        Object.entries(UNIDADES).map(([k, v]) => `<option value="${k}">${v.nome}</option>`).join('');
+
     // ============================================
     // CONFIGURAÇÕES PADRÃO
     // ============================================
     const DEFAULTS = {
         ativado:        false,
-        unidade:        'spy',
-        quantidade:     5,
         pausaAldeias:   2000,
         pausaCiclos:    60000,
         minimizado:     false,
         posX:           null,
         posY:           null,
-        totalRecrutado: 0
+        totalRecrutado: 0,
+        configAldeias:  {}   // { [villageId]: { nome, slots: [{unidade, quantidade}] } }
     };
 
     let ATIVADO             = DEFAULTS.ativado;
-    let UNIDADE             = DEFAULTS.unidade;
-    let QUANTIDADE          = DEFAULTS.quantidade;
     let PAUSA_ENTRE_ALDEIAS = DEFAULTS.pausaAldeias;
     let PAUSA_ENTRE_CICLOS  = DEFAULTS.pausaCiclos;
     let MINIMIZADO          = DEFAULTS.minimizado;
     let POS_X               = DEFAULTS.posX;
     let POS_Y               = DEFAULTS.posY;
     let totalRecrutado      = DEFAULTS.totalRecrutado;
+    let configAldeias       = {};   // { [villageId]: { nome, slots: [{unidade, quantidade}] } }
 
     let rodando    = false;
     let cicloAtivo = false;
     let cicloAtual = 0;
     let painel     = null;
+    let modal      = null;
 
     // ============================================
     // PERSISTÊNCIA
     // ============================================
-    const STORAGE_KEY = 'tws_recrutamento_v2';
+    const STORAGE_KEY = 'tws_recrutamento_v3';
 
     function salvarEstado() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
             ativado:        ATIVADO,
-            unidade:        UNIDADE,
-            quantidade:     QUANTIDADE,
             pausaAldeias:   PAUSA_ENTRE_ALDEIAS,
             pausaCiclos:    PAUSA_ENTRE_CICLOS,
             minimizado:     MINIMIZADO,
             posX:           POS_X,
             posY:           POS_Y,
-            totalRecrutado: totalRecrutado
+            totalRecrutado: totalRecrutado,
+            configAldeias:  configAldeias
         }));
     }
 
@@ -81,21 +82,18 @@
         if (salvo) {
             const d = JSON.parse(salvo);
             ATIVADO             = false;
-            UNIDADE             = d.unidade        || DEFAULTS.unidade;
-            QUANTIDADE          = d.quantidade     || DEFAULTS.quantidade;
             PAUSA_ENTRE_ALDEIAS = d.pausaAldeias   || DEFAULTS.pausaAldeias;
             PAUSA_ENTRE_CICLOS  = d.pausaCiclos    || DEFAULTS.pausaCiclos;
             MINIMIZADO          = d.minimizado     || DEFAULTS.minimizado;
             POS_X               = d.posX           !== undefined ? d.posX : DEFAULTS.posX;
             POS_Y               = d.posY           !== undefined ? d.posY : DEFAULTS.posY;
             totalRecrutado      = d.totalRecrutado || DEFAULTS.totalRecrutado;
+            configAldeias       = d.configAldeias  || {};
         }
     }
 
     function resetarTudo() {
         if (ATIVADO) { ATIVADO = false; rodando = false; cicloAtivo = false; }
-        UNIDADE             = DEFAULTS.unidade;
-        QUANTIDADE          = DEFAULTS.quantidade;
         PAUSA_ENTRE_ALDEIAS = DEFAULTS.pausaAldeias;
         PAUSA_ENTRE_CICLOS  = DEFAULTS.pausaCiclos;
         MINIMIZADO          = DEFAULTS.minimizado;
@@ -103,6 +101,7 @@
         POS_Y               = DEFAULTS.posY;
         totalRecrutado      = DEFAULTS.totalRecrutado;
         cicloAtual          = 0;
+        configAldeias       = {};
         localStorage.removeItem(STORAGE_KEY);
 
         if (painel) {
@@ -116,15 +115,11 @@
     }
 
     function aplicarEstadoNaUI() {
-        const selUnidade = document.getElementById('tws-unidade');
-        const inpQtd     = document.getElementById('tws-quantidade');
         const inpAldeias = document.getElementById('tws-pausa-aldeias');
         const inpCiclos  = document.getElementById('tws-pausa-ciclos');
         const body       = document.getElementById('tws-body');
         const minimizar  = document.getElementById('tws-minimizar');
 
-        if (selUnidade) selUnidade.value      = UNIDADE;
-        if (inpQtd)     inpQtd.value          = QUANTIDADE;
         if (inpAldeias) inpAldeias.value      = PAUSA_ENTRE_ALDEIAS;
         if (inpCiclos)  inpCiclos.value       = PAUSA_ENTRE_CICLOS / 1000;
         if (body)       body.style.display    = MINIMIZADO ? 'none' : 'flex';
@@ -132,15 +127,24 @@
 
         atualizarBotao(false);
         atualizarMetricas();
+        atualizarContadorAldeias();
 
-        ['tws-err-qtd','tws-err-aldeias','tws-err-ciclos'].forEach(id => {
+        ['tws-err-aldeias','tws-err-ciclos'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
-        ['tws-quantidade','tws-pausa-aldeias','tws-pausa-ciclos'].forEach(id => {
+        ['tws-pausa-aldeias','tws-pausa-ciclos'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.borderColor = '#444';
         });
+    }
+
+    function atualizarContadorAldeias() {
+        const el = document.getElementById('tws-aldeias-config');
+        if (!el) return;
+        const total = Object.keys(configAldeias).length;
+        el.textContent = total === 0 ? 'Nenhuma aldeia configurada' : `${total} aldeia(s) configurada(s)`;
+        el.style.color = total === 0 ? '#e24b4a' : '#22a55a';
     }
 
     // ============================================
@@ -148,14 +152,6 @@
     // ============================================
     function validarCampos() {
         let ok = true;
-
-        const inpQtd = document.getElementById('tws-quantidade');
-        const v = parseInt(inpQtd?.value);
-        const validQ = !isNaN(v) && v >= 1 && v <= 9999;
-        if (inpQtd) inpQtd.style.borderColor = validQ ? '#444' : '#e24b4a';
-        const errQ = document.getElementById('tws-err-qtd');
-        if (errQ) errQ.style.display = validQ ? 'none' : 'block';
-        if (!validQ) ok = false;
 
         const inpAldeias = document.getElementById('tws-pausa-aldeias');
         const va = parseInt(inpAldeias?.value);
@@ -172,6 +168,11 @@
         const errC = document.getElementById('tws-err-ciclos');
         if (errC) errC.style.display = validC ? 'none' : 'block';
         if (!validC) ok = false;
+
+        if (Object.keys(configAldeias).length === 0) {
+            adicionarLog('Configure ao menos uma aldeia antes de ativar.', 'err');
+            ok = false;
+        }
 
         return ok;
     }
@@ -199,78 +200,60 @@
     // ============================================
     // RECRUTAMENTO VIA FORMULÁRIO NATIVO
     // ============================================
-    async function recrutarNaAldeia(villageId) {
-        const unidadeInfo = UNIDADES[UNIDADE];
+    async function recrutarUnidadeNaAldeia(villageId, unidade, quantidade) {
+        const unidadeInfo = UNIDADES[unidade];
         if (!unidadeInfo) return { success: false, reason: 'Unidade inválida' };
 
         try {
-            // 1. Carrega a tela de treinamento
-            const tela = unidadeInfo.tela;
-            const url  = `/game.php?village=${villageId}&screen=${tela}`;
+            const tela     = unidadeInfo.tela;
+            const url      = `/game.php?village=${villageId}&screen=${tela}`;
             const response = await fetch(url, { credentials: 'same-origin' });
             if (!response.ok) return { success: false, reason: `HTTP ${response.status}` };
 
             const html = await response.text();
 
-            // 2. Verifica se o input da unidade existe na página
-            //    Ex: <input name="spear" id="spear_0" ...>
-            const inputRegex = new RegExp(`name="${UNIDADE}"`, 'i');
-            if (!inputRegex.test(html)) {
+            // Verifica se input da unidade existe
+            if (!new RegExp(`name="${unidade}"`, 'i').test(html)) {
                 return { success: false, reason: `Sem ${unidadeInfo.nome} disponível` };
             }
 
-            // 3. Verifica se máximo > 0 via link de máximo
-            //    Ex: <a id="spear_0_a" href="javascript:unit_build_block.set_max('spear')">(670)</a>
-            const maxRegex = new RegExp(`set_max\\('${UNIDADE}'\\)[^(]*\\((\\d+)\\)`, 'i');
-            const maxMatch = html.match(maxRegex);
+            // Lê máximo pelo link set_max
+            const maxMatch = html.match(new RegExp(`set_max\\('${unidade}'\\)[^(]*\\((\\d+)\\)`, 'i'));
             const maximo   = maxMatch ? parseInt(maxMatch[1]) : 0;
 
-            if (maximo === 0) {
-                return { success: false, reason: 'Sem unidades disponíveis (máx. = 0)' };
-            }
+            if (maximo === 0) return { success: false, reason: `${unidadeInfo.nome}: máx. = 0` };
 
-            // 4. Quantidade a recrutar — respeita o máximo permitido pelo jogo
-            const quantidadeRecrutar = Math.min(QUANTIDADE, maximo);
+            const qtd = Math.min(quantidade, maximo);
 
-            // 5. Extrai o formulário nativo
+            // Extrai formulário
             const parser = new DOMParser();
             const doc    = parser.parseFromString(html, 'text/html');
-
-            // O form de treino — pode ser action=/game.php?...&action=train ou similar
-            const form = doc.querySelector('form[action*="screen=' + tela + '"]') ||
-                         doc.querySelector('form#unit_order_form') ||
-                         doc.querySelector('form.train-form') ||
-                         doc.querySelector('form');
+            const form   = doc.querySelector('form[action*="screen=' + tela + '"]') ||
+                           doc.querySelector('form#unit_order_form') ||
+                           doc.querySelector('form');
 
             if (!form) return { success: false, reason: 'Formulário não encontrado' };
 
-            // 6. Extrai CSRF do form ou do game_data
-            const actionUrl  = form.getAttribute('action') || '';
-            const csrfMatch  = actionUrl.match(/[&?]h=([a-f0-9]+)/i) ||
-                               html.match(/"csrf":"([a-f0-9]+)"/i) ||
-                               html.match(/name="h" value="([^"]+)"/);
+            const actionUrl = form.getAttribute('action') || '';
+            const csrfMatch = actionUrl.match(/[&?]h=([a-f0-9]+)/i) ||
+                              html.match(/"csrf":"([a-f0-9]+)"/i) ||
+                              html.match(/name="h" value="([^"]+)"/);
             const csrf = csrfMatch ? csrfMatch[1] : (window.game_data?.csrf || '');
 
             if (!csrf) return { success: false, reason: 'CSRF não encontrado' };
 
-            // 7. Monta FormData com todos os campos hidden + a unidade preenchida
             const formData = new URLSearchParams();
             form.querySelectorAll('input, select').forEach(inp => {
-                if (!inp.name) return;
-                if (inp.type === 'submit' || inp.type === 'button') return;
-                // Zera todas as unidades e preenche só a escolhida
+                if (!inp.name || inp.type === 'submit' || inp.type === 'button') return;
                 if (Object.keys(UNIDADES).includes(inp.name)) {
-                    formData.set(inp.name, inp.name === UNIDADE ? quantidadeRecrutar.toString() : '');
+                    formData.set(inp.name, inp.name === unidade ? qtd.toString() : '');
                 } else {
                     formData.set(inp.name, inp.value);
                 }
             });
-
-            // Garante que a unidade está setada mesmo se o input não foi encontrado no form
-            formData.set(UNIDADE, quantidadeRecrutar.toString());
+            formData.set(unidade, qtd.toString());
             formData.set('h', csrf);
 
-            // 8. POST para a URL de treinamento
             const postUrl = `/game.php?village=${villageId}&screen=${tela}&action=train&h=${csrf}`;
 
             const postResponse = await fetch(postUrl, {
@@ -285,31 +268,20 @@
 
             if (!postResponse.ok) return { success: false, reason: `HTTP ${postResponse.status}` };
 
-            // 9. Verifica resposta
             const contentType = postResponse.headers.get('content-type') || '';
-
             if (contentType.includes('application/json')) {
                 const json = await postResponse.json().catch(() => null);
-                if (json?.response?.success === true) {
-                    return { success: true, quantidade: quantidadeRecrutar };
-                }
-                if (json?.response?.success === false) {
-                    return { success: false, reason: json?.response?.msg || 'Recusado pelo servidor' };
-                }
+                if (json?.response?.success === true)  return { success: true,  quantidade: qtd };
+                if (json?.response?.success === false) return { success: false, reason: json?.response?.msg || 'Recusado' };
             }
 
-            // Fallback: HTML — verifica textos de erro conhecidos
             const texto = await postResponse.text().catch(() => '');
-            if (/recursos insuficientes|not enough/i.test(texto))
-                return { success: false, reason: 'Recursos insuficientes' };
-            if (/fila cheia|queue full|limite/i.test(texto))
-                return { success: false, reason: 'Fila cheia ou limite atingido' };
+            if (/recursos insuficientes|not enough/i.test(texto))  return { success: false, reason: 'Recursos insuficientes' };
+            if (/fila cheia|queue full|limite/i.test(texto))        return { success: false, reason: 'Fila cheia' };
 
-            // Se chegou aqui sem erro explícito, assume sucesso
-            return { success: true, quantidade: quantidadeRecrutar };
+            return { success: true, quantidade: qtd };
 
         } catch (err) {
-            console.error('[Recrutamento] Erro:', err);
             return { success: false, reason: err.message };
         }
     }
@@ -328,55 +300,46 @@
 
         console.log(`\n========================================`);
         console.log(`CICLO ${cicloAtual} - ${new Date().toLocaleTimeString()}`);
-        console.log(`Unidade: ${UNIDADES[UNIDADE]?.nome} | Qtd: ${QUANTIDADE}`);
         console.log(`========================================`);
 
         try {
-            const response = await fetch('/map/village.txt', { credentials: 'same-origin' });
-            if (!response.ok) throw new Error('Não foi possível carregar aldeias');
+            const aldeiasCfg = Object.entries(configAldeias);
 
-            const dados = await response.text();
-            const meuId = window.game_data?.player?.id;
-
-            if (!meuId) {
-                adicionarLog('Erro: ID do jogador não encontrado', 'err');
+            if (aldeiasCfg.length === 0) {
+                adicionarLog('Nenhuma aldeia configurada.', 'warn');
                 cicloAtivo = false;
                 return;
             }
 
-            const minhasAldeias = dados.trim().split('\n')
-                .map(line => {
-                    const [id, name, x, y, player] = line.split(',');
-                    return {
-                        id:     parseInt(id),
-                        name:   decodeURIComponent(name.replace(/\+/g, ' ')),
-                        coord:  `${x}|${y}`,
-                        player: parseInt(player)
-                    };
-                })
-                .filter(v => v.player === meuId);
+            adicionarLog(`${aldeiasCfg.length} aldeia(s) no ciclo`, 'ok');
 
-            adicionarLog(`${minhasAldeias.length} aldeia(s) encontrada(s)`, 'ok');
-
-            let index = 0;
-            for (const aldeia of minhasAldeias) {
+            for (const [villageId, cfg] of aldeiasCfg) {
                 if (!ATIVADO) break;
-                index++;
 
-                console.log(`[${index}/${minhasAldeias.length}] ${aldeia.name} (${aldeia.coord})`);
+                const slots = (cfg.slots || []).filter(s => s.unidade && s.quantidade > 0);
+                if (slots.length === 0) continue;
 
-                const resultado = await recrutarNaAldeia(aldeia.id);
+                console.log(`\n[${cfg.nome}]`);
 
-                if (resultado.success) {
-                    totalRecrutado += resultado.quantidade;
-                    salvarEstado();
-                    atualizarMetricas();
-                    adicionarLog(`${aldeia.name}: +${resultado.quantidade} ${UNIDADES[UNIDADE]?.nome}`, 'ok');
-                    console.log(`  ✓ Recrutou ${resultado.quantidade}`);
-                } else {
-                    const tipoLog = resultado.reason === 'Recursos insuficientes' ? 'warn' : 'err';
-                    adicionarLog(`${aldeia.name}: ${resultado.reason}`, tipoLog);
-                    console.log(`  ✗ ${resultado.reason}`);
+                for (const slot of slots) {
+                    if (!ATIVADO) break;
+
+                    const resultado = await recrutarUnidadeNaAldeia(parseInt(villageId), slot.unidade, slot.quantidade);
+
+                    if (resultado.success) {
+                        totalRecrutado += resultado.quantidade;
+                        salvarEstado();
+                        atualizarMetricas();
+                        adicionarLog(`${cfg.nome}: +${resultado.quantidade} ${UNIDADES[slot.unidade]?.nome}`, 'ok');
+                        console.log(`  ✓ ${UNIDADES[slot.unidade]?.nome} x${resultado.quantidade}`);
+                    } else {
+                        const tipoLog = /insuficiente|máx/i.test(resultado.reason) ? 'warn' : 'err';
+                        adicionarLog(`${cfg.nome} / ${UNIDADES[slot.unidade]?.nome}: ${resultado.reason}`, tipoLog);
+                        console.log(`  ✗ ${UNIDADES[slot.unidade]?.nome}: ${resultado.reason}`);
+                    }
+
+                    // Pausa entre unidades da mesma aldeia
+                    await new Promise(r => setTimeout(r, 800));
                 }
 
                 await new Promise(r => setTimeout(r, PAUSA_ENTRE_ALDEIAS));
@@ -404,7 +367,7 @@
     async function iniciar() {
         if (rodando) return;
         rodando = true;
-        adicionarLog(`Iniciando — ${UNIDADES[UNIDADE]?.nome} x${QUANTIDADE}`, 'ok');
+        adicionarLog(`Iniciando — ${Object.keys(configAldeias).length} aldeia(s) configurada(s)`, 'ok');
         await new Promise(r => setTimeout(r, 500));
         escanearERecritar();
     }
@@ -422,7 +385,7 @@
     }
 
     // ============================================
-    // UI
+    // UI — PAINEL PRINCIPAL
     // ============================================
     function atualizarMetricas() {
         const metT = document.getElementById('tws-met-total');
@@ -444,19 +407,12 @@
         atualizarMetricas();
     }
 
-    // ============================================
-    // PAINEL
-    // ============================================
     function criarPainel() {
         if (painel) return;
 
         const inputStyle = 'width:100%;padding:6px 8px;background:#111;border:1px solid #444;color:#e0e0e0;border-radius:6px;font-size:12px;box-sizing:border-box;';
         const labelStyle = 'display:block;margin-bottom:4px;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px;';
         const errStyle   = 'display:none;font-size:10px;color:#e24b4a;margin-top:3px;';
-
-        const optionsHtml = Object.entries(UNIDADES)
-            .map(([key, val]) => `<option value="${key}" ${key === UNIDADE ? 'selected' : ''}>${val.nome}</option>`)
-            .join('');
 
         painel = document.createElement('div');
         painel.style.cssText = `
@@ -482,6 +438,8 @@
             painel.style.bottom = 'auto';
         }
 
+        const totalConfig = Object.keys(configAldeias).length;
+
         painel.innerHTML = `
             <div id="tws-header" style="background:#2c2c2c;padding:10px 14px;border-radius:11px 11px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:move;border-bottom:1px solid #3a3a3a;user-select:none;">
                 <span style="font-weight:bold;color:#ffa500;font-size:13px;">⚔️ Recrutamento Automático</span>
@@ -490,11 +448,13 @@
 
             <div id="tws-body" style="padding:14px;display:${MINIMIZADO ? 'none' : 'flex'};flex-direction:column;gap:12px;">
 
+                <!-- Status -->
                 <div style="display:flex;align-items:center;gap:10px;background:#252525;border-radius:8px;padding:8px 12px;">
                     <div id="tws-dot" style="width:10px;height:10px;border-radius:50%;background:#e24b4a;flex-shrink:0;transition:background .3s;"></div>
                     <span id="tws-status" style="font-weight:500;font-size:12px;">Parado</span>
                 </div>
 
+                <!-- Métricas -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <div style="background:#252525;border-radius:8px;padding:10px;text-align:center;">
                         <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Recrutados</div>
@@ -508,23 +468,20 @@
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
+                <!-- Configurar aldeias -->
                 <div>
-                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Configuração</div>
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                        <div>
-                            <label style="${labelStyle}" for="tws-unidade">Unidade</label>
-                            <select id="tws-unidade" style="${inputStyle}">${optionsHtml}</select>
-                        </div>
-                        <div>
-                            <label style="${labelStyle}" for="tws-quantidade">Quantidade por aldeia</label>
-                            <input type="number" id="tws-quantidade" value="${QUANTIDADE}" min="1" max="9999" step="1" style="${inputStyle}">
-                            <span id="tws-err-qtd" style="${errStyle}">Informe um valor entre 1 e 9999</span>
-                        </div>
+                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Aldeias</div>
+                    <div id="tws-aldeias-config" style="font-size:11px;margin-bottom:8px;color:${totalConfig === 0 ? '#e24b4a' : '#22a55a'};">
+                        ${totalConfig === 0 ? 'Nenhuma aldeia configurada' : `${totalConfig} aldeia(s) configurada(s)`}
                     </div>
+                    <button id="tws-btn-config" style="width:100%;padding:8px;border:1px solid #444;border-radius:8px;font-size:12px;cursor:pointer;background:#252525;color:#ffa500;font-weight:bold;">
+                        ⚙ Configurar Aldeias
+                    </button>
                 </div>
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
+                <!-- Intervalos -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Intervalos</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -543,6 +500,7 @@
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
+                <!-- Botões -->
                 <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch;">
                     <button id="tws-botao" style="padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#27ae60;color:#fff;transition:opacity .15s;">
                         ▶ Ativar
@@ -552,6 +510,7 @@
                     </button>
                 </div>
 
+                <!-- Log -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Log recente</div>
                     <div id="tws-log" style="background:#0f0f0f;border-radius:6px;padding:8px;font-family:monospace;color:#888;max-height:120px;overflow-y:auto;min-height:60px;display:flex;flex-direction:column;gap:2px;">
@@ -564,49 +523,40 @@
 
         document.body.appendChild(painel);
 
-        // --- Eventos ---
-        const selUnidade = document.getElementById('tws-unidade');
-        const inpQtd     = document.getElementById('tws-quantidade');
+        // Intervalos
         const inpAldeias = document.getElementById('tws-pausa-aldeias');
         const inpCiclos  = document.getElementById('tws-pausa-ciclos');
-
-        selUnidade.addEventListener('change', () => {
-            UNIDADE = selUnidade.value;
-            salvarEstado();
-        });
-
-        inpQtd.addEventListener('input', () => {
-            QUANTIDADE = parseInt(inpQtd.value) || 1;
-            validarCampos();
-            salvarEstado();
-        });
 
         inpAldeias.addEventListener('input', () => {
             const v = parseInt(inpAldeias.value);
             if (!isNaN(v) && v >= 500) { PAUSA_ENTRE_ALDEIAS = v; salvarEstado(); }
-            validarCampos();
+            const err = document.getElementById('tws-err-aldeias');
+            if (err) err.style.display = (!isNaN(v) && v >= 500) ? 'none' : 'block';
+            inpAldeias.style.borderColor = (!isNaN(v) && v >= 500) ? '#444' : '#e24b4a';
         });
 
         inpCiclos.addEventListener('input', () => {
             const v = parseInt(inpCiclos.value);
             if (!isNaN(v) && v >= 10) { PAUSA_ENTRE_CICLOS = v * 1000; salvarEstado(); }
-            validarCampos();
+            const err = document.getElementById('tws-err-ciclos');
+            if (err) err.style.display = (!isNaN(v) && v >= 10) ? 'none' : 'block';
+            inpCiclos.style.borderColor = (!isNaN(v) && v >= 10) ? '#444' : '#e24b4a';
         });
 
+        document.getElementById('tws-btn-config').addEventListener('click', abrirModal);
+
         document.getElementById('tws-botao').addEventListener('click', () => {
-            if (!ATIVADO && !validarCampos()) {
-                adicionarLog('Corrija os campos antes de ativar', 'err');
-                return;
-            }
+            if (!ATIVADO && !validarCampos()) return;
             toggle();
         });
 
         document.getElementById('tws-reset').addEventListener('click', () => {
-            if (confirm('Resetar tudo? Isso vai parar o recrutamento, zerar contadores e apagar configurações salvas.')) {
+            if (confirm('Resetar tudo? Isso vai parar o recrutamento, zerar contadores, remover configurações de aldeias e apagar dados salvos.')) {
                 resetarTudo();
             }
         });
 
+        // Minimizar
         const minimizar = document.getElementById('tws-minimizar');
         const body      = document.getElementById('tws-body');
         minimizar.addEventListener('click', () => {
@@ -616,6 +566,7 @@
             salvarEstado();
         });
 
+        // Arrastar
         const header = document.getElementById('tws-header');
         let dragging = false, startX, startY, startLeft, startTop;
 
@@ -652,6 +603,229 @@
             POS_Y = Math.round(rect.top);
             salvarEstado();
         });
+    }
+
+    // ============================================
+    // UI — MODAL DE CONFIGURAÇÃO DE ALDEIAS
+    // ============================================
+    async function abrirModal() {
+        if (modal) { modal.style.display = 'flex'; return; }
+
+        // Overlay
+        modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        `;
+
+        // Container
+        const container = document.createElement('div');
+        container.style.cssText = `
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 14px;
+            width: 640px;
+            max-width: 95vw;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: #e0e0e0;
+            font-size: 13px;
+        `;
+
+        container.innerHTML = `
+            <div style="background:#2c2c2c;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #3a3a3a;flex-shrink:0;">
+                <span style="font-weight:bold;color:#ffa500;font-size:14px;">⚙ Configurar Aldeias</span>
+                <button id="tws-modal-fechar" style="background:#3a3a3a;border:none;color:#ccc;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
+            </div>
+            <div style="padding:14px 18px;border-bottom:1px solid #2e2e2e;flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span style="font-size:11px;color:#888;">Defina até 3 unidades por aldeia. Aldeias sem configuração são ignoradas.</span>
+                <button id="tws-modal-carregar" style="margin-left:auto;padding:6px 14px;border:1px solid #444;border-radius:6px;background:#252525;color:#ffa500;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">
+                    ↻ Carregar minhas aldeias
+                </button>
+            </div>
+            <div id="tws-modal-lista" style="overflow-y:auto;flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:10px;">
+                <div style="color:#555;font-size:12px;text-align:center;padding:20px 0;">Clique em "Carregar minhas aldeias" para começar.</div>
+            </div>
+            <div style="padding:12px 18px;border-top:1px solid #2e2e2e;display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;">
+                <button id="tws-modal-cancelar" style="padding:8px 18px;border:1px solid #444;border-radius:8px;background:#252525;color:#ccc;font-size:12px;cursor:pointer;">Cancelar</button>
+                <button id="tws-modal-salvar" style="padding:8px 18px;border:none;border-radius:8px;background:#27ae60;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">Salvar configurações</button>
+            </div>
+        `;
+
+        modal.appendChild(container);
+        document.body.appendChild(modal);
+
+        // Fechar ao clicar fora
+        modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
+        document.getElementById('tws-modal-fechar').addEventListener('click', fecharModal);
+        document.getElementById('tws-modal-cancelar').addEventListener('click', fecharModal);
+
+        document.getElementById('tws-modal-carregar').addEventListener('click', async () => {
+            const btn = document.getElementById('tws-modal-carregar');
+            btn.textContent = '⏳ Carregando...';
+            btn.disabled = true;
+            await carregarAldeias();
+            btn.textContent = '↻ Recarregar';
+            btn.disabled = false;
+        });
+
+        document.getElementById('tws-modal-salvar').addEventListener('click', salvarConfigAldeias);
+
+        // Carrega automaticamente na primeira abertura
+        await carregarAldeias();
+    }
+
+    function fecharModal() {
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function carregarAldeias() {
+        const lista = document.getElementById('tws-modal-lista');
+        if (!lista) return;
+
+        lista.innerHTML = `<div style="color:#888;font-size:12px;text-align:center;padding:20px 0;">Carregando aldeias...</div>`;
+
+        try {
+            const response = await fetch('/map/village.txt', { credentials: 'same-origin' });
+            if (!response.ok) throw new Error('Falha ao carregar village.txt');
+
+            const dados = await response.text();
+            const meuId = window.game_data?.player?.id;
+
+            if (!meuId) throw new Error('ID do jogador não encontrado');
+
+            const minhasAldeias = dados.trim().split('\n')
+                .map(line => {
+                    const [id, name, x, y, player] = line.split(',');
+                    return { id: parseInt(id), nome: decodeURIComponent(name.replace(/\+/g, ' ')), coord: `${x}|${y}`, player: parseInt(player) };
+                })
+                .filter(v => v.player === meuId)
+                .sort((a, b) => a.nome.localeCompare(b.nome));
+
+            lista.innerHTML = '';
+
+            const inputBase = 'padding:5px 6px;background:#111;border:1px solid #444;color:#e0e0e0;border-radius:5px;font-size:11px;box-sizing:border-box;';
+
+            for (const aldeia of minhasAldeias) {
+                const cfg = configAldeias[aldeia.id] || { slots: [{}, {}, {}] };
+                const slots = [
+                    cfg.slots?.[0] || {},
+                    cfg.slots?.[1] || {},
+                    cfg.slots?.[2] || {}
+                ];
+
+                const row = document.createElement('div');
+                row.dataset.villageId = aldeia.id;
+                row.style.cssText = `
+                    background: #252525;
+                    border-radius: 8px;
+                    padding: 10px 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                `;
+
+                // Cabeçalho da aldeia
+                const header = document.createElement('div');
+                header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;';
+                header.innerHTML = `
+                    <span style="font-weight:bold;font-size:12px;color:#e0e0e0;">${aldeia.nome}</span>
+                    <span style="font-size:10px;color:#666;">${aldeia.coord}</span>
+                `;
+                row.appendChild(header);
+
+                // 3 slots de unidade
+                const slotsDiv = document.createElement('div');
+                slotsDiv.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
+
+                for (let i = 0; i < 3; i++) {
+                    const slotDiv = document.createElement('div');
+                    slotDiv.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+
+                    const labelEl = document.createElement('div');
+                    labelEl.style.cssText = 'font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.3px;';
+                    labelEl.textContent = `Unidade ${i + 1}`;
+
+                    const sel = document.createElement('select');
+                    sel.dataset.slot   = i;
+                    sel.dataset.type   = 'unidade';
+                    sel.style.cssText  = inputBase + 'width:100%;';
+                    sel.innerHTML      = SELECT_UNIDADE_OPTIONS;
+                    sel.value          = slots[i].unidade || '';
+
+                    const inp = document.createElement('input');
+                    inp.type           = 'number';
+                    inp.min            = '1';
+                    inp.max            = '9999';
+                    inp.placeholder    = 'Qtd';
+                    inp.dataset.slot   = i;
+                    inp.dataset.type   = 'quantidade';
+                    inp.style.cssText  = inputBase + 'width:100%;';
+                    inp.value          = slots[i].quantidade || '';
+                    inp.disabled       = !slots[i].unidade;
+
+                    sel.addEventListener('change', () => {
+                        inp.disabled = !sel.value;
+                        if (!sel.value) inp.value = '';
+                    });
+
+                    slotDiv.appendChild(labelEl);
+                    slotDiv.appendChild(sel);
+                    slotDiv.appendChild(inp);
+                    slotsDiv.appendChild(slotDiv);
+                }
+
+                row.appendChild(slotsDiv);
+                lista.appendChild(row);
+            }
+
+        } catch (err) {
+            lista.innerHTML = `<div style="color:#e24b4a;font-size:12px;text-align:center;padding:20px 0;">Erro: ${err.message}</div>`;
+        }
+    }
+
+    function salvarConfigAldeias() {
+        const lista = document.getElementById('tws-modal-lista');
+        if (!lista) return;
+
+        const novaConfig = {};
+
+        lista.querySelectorAll('[data-village-id]').forEach(row => {
+            const villageId = parseInt(row.dataset.villageId);
+            const nomeEl    = row.querySelector('span[style*="font-weight"]');
+            const nome      = nomeEl ? nomeEl.textContent.trim() : `Aldeia ${villageId}`;
+
+            const slots = [];
+            for (let i = 0; i < 3; i++) {
+                const sel = row.querySelector(`select[data-slot="${i}"]`);
+                const inp = row.querySelector(`input[data-slot="${i}"]`);
+                const unidade    = sel?.value || '';
+                const quantidade = parseInt(inp?.value) || 0;
+                if (unidade && quantidade > 0) {
+                    slots.push({ unidade, quantidade });
+                }
+            }
+
+            if (slots.length > 0) {
+                novaConfig[villageId] = { nome, slots };
+            }
+        });
+
+        configAldeias = novaConfig;
+        salvarEstado();
+        atualizarContadorAldeias();
+        fecharModal();
+
+        const total = Object.keys(configAldeias).length;
+        adicionarLog(`Configuração salva: ${total} aldeia(s).`, 'ok');
     }
 
     // ============================================
