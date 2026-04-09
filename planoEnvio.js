@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tribal Wars - Coordenador de Ataques
 // @namespace    http://tampermonkey.net/
-// @version      8.0
+// @version      8.1
 // @description  Coordene ataques múltiplos ou emparelhados 1:1 com VELOCIDADES REAIS DA API
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*
@@ -241,7 +241,7 @@
                     position: fixed;
                     top: 20px;
                     right: 20px;
-                    z-index: 100000;
+                    z-index: 1000000;
                     display: flex;
                     flex-direction: column;
                     gap: 10px;
@@ -297,7 +297,7 @@
     }
 
     // ============================================
-    // POPUP DE VELOCIDADES
+    // POPUP DE VELOCIDADES (z-index aumentado)
     // ============================================
     function mostrarPopupVelocidades() {
         if (popupVelocidadesAtivo) return;
@@ -316,7 +316,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.7);
-            z-index: 100010;
+            z-index: 1000000;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -335,6 +335,7 @@
             overflow-y: auto;
             box-shadow: 0 5px 25px rgba(0,0,0,0.5);
             animation: fadeIn 0.2s ease;
+            z-index: 1000001;
         `;
 
         let velocidadesHtml = '';
@@ -798,6 +799,7 @@
     // CRIAÇÃO DO PAINEL
     // ============================================
     let offsetX, offsetY, dragging = false;
+    let minimizado = false; // Movido para fora da função para ser global
 
     function criarInterface() {
         if (painelElemento) {
@@ -827,7 +829,7 @@
                     background: #1e1e1e;
                     color: #fff;
                     border-radius: 10px;
-                    z-index: 9999;
+                    z-index: 999999;
                     font-family: Arial, sans-serif;
                     box-shadow: 0 5px 20px rgba(0,0,0,0.5);
                     border: 1px solid #333;
@@ -1109,11 +1111,24 @@
 
         document.addEventListener('mouseup', () => { dragging = false; });
 
-        let minimizado = false;
+        // Carregar estado minimizado do localStorage
+        const savedMinimized = localStorage.getItem('twc_painel_minimizado');
+        if (savedMinimized === 'true') {
+            minimizado = true;
+            conteudo.style.display = 'none';
+            minimizarBtn.textContent = '+';
+        } else {
+            minimizado = false;
+            conteudo.style.display = 'block';
+            minimizarBtn.textContent = '−';
+        }
+
         minimizarBtn.addEventListener('click', () => {
-            conteudo.style.display = minimizado ? 'block' : 'none';
-            minimizarBtn.textContent = minimizado ? '−' : '+';
             minimizado = !minimizado;
+            conteudo.style.display = minimizado ? 'none' : 'block';
+            minimizarBtn.textContent = minimizado ? '+' : '−';
+            // Salvar estado minimizado
+            localStorage.setItem('twc_painel_minimizado', minimizado);
         });
 
         fecharBtn.addEventListener('click', () => {
@@ -1175,7 +1190,8 @@
             incrementarSegundos: document.getElementById('twc_incrementarSegundos').checked,
             valorIncremento: document.getElementById('twc_valorIncremento').value,
             tropas: getTropas(),
-            velocidades: velocidadesUnidades
+            velocidades: velocidadesUnidades,
+            minimizado: minimizado // Salvar estado minimizado
         };
         salvarConfiguracao(config);
         Toast.success('✅ Configurações salvas!');
@@ -1206,6 +1222,17 @@
 
         if (config.velocidades) {
             velocidadesUnidades = { ...velocidadesUnidades, ...config.velocidades };
+        }
+
+        // Carregar estado minimizado
+        if (config.minimizado !== undefined) {
+            minimizado = config.minimizado;
+            const conteudo = document.getElementById('twc-painel-conteudo');
+            const minimizarBtn = document.getElementById('twc-minimizarBtn');
+            if (conteudo && minimizarBtn) {
+                conteudo.style.display = minimizado ? 'none' : 'block';
+                minimizarBtn.textContent = minimizado ? '+' : '−';
+            }
         }
 
         document.getElementById('twc_tipoCalculo').dispatchEvent(new Event('change'));
