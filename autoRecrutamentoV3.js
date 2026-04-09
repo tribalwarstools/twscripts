@@ -77,20 +77,25 @@
         }));
     }
 
-    function carregarEstado() {
-        const salvo = localStorage.getItem(STORAGE_KEY);
-        if (salvo) {
-            const d = JSON.parse(salvo);
-            ATIVADO             = false;
-            PAUSA_ENTRE_ALDEIAS = d.pausaAldeias   || DEFAULTS.pausaAldeias;
-            PAUSA_ENTRE_CICLOS  = d.pausaCiclos    || DEFAULTS.pausaCiclos;
-            MINIMIZADO          = d.minimizado     || DEFAULTS.minimizado;
-            POS_X               = d.posX           !== undefined ? d.posX : DEFAULTS.posX;
-            POS_Y               = d.posY           !== undefined ? d.posY : DEFAULTS.posY;
-            totalRecrutado      = d.totalRecrutado || DEFAULTS.totalRecrutado;
-            configAldeias       = d.configAldeias  || {};
+function carregarEstado() {
+    const salvo = localStorage.getItem(STORAGE_KEY);
+    if (salvo) {
+        const d = JSON.parse(salvo);
+        ATIVADO             = d.ativado         || false;
+        PAUSA_ENTRE_ALDEIAS = d.pausaAldeias   || DEFAULTS.pausaAldeias;
+        PAUSA_ENTRE_CICLOS  = d.pausaCiclos    || DEFAULTS.pausaCiclos;
+        MINIMIZADO          = d.minimizado     || DEFAULTS.minimizado;
+        POS_X               = d.posX           !== undefined ? d.posX : DEFAULTS.posX;
+        POS_Y               = d.posY           !== undefined ? d.posY : DEFAULTS.posY;
+        totalRecrutado      = d.totalRecrutado || DEFAULTS.totalRecrutado;
+        configAldeias       = d.configAldeias  || {};
+        
+        // 🔄 REATIVAR AUTOMATICAMENTE SE ESTAVA LIGADO
+        if (ATIVADO && !rodando) {
+            setTimeout(() => iniciar(), 2000);
         }
     }
+}
 
     function resetarTudo() {
         if (ATIVADO) { ATIVADO = false; rodando = false; cicloAtivo = false; }
