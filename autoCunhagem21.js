@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Cunhagem Automatica
 // @namespace    http://tampermonkey.net/
-// @version      20.2
-// @description  Cunhagem automatica - Formulario nativo + reset completo + posicao salva
+// @version      21.0
+// @description  Cunhagem automatica - Versao simplificada sem verificacao ambigua
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -44,7 +44,7 @@
     // ============================================
     // PERSISTENCIA
     // ============================================
-    const STORAGE_KEY = 'tws_cunhagem_form_v1';
+    const STORAGE_KEY = 'tws_cunhagem_form_v2';
 
     function salvarEstado() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -81,6 +81,8 @@
     }
 
     function resetarTudo() {
+        const estavaRodando = ATIVADO;
+        
         if (ATIVADO) {
             ATIVADO    = false;
             rodando    = false;
@@ -108,8 +110,18 @@
         }
 
         aplicarEstadoNaUI();
-        adicionarLog('Reset completo. Configuracoes restauradas.', 'warn');
+        adicionarLog('Reset completo. Cache de academias limpo.', 'warn');
         console.log('[Cunhagem] Reset completo. localStorage limpo.');
+        
+        // Se estava rodando, reinicia automaticamente
+        if (estavaRodando) {
+            adicionarLog('Reiniciando automaticamente com cache limpo...', 'ok');
+            setTimeout(() => {
+                ATIVADO = true;
+                iniciar();
+                atualizarBotao(true);
+            }, 1000);
+        }
     }
 
     function aplicarEstadoNaUI() {
@@ -204,95 +216,72 @@
     }
 
     // ============================================
-    // CUNHAGEM VIA FORMULARIO NATIVO
+    // CUNHAGEM VIA FORMULARIO NATIVO (SIMPLIFICADA)
     // ============================================
     async function cunharMoedaViaFormulario(villageId, quantidade) {
-    try {
-        const url = `/game.php?village=${villageId}&screen=snob`;
-        const response = await fetch(url, { credentials: 'same-origin' });
-        if (!response.ok) return { success: false, reason: 'Nao foi possivel acessar a academia' };
+        try {
+            const url = `/game.php?village=${villageId}&screen=snob`;
+            const response = await fetch(url, { credentials: 'same-origin' });
+            if (!response.ok) return { success: false, reason: 'erro_acesso' };
 
-        const html = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const form = doc.querySelector('form[action*="action=coin"]');
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const form = doc.querySelector('form[action*="action=coin"]');
 
-        if (!form) return { success: false, reason: 'Formulario de cunhagem nao encontrado' };
+            if (!form) return { success: false, reason: 'formulario_nao_encontrado' };
 
-        const inputCount = form.querySelector('#coin_mint_count, input[name="count"]');
-        if (!inputCount) return { success: false, reason: 'Campo de quantidade nao encontrado' };
+            const inputCount = form.querySelector('#coin_mint_count, input[name="count"]');
+            if (!inputCount) return { success: false, reason: 'campo_quantidade_nao_encontrado' };
 
-        inputCount.value = quantidade;
+            inputCount.value = quantidade;
 
-        const actionUrl = form.getAttribute('action');
-        const csrfMatch = actionUrl.match(/[&?]h=([a-f0-9]+)/i);
-        const csrf = csrfMatch ? csrfMatch[1] : (window.game_data?.csrf || '');
+            const actionUrl = form.getAttribute('action');
+            const csrfMatch = actionUrl.match(/[&?]h=([a-f0-9]+)/i);
+            const csrf = csrfMatch ? csrfMatch[1] : (window.game_data?.csrf || '');
 
-        const formData = new URLSearchParams();
-        form.querySelectorAll('input, select, textarea').forEach(input => {
-            if (input.name && input.type !== 'submit' && input.type !== 'button') {
-                formData.append(input.name, input.value);
+            const formData = new URLSearchParams();
+            form.querySelectorAll('input, select, textarea').forEach(input => {
+                if (input.name && input.type !== 'submit' && input.type !== 'button') {
+                    formData.append(input.name, input.value);
+                }
+            });
+            formData.set('count', quantidade.toString());
+
+            const postUrl = `/game.php?village=${villageId}&screen=snob&action=coin&h=${csrf}`;
+
+            const postResponse = await fetch(postUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData.toString()
+            });
+
+            if (!postResponse.ok) {
+                return { success: false, reason: `HTTP_${postResponse.status}` };
             }
-        });
-        formData.set('count', quantidade.toString());
 
-        const postUrl = `/game.php?village=${villageId}&screen=snob&action=coin&h=${csrf}`;
-
-        const postResponse = await fetch(postUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData.toString()
-        });
-
-        if (postResponse.ok) {
             const texto = await postResponse.text();
-
-            // ============================================
-            // VERIFICAÇÕES DE ERRO (mantidas)
-            // ============================================
-            if (/recursos insuficientes|not enough resources/i.test(texto))
+            
+            // Só verifica erros conhecidos
+            if (/recursos insuficientes|not enough resources/i.test(texto)) {
                 return { success: false, reason: 'recursos_insuficientes' };
-            if (/limite máximo|excede o limite|max limit/i.test(texto))
+            }
+            if (/limite máximo|excede o limite|max limit/i.test(texto)) {
                 return { success: false, reason: 'limite_atingido' };
-
-            // ============================================
-            // VERIFICAÇÕES DE SUCESSO (NOVAS!)
-            // ============================================
-            // Procura por mensagens de sucesso em português
-            const temSucesso =
-                /moeda(s)?\s*(cunhada|criada|produzida)/i.test(texto) ||
-                /cunhou\s+\d+\s+moeda/i.test(texto) ||
-                /sucesso.*cunhagem/i.test(texto) ||
-                /moedas? de ouro.*adicionadas?/i.test(texto) ||
-                /foram cunhadas/i.test(texto);
-
-            // Também verifica se o contador de moedas no HTML aumentou
-            // (captura o total de moedas após a cunhagem)
-            const totalMoedasMatch = texto.match(/total["\s:]+(\d+)/i);
-            const moedasAumentaram = totalMoedasMatch && parseInt(totalMoedasMatch[1]) > 0;
-
-            if (temSucesso || moedasAumentaram) {
-                return { success: true, reason: 'sucesso', quantidade: quantidade };
             }
 
-            // ============================================
-            // Se não achou nem erro nem sucesso, é duvidoso
-            // ============================================
-            console.warn('[Cunhagem] Resposta ambígua:', texto.substring(0, 500));
-            return { success: false, reason: 'resposta_ambigua', debug: texto.substring(0, 200) };
+            // Se chegou aqui, assume sucesso (HTTP 200 + sem erros conhecidos)
+            return { success: true, reason: 'sucesso', quantidade: quantidade };
+
+        } catch (err) {
+            console.error('[Cunhagem] Erro:', err);
+            return { success: false, reason: err.message };
         }
-
-        return { success: false, reason: `HTTP ${postResponse.status}` };
-
-    } catch (err) {
-        console.error('[Cunhagem] Erro:', err);
-        return { success: false, reason: err.message };
     }
-}
 
     // ============================================
     // FUNCAO PRINCIPAL DE CUNHAGEM
@@ -301,18 +290,20 @@
         try {
             const url = `/game.php?village=${villageId}&screen=snob`;
             const response = await fetch(url, { credentials: 'same-origin' });
-            if (!response.ok) return { success: false, reason: 'Nao foi possivel acessar a academia', maximo: 0 };
+            if (!response.ok) return { success: false, reason: 'erro_acesso_academia', maximo: 0 };
 
             const html = await response.text();
             const maxMatch = html.match(/id="coin_mint_fill_max"[^>]*>\((\d+)\)/i);
             const maximo = maxMatch ? parseInt(maxMatch[1]) : 0;
 
-            if (maximo === 0) return { success: false, reason: 'Sem recursos ou limite atingido', maximo: 0 };
+            if (maximo === 0) return { success: false, reason: 'sem_recursos_ou_limite', maximo: 0 };
 
             const quantidadeCunhar = CUNHAR_MAXIMO ? maximo : Math.min(QUANTIDADE, maximo);
 
-            if (quantidadeCunhar === 0) return { success: false, reason: 'Quantidade invalida', maximo };
+            if (quantidadeCunhar === 0) return { success: false, reason: 'quantidade_invalida', maximo };
 
+            adicionarLog(`${villageId}: tentando cunhar ${quantidadeCunhar} de ${maximo} possiveis`, 'warn');
+            
             const resultado = await cunharMoedaViaFormulario(villageId, quantidadeCunhar);
             resultado.maximo     = maximo;
             resultado.quantidade = quantidadeCunhar;
@@ -408,24 +399,30 @@
                     totalCunhado += resultado.quantidade;
                     salvarEstado();
                     atualizarMetricas();
-                    adicionarLog(`${aldeia.name}: +${resultado.quantidade} moeda(s)`, 'ok');
-                    console.log(`[${index}] ${aldeia.name} - cunhou ${resultado.quantidade}`);
+                    adicionarLog(`${aldeia.name}: +${resultado.quantidade} moeda(s) (HTTP 200)`, 'ok');
+                    console.log(`[${index}] ${aldeia.name} - cunhou ${resultado.quantidade} (max: ${resultado.maximo})`);
                     await new Promise(r => setTimeout(r, 1000));
                 } else {
                     const msgs = {
                         recursos_insuficientes: 'recursos insuficientes',
-                        limite_atingido:        'limite de nobres atingido'
+                        limite_atingido:        'limite de nobres atingido',
+                        erro_acesso:            'erro ao acessar academia',
+                        formulario_nao_encontrado: 'formulario nao encontrado',
+                        campo_quantidade_nao_encontrado: 'campo quantidade nao encontrado',
+                        erro_acesso_academia:   'falha ao carregar academia',
+                        sem_recursos_ou_limite: 'sem recursos ou limite',
+                        quantidade_invalida:    'quantidade invalida'
                     };
                     const motivo  = msgs[resultado.reason] || resultado.reason;
                     const tipoLog = resultado.reason === 'recursos_insuficientes' ? 'warn' : 'err';
                     adicionarLog(`${aldeia.name}: ${motivo}`, tipoLog);
-                    console.log(`[${index}] ${aldeia.name} - ${motivo}`);
+                    console.log(`[${index}] ${aldeia.name} - ${motivo} (max: ${resultado.maximo || 0})`);
                 }
 
                 await new Promise(r => setTimeout(r, PAUSA_ENTRE_ALDEIAS));
             }
 
-            adicionarLog(`Ciclo ${cicloAtual} concluido. Total: ${totalCunhado}`, 'ok');
+            adicionarLog(`Ciclo ${cicloAtual} concluido. Total: ${totalCunhado} moedas`, 'ok');
             console.log(`\nCiclo ${cicloAtual} finalizado. Proximo em ${PAUSA_ENTRE_CICLOS / 1000}s\n`);
 
         } catch (err) {
