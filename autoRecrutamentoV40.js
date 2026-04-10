@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Recrutamento Automático
 // @namespace    http://tampermonkey.net/
-// @version      3.0
-// @description  Recrutamento automático por aldeia com até 3 unidades configuráveis
+// @version      4.0
+// @description  Recrutamento automático por aldeia com predefinições de ataque/defesa
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -31,6 +31,30 @@
         Object.entries(UNIDADES).map(([k, v]) => `<option value="${k}">${v.nome}</option>`).join('');
 
     // ============================================
+    // PREDEFINIÇÕES
+    // ============================================
+    const PREDEFINICOES = {
+        ataque: {
+            label: '⚔️ Ataque',
+            cor:   '#e24b4a',
+            slots: [
+                { unidade: 'axe',   quantidade: 100 },
+                { unidade: 'light', quantidade: 100 },
+                { unidade: 'ram',   quantidade: 50  }
+            ]
+        },
+        defesa: {
+            label: '🛡️ Defesa',
+            cor:   '#378add',
+            slots: [
+                { unidade: 'spear', quantidade: 100 },
+                { unidade: 'sword', quantidade: 100 },
+                { unidade: 'heavy', quantidade: 50  }
+            ]
+        }
+    };
+
+    // ============================================
     // CONFIGURAÇÕES PADRÃO
     // ============================================
     const DEFAULTS = {
@@ -41,7 +65,7 @@
         posX:           null,
         posY:           null,
         totalRecrutado: 0,
-        configAldeias:  {}   // { [villageId]: { nome, slots: [{unidade, quantidade}] } }
+        configAldeias:  {}
     };
 
     let ATIVADO             = DEFAULTS.ativado;
@@ -51,7 +75,7 @@
     let POS_X               = DEFAULTS.posX;
     let POS_Y               = DEFAULTS.posY;
     let totalRecrutado      = DEFAULTS.totalRecrutado;
-    let configAldeias       = {};   // { [villageId]: { nome, slots: [{unidade, quantidade}] } }
+    let configAldeias       = {};
 
     let rodando    = false;
     let cicloAtivo = false;
@@ -77,34 +101,30 @@
         }));
     }
 
-function carregarEstado() {
-    const salvo = localStorage.getItem(STORAGE_KEY);
-    if (salvo) {
-        const d = JSON.parse(salvo);
-        ATIVADO             = d.ativado         || false;
-        PAUSA_ENTRE_ALDEIAS = d.pausaAldeias   || DEFAULTS.pausaAldeias;
-        PAUSA_ENTRE_CICLOS  = d.pausaCiclos    || DEFAULTS.pausaCiclos;
-        MINIMIZADO          = d.minimizado     || DEFAULTS.minimizado;
-        POS_X               = d.posX           !== undefined ? d.posX : DEFAULTS.posX;
-        POS_Y               = d.posY           !== undefined ? d.posY : DEFAULTS.posY;
-        totalRecrutado      = d.totalRecrutado || DEFAULTS.totalRecrutado;
-        configAldeias       = d.configAldeias  || {};
-        
-        // Aguarda o painel ser criado para atualizar a UI
-        const aguardarPainel = setInterval(() => {
-            if (painel) {
-                clearInterval(aguardarPainel);
-                atualizarBotao(ATIVADO);
-                atualizarMetricas();
-                atualizarContadorAldeias();
-                
-                if (ATIVADO && !rodando) {
-                    setTimeout(() => iniciar(), 2000);
+    function carregarEstado() {
+        const salvo = localStorage.getItem(STORAGE_KEY);
+        if (salvo) {
+            const d = JSON.parse(salvo);
+            ATIVADO             = d.ativado         || false;
+            PAUSA_ENTRE_ALDEIAS = d.pausaAldeias    || DEFAULTS.pausaAldeias;
+            PAUSA_ENTRE_CICLOS  = d.pausaCiclos     || DEFAULTS.pausaCiclos;
+            MINIMIZADO          = d.minimizado      || DEFAULTS.minimizado;
+            POS_X               = d.posX            !== undefined ? d.posX : DEFAULTS.posX;
+            POS_Y               = d.posY            !== undefined ? d.posY : DEFAULTS.posY;
+            totalRecrutado      = d.totalRecrutado  || DEFAULTS.totalRecrutado;
+            configAldeias       = d.configAldeias   || {};
+
+            const aguardarPainel = setInterval(() => {
+                if (painel) {
+                    clearInterval(aguardarPainel);
+                    atualizarBotao(ATIVADO);
+                    atualizarMetricas();
+                    atualizarContadorAldeias();
+                    if (ATIVADO && !rodando) setTimeout(() => iniciar(), 2000);
                 }
-            }
-        }, 100);
+            }, 100);
+        }
     }
-}
 
     function resetarTudo() {
         if (ATIVADO) { ATIVADO = false; rodando = false; cicloAtivo = false; }
@@ -226,12 +246,10 @@ function carregarEstado() {
 
             const html = await response.text();
 
-            // Verifica se input da unidade existe
             if (!new RegExp(`name="${unidade}"`, 'i').test(html)) {
                 return { success: false, reason: `Sem ${unidadeInfo.nome} disponível` };
             }
 
-            // Lê máximo pelo link set_max
             const maxMatch = html.match(new RegExp(`set_max\\('${unidade}'\\)[^(]*\\((\\d+)\\)`, 'i'));
             const maximo   = maxMatch ? parseInt(maxMatch[1]) : 0;
 
@@ -239,7 +257,6 @@ function carregarEstado() {
 
             const qtd = Math.min(quantidade, maximo);
 
-            // Extrai formulário
             const parser = new DOMParser();
             const doc    = parser.parseFromString(html, 'text/html');
             const form   = doc.querySelector('form[action*="screen=' + tela + '"]') ||
@@ -352,7 +369,6 @@ function carregarEstado() {
                         console.log(`  ✗ ${UNIDADES[slot.unidade]?.nome}: ${resultado.reason}`);
                     }
 
-                    // Pausa entre unidades da mesma aldeia
                     await new Promise(r => setTimeout(r, 800));
                 }
 
@@ -462,13 +478,11 @@ function carregarEstado() {
 
             <div id="tws-body" style="padding:14px;display:${MINIMIZADO ? 'none' : 'flex'};flex-direction:column;gap:12px;">
 
-                <!-- Status -->
                 <div style="display:flex;align-items:center;gap:10px;background:#252525;border-radius:8px;padding:8px 12px;">
                     <div id="tws-dot" style="width:10px;height:10px;border-radius:50%;background:#e24b4a;flex-shrink:0;transition:background .3s;"></div>
                     <span id="tws-status" style="font-weight:500;font-size:12px;">Parado</span>
                 </div>
 
-                <!-- Métricas -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <div style="background:#252525;border-radius:8px;padding:10px;text-align:center;">
                         <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Recrutados</div>
@@ -482,7 +496,6 @@ function carregarEstado() {
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
-                <!-- Configurar aldeias -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Aldeias</div>
                     <div id="tws-aldeias-config" style="font-size:11px;margin-bottom:8px;color:${totalConfig === 0 ? '#e24b4a' : '#22a55a'};">
@@ -495,7 +508,6 @@ function carregarEstado() {
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
-                <!-- Intervalos -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Intervalos</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -514,7 +526,6 @@ function carregarEstado() {
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
-                <!-- Botões -->
                 <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch;">
                     <button id="tws-botao" style="padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#27ae60;color:#fff;transition:opacity .15s;">
                         ▶ Ativar
@@ -524,7 +535,6 @@ function carregarEstado() {
                     </button>
                 </div>
 
-                <!-- Log -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Log recente</div>
                     <div id="tws-log" style="background:#0f0f0f;border-radius:6px;padding:8px;font-family:monospace;color:#888;max-height:120px;overflow-y:auto;min-height:60px;display:flex;flex-direction:column;gap:2px;">
@@ -537,7 +547,6 @@ function carregarEstado() {
 
         document.body.appendChild(painel);
 
-        // Intervalos
         const inpAldeias = document.getElementById('tws-pausa-aldeias');
         const inpCiclos  = document.getElementById('tws-pausa-ciclos');
 
@@ -570,7 +579,6 @@ function carregarEstado() {
             }
         });
 
-        // Minimizar
         const minimizar = document.getElementById('tws-minimizar');
         const body      = document.getElementById('tws-body');
         minimizar.addEventListener('click', () => {
@@ -580,7 +588,6 @@ function carregarEstado() {
             salvarEstado();
         });
 
-        // Arrastar
         const header = document.getElementById('tws-header');
         let dragging = false, startX, startY, startLeft, startTop;
 
@@ -620,12 +627,126 @@ function carregarEstado() {
     }
 
     // ============================================
+    // HELPERS DO MODAL
+    // ============================================
+
+    // Aplica uma predefinição nos selects/inputs de uma row do modal
+    function aplicarPredefinicao(row, chave) {
+        const pre = PREDEFINICOES[chave];
+        if (!pre) return;
+        for (let i = 0; i < 3; i++) {
+            const sel = row.querySelector(`select[data-slot="${i}"]`);
+            const inp = row.querySelector(`input[data-slot="${i}"]`);
+            const slot = pre.slots[i];
+            if (sel && inp) {
+                sel.value    = slot ? slot.unidade   : '';
+                inp.value    = slot ? slot.quantidade : '';
+                inp.disabled = !sel.value;
+            }
+        }
+    }
+
+    // Constrói a linha de uma aldeia no modal
+    function construirRowAldeia(aldeia) {
+        const cfg   = configAldeias[aldeia.id] || { slots: [{}, {}, {}] };
+        const slots = [cfg.slots?.[0] || {}, cfg.slots?.[1] || {}, cfg.slots?.[2] || {}];
+
+        const inputBase = 'padding:5px 6px;background:#111;border:1px solid #444;color:#e0e0e0;border-radius:5px;font-size:11px;box-sizing:border-box;';
+
+        const row = document.createElement('div');
+        row.dataset.villageId = aldeia.id;
+        row.style.cssText = 'background:#252525;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;';
+
+        // Cabeçalho: nome + coord + botões de predefinição
+        const cabecalho = document.createElement('div');
+        cabecalho.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;';
+        cabecalho.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                <span style="font-weight:bold;font-size:12px;color:#e0e0e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${aldeia.nome}</span>
+                <span style="font-size:10px;color:#555;white-space:nowrap;">${aldeia.coord}</span>
+            </div>
+            <div style="display:flex;gap:5px;flex-shrink:0;">
+                ${Object.entries(PREDEFINICOES).map(([key, pre]) => `
+                    <button data-preset="${key}" style="padding:3px 9px;border:1px solid ${pre.cor}33;border-radius:5px;background:${pre.cor}18;color:${pre.cor};font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">
+                        ${pre.label}
+                    </button>
+                `).join('')}
+                <button data-preset="limpar" style="padding:3px 9px;border:1px solid #3a3a3a;border-radius:5px;background:#2a2a2a;color:#888;font-size:10px;cursor:pointer;white-space:nowrap;">
+                    ✕ Limpar
+                </button>
+            </div>
+        `;
+        row.appendChild(cabecalho);
+
+        // 3 slots
+        const slotsDiv = document.createElement('div');
+        slotsDiv.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
+
+        for (let i = 0; i < 3; i++) {
+            const slotDiv = document.createElement('div');
+            slotDiv.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+
+            const labelEl = document.createElement('div');
+            labelEl.style.cssText = 'font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.3px;';
+            labelEl.textContent = `Unidade ${i + 1}`;
+
+            const sel = document.createElement('select');
+            sel.dataset.slot  = i;
+            sel.dataset.type  = 'unidade';
+            sel.style.cssText = inputBase + 'width:100%;';
+            sel.innerHTML     = SELECT_UNIDADE_OPTIONS;
+            sel.value         = slots[i].unidade || '';
+
+            const inp = document.createElement('input');
+            inp.type          = 'number';
+            inp.min           = '1';
+            inp.max           = '9999';
+            inp.placeholder   = 'Qtd';
+            inp.dataset.slot  = i;
+            inp.dataset.type  = 'quantidade';
+            inp.style.cssText = inputBase + 'width:100%;';
+            inp.value         = slots[i].quantidade || '';
+            inp.disabled      = !slots[i].unidade;
+
+            sel.addEventListener('change', () => {
+                inp.disabled = !sel.value;
+                if (!sel.value) inp.value = '';
+            });
+
+            slotDiv.appendChild(labelEl);
+            slotDiv.appendChild(sel);
+            slotDiv.appendChild(inp);
+            slotsDiv.appendChild(slotDiv);
+        }
+
+        row.appendChild(slotsDiv);
+
+        // Eventos dos botões de predefinição
+        cabecalho.querySelectorAll('[data-preset]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const chave = btn.dataset.preset;
+                if (chave === 'limpar') {
+                    for (let i = 0; i < 3; i++) {
+                        const sel = row.querySelector(`select[data-slot="${i}"]`);
+                        const inp = row.querySelector(`input[data-slot="${i}"]`);
+                        if (sel) sel.value = '';
+                        if (inp) { inp.value = ''; inp.disabled = true; }
+                    }
+                } else {
+                    aplicarPredefinicao(row, chave);
+                }
+            });
+        });
+
+        return row;
+    }
+
+    // ============================================
     // UI — MODAL DE CONFIGURAÇÃO DE ALDEIAS
     // ============================================
     async function abrirModal() {
         if (modal) { modal.style.display = 'flex'; return; }
 
-        // Overlay
         modal = document.createElement('div');
         modal.style.cssText = `
             position: fixed;
@@ -638,15 +759,14 @@ function carregarEstado() {
             font-family: 'Segoe UI', Arial, sans-serif;
         `;
 
-        // Container
         const container = document.createElement('div');
         container.style.cssText = `
             background: #1a1a1a;
             border: 1px solid #444;
             border-radius: 14px;
-            width: 640px;
+            width: 660px;
             max-width: 95vw;
-            max-height: 80vh;
+            max-height: 82vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -654,20 +774,43 @@ function carregarEstado() {
             font-size: 13px;
         `;
 
+        // Legenda das predefinições
+        const legendaHtml = Object.entries(PREDEFINICOES).map(([, pre]) => {
+            const resumo = pre.slots.map(s => `${UNIDADES[s.unidade]?.nome} ×${s.quantidade}`).join(', ');
+            return `<span style="color:${pre.cor};font-weight:bold;">${pre.label}:</span> <span style="color:#888;">${resumo}</span>`;
+        }).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+
         container.innerHTML = `
             <div style="background:#2c2c2c;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #3a3a3a;flex-shrink:0;">
                 <span style="font-weight:bold;color:#ffa500;font-size:14px;">⚙ Configurar Aldeias</span>
                 <button id="tws-modal-fechar" style="background:#3a3a3a;border:none;color:#ccc;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
             </div>
-            <div style="padding:14px 18px;border-bottom:1px solid #2e2e2e;flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <span style="font-size:11px;color:#888;">Defina até 3 unidades por aldeia. Aldeias sem configuração são ignoradas.</span>
-                <button id="tws-modal-carregar" style="margin-left:auto;padding:6px 14px;border:1px solid #444;border-radius:6px;background:#252525;color:#ffa500;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">
-                    ↻ Carregar minhas aldeias
+
+            <!-- Legenda predefinições -->
+            <div style="padding:10px 18px;border-bottom:1px solid #2e2e2e;flex-shrink:0;font-size:11px;line-height:1.6;">
+                ${legendaHtml}
+            </div>
+
+            <!-- Barra de ações globais -->
+            <div style="padding:10px 18px;border-bottom:1px solid #2e2e2e;flex-shrink:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:11px;color:#666;margin-right:4px;">Aplicar a todas:</span>
+                ${Object.entries(PREDEFINICOES).map(([key, pre]) => `
+                    <button id="tws-modal-all-${key}" style="padding:5px 12px;border:1px solid ${pre.cor}44;border-radius:6px;background:${pre.cor}20;color:${pre.cor};font-size:11px;font-weight:bold;cursor:pointer;">
+                        ${pre.label} para todas
+                    </button>
+                `).join('')}
+                <button id="tws-modal-all-limpar" style="padding:5px 12px;border:1px solid #3a3a3a;border-radius:6px;background:#2a2a2a;color:#888;font-size:11px;cursor:pointer;">
+                    ✕ Limpar todas
+                </button>
+                <button id="tws-modal-carregar" style="margin-left:auto;padding:5px 14px;border:1px solid #444;border-radius:6px;background:#252525;color:#ffa500;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">
+                    ↻ Recarregar aldeias
                 </button>
             </div>
+
             <div id="tws-modal-lista" style="overflow-y:auto;flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:10px;">
-                <div style="color:#555;font-size:12px;text-align:center;padding:20px 0;">Clique em "Carregar minhas aldeias" para começar.</div>
+                <div style="color:#555;font-size:12px;text-align:center;padding:20px 0;">Carregando aldeias...</div>
             </div>
+
             <div style="padding:12px 18px;border-top:1px solid #2e2e2e;display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;">
                 <button id="tws-modal-cancelar" style="padding:8px 18px;border:1px solid #444;border-radius:8px;background:#252525;color:#ccc;font-size:12px;cursor:pointer;">Cancelar</button>
                 <button id="tws-modal-salvar" style="padding:8px 18px;border:none;border-radius:8px;background:#27ae60;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">Salvar configurações</button>
@@ -677,23 +820,40 @@ function carregarEstado() {
         modal.appendChild(container);
         document.body.appendChild(modal);
 
-        // Fechar ao clicar fora
         modal.addEventListener('click', e => { if (e.target === modal) fecharModal(); });
         document.getElementById('tws-modal-fechar').addEventListener('click', fecharModal);
         document.getElementById('tws-modal-cancelar').addEventListener('click', fecharModal);
+        document.getElementById('tws-modal-salvar').addEventListener('click', salvarConfigAldeias);
 
         document.getElementById('tws-modal-carregar').addEventListener('click', async () => {
             const btn = document.getElementById('tws-modal-carregar');
             btn.textContent = '⏳ Carregando...';
             btn.disabled = true;
             await carregarAldeias();
-            btn.textContent = '↻ Recarregar';
+            btn.textContent = '↻ Recarregar aldeias';
             btn.disabled = false;
         });
 
-        document.getElementById('tws-modal-salvar').addEventListener('click', salvarConfigAldeias);
+        // Aplicar predefinição a todas as aldeias visíveis
+        Object.keys(PREDEFINICOES).forEach(key => {
+            document.getElementById(`tws-modal-all-${key}`)?.addEventListener('click', () => {
+                document.querySelectorAll('#tws-modal-lista [data-village-id]').forEach(row => {
+                    aplicarPredefinicao(row, key);
+                });
+            });
+        });
 
-        // Carrega automaticamente na primeira abertura
+        document.getElementById('tws-modal-all-limpar')?.addEventListener('click', () => {
+            document.querySelectorAll('#tws-modal-lista [data-village-id]').forEach(row => {
+                for (let i = 0; i < 3; i++) {
+                    const sel = row.querySelector(`select[data-slot="${i}"]`);
+                    const inp = row.querySelector(`input[data-slot="${i}"]`);
+                    if (sel) sel.value = '';
+                    if (inp) { inp.value = ''; inp.disabled = true; }
+                }
+            });
+        });
+
         await carregarAldeias();
     }
 
@@ -713,7 +873,6 @@ function carregarEstado() {
 
             const dados = await response.text();
             const meuId = window.game_data?.player?.id;
-
             if (!meuId) throw new Error('ID do jogador não encontrado');
 
             const minhasAldeias = dados.trim().split('\n')
@@ -725,81 +884,7 @@ function carregarEstado() {
                 .sort((a, b) => a.nome.localeCompare(b.nome));
 
             lista.innerHTML = '';
-
-            const inputBase = 'padding:5px 6px;background:#111;border:1px solid #444;color:#e0e0e0;border-radius:5px;font-size:11px;box-sizing:border-box;';
-
-            for (const aldeia of minhasAldeias) {
-                const cfg = configAldeias[aldeia.id] || { slots: [{}, {}, {}] };
-                const slots = [
-                    cfg.slots?.[0] || {},
-                    cfg.slots?.[1] || {},
-                    cfg.slots?.[2] || {}
-                ];
-
-                const row = document.createElement('div');
-                row.dataset.villageId = aldeia.id;
-                row.style.cssText = `
-                    background: #252525;
-                    border-radius: 8px;
-                    padding: 10px 12px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                `;
-
-                // Cabeçalho da aldeia
-                const header = document.createElement('div');
-                header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;';
-                header.innerHTML = `
-                    <span style="font-weight:bold;font-size:12px;color:#e0e0e0;">${aldeia.nome}</span>
-                    <span style="font-size:10px;color:#666;">${aldeia.coord}</span>
-                `;
-                row.appendChild(header);
-
-                // 3 slots de unidade
-                const slotsDiv = document.createElement('div');
-                slotsDiv.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
-
-                for (let i = 0; i < 3; i++) {
-                    const slotDiv = document.createElement('div');
-                    slotDiv.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
-
-                    const labelEl = document.createElement('div');
-                    labelEl.style.cssText = 'font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.3px;';
-                    labelEl.textContent = `Unidade ${i + 1}`;
-
-                    const sel = document.createElement('select');
-                    sel.dataset.slot   = i;
-                    sel.dataset.type   = 'unidade';
-                    sel.style.cssText  = inputBase + 'width:100%;';
-                    sel.innerHTML      = SELECT_UNIDADE_OPTIONS;
-                    sel.value          = slots[i].unidade || '';
-
-                    const inp = document.createElement('input');
-                    inp.type           = 'number';
-                    inp.min            = '1';
-                    inp.max            = '9999';
-                    inp.placeholder    = 'Qtd';
-                    inp.dataset.slot   = i;
-                    inp.dataset.type   = 'quantidade';
-                    inp.style.cssText  = inputBase + 'width:100%;';
-                    inp.value          = slots[i].quantidade || '';
-                    inp.disabled       = !slots[i].unidade;
-
-                    sel.addEventListener('change', () => {
-                        inp.disabled = !sel.value;
-                        if (!sel.value) inp.value = '';
-                    });
-
-                    slotDiv.appendChild(labelEl);
-                    slotDiv.appendChild(sel);
-                    slotDiv.appendChild(inp);
-                    slotsDiv.appendChild(slotDiv);
-                }
-
-                row.appendChild(slotsDiv);
-                lista.appendChild(row);
-            }
+            minhasAldeias.forEach(aldeia => lista.appendChild(construirRowAldeia(aldeia)));
 
         } catch (err) {
             lista.innerHTML = `<div style="color:#e24b4a;font-size:12px;text-align:center;padding:20px 0;">Erro: ${err.message}</div>`;
@@ -819,18 +904,14 @@ function carregarEstado() {
 
             const slots = [];
             for (let i = 0; i < 3; i++) {
-                const sel = row.querySelector(`select[data-slot="${i}"]`);
-                const inp = row.querySelector(`input[data-slot="${i}"]`);
-                const unidade    = sel?.value || '';
-                const quantidade = parseInt(inp?.value) || 0;
-                if (unidade && quantidade > 0) {
-                    slots.push({ unidade, quantidade });
-                }
+                const sel      = row.querySelector(`select[data-slot="${i}"]`);
+                const inp      = row.querySelector(`input[data-slot="${i}"]`);
+                const unidade  = sel?.value || '';
+                const qtd      = parseInt(inp?.value) || 0;
+                if (unidade && qtd > 0) slots.push({ unidade, quantidade: qtd });
             }
 
-            if (slots.length > 0) {
-                novaConfig[villageId] = { nome, slots };
-            }
+            if (slots.length > 0) novaConfig[villageId] = { nome, slots };
         });
 
         configAldeias = novaConfig;
