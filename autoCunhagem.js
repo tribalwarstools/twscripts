@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Cunhagem Automatica
 // @namespace    http://tampermonkey.net/
-// @version      19.0
-// @description  Cunhagem automatica - Formulario nativo + reset completo
+// @version      20.2
+// @description  Cunhagem automatica - Formulario nativo + reset completo + posicao salva
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -19,7 +19,10 @@
         cunharMaximo:  true,
         totalCunhado:  0,
         pausaAldeias:  2000,
-        pausaCiclos:   30000
+        pausaCiclos:   30000,
+        minimizado:    false,
+        posX:          null,
+        posY:          null
     };
 
     let ATIVADO             = DEFAULTS.ativado;
@@ -27,12 +30,15 @@
     let CUNHAR_MAXIMO       = DEFAULTS.cunharMaximo;
     let PAUSA_ENTRE_ALDEIAS = DEFAULTS.pausaAldeias;
     let PAUSA_ENTRE_CICLOS  = DEFAULTS.pausaCiclos;
+    let MINIMIZADO          = DEFAULTS.minimizado;
+    let POS_X               = DEFAULTS.posX;
+    let POS_Y               = DEFAULTS.posY;
 
-    let rodando      = false;
-    let cicloAtivo   = false;
-    let painel       = null;
-    let totalCunhado = DEFAULTS.totalCunhado;
-    let cicloAtual   = 0;
+    let rodando       = false;
+    let cicloAtivo    = false;
+    let painel        = null;
+    let totalCunhado  = DEFAULTS.totalCunhado;
+    let cicloAtual    = 0;
     let cacheAcademia = {};
 
     // ============================================
@@ -47,7 +53,10 @@
             cunharMaximo: CUNHAR_MAXIMO,
             totalCunhado: totalCunhado,
             pausaAldeias: PAUSA_ENTRE_ALDEIAS,
-            pausaCiclos:  PAUSA_ENTRE_CICLOS
+            pausaCiclos:  PAUSA_ENTRE_CICLOS,
+            minimizado:   MINIMIZADO,
+            posX:         POS_X,
+            posY:         POS_Y
         }));
     }
 
@@ -55,26 +64,29 @@
         const salvo = localStorage.getItem(STORAGE_KEY);
         if (salvo) {
             const dados = JSON.parse(salvo);
-            ATIVADO             = dados.ativado       || DEFAULTS.ativado;
-            QUANTIDADE          = dados.quantidade    || DEFAULTS.quantidade;
-            CUNHAR_MAXIMO       = dados.cunharMaximo  !== undefined ? dados.cunharMaximo : DEFAULTS.cunharMaximo;
-            totalCunhado        = dados.totalCunhado  || DEFAULTS.totalCunhado;
-            PAUSA_ENTRE_ALDEIAS = dados.pausaAldeias  || DEFAULTS.pausaAldeias;
-            PAUSA_ENTRE_CICLOS  = dados.pausaCiclos   || DEFAULTS.pausaCiclos;
-            console.log('[Cunhagem] Estado carregado:', ATIVADO ? 'LIGADO' : 'DESLIGADO');
-            if (ATIVADO) setTimeout(() => iniciar(), 2000);
+            ATIVADO             = dados.ativado !== undefined ? dados.ativado : DEFAULTS.ativado;
+            QUANTIDADE          = dados.quantidade   || DEFAULTS.quantidade;
+            CUNHAR_MAXIMO       = dados.cunharMaximo !== undefined ? dados.cunharMaximo : DEFAULTS.cunharMaximo;
+            totalCunhado        = dados.totalCunhado || DEFAULTS.totalCunhado;
+            PAUSA_ENTRE_ALDEIAS = dados.pausaAldeias || DEFAULTS.pausaAldeias;
+            PAUSA_ENTRE_CICLOS  = dados.pausaCiclos  || DEFAULTS.pausaCiclos;
+            MINIMIZADO          = dados.minimizado   || DEFAULTS.minimizado;
+            POS_X               = dados.posX         !== undefined ? dados.posX : DEFAULTS.posX;
+            POS_Y               = dados.posY         !== undefined ? dados.posY : DEFAULTS.posY;
+
+            console.log('[Cunhagem] Estado carregado. Ativado:', ATIVADO ? 'LIGADO' : 'DESLIGADO');
+        } else {
+            console.log('[Cunhagem] Primeira execucao. Estado padrao: DESLIGADO');
         }
     }
 
     function resetarTudo() {
-        // Para o script se estiver rodando
         if (ATIVADO) {
-            ATIVADO = false;
-            rodando = false;
+            ATIVADO    = false;
+            rodando    = false;
             cicloAtivo = false;
         }
 
-        // Volta às configurações padrão
         QUANTIDADE          = DEFAULTS.quantidade;
         CUNHAR_MAXIMO       = DEFAULTS.cunharMaximo;
         PAUSA_ENTRE_ALDEIAS = DEFAULTS.pausaAldeias;
@@ -82,13 +94,21 @@
         totalCunhado        = DEFAULTS.totalCunhado;
         cicloAtual          = 0;
         cacheAcademia       = {};
+        MINIMIZADO          = DEFAULTS.minimizado;
+        POS_X               = DEFAULTS.posX;
+        POS_Y               = DEFAULTS.posY;
 
-        // Limpa o localStorage
         localStorage.removeItem(STORAGE_KEY);
 
-        // Atualiza a UI
+        if (painel) {
+            painel.style.left   = 'auto';
+            painel.style.top    = 'auto';
+            painel.style.right  = '20px';
+            painel.style.bottom = '20px';
+        }
+
         aplicarEstadoNaUI();
-        adicionarLog('Reset completo. Configurações restauradas.', 'warn');
+        adicionarLog('Reset completo. Configuracoes restauradas.', 'warn');
         console.log('[Cunhagem] Reset completo. localStorage limpo.');
     }
 
@@ -98,17 +118,23 @@
         const inpAldeias = document.getElementById('tws-pausa-aldeias');
         const inpCiclos  = document.getElementById('tws-pausa-ciclos');
         const qtdDiv     = document.getElementById('tws-quantidade-div');
+        const body       = document.getElementById('tws-body');
+        const minimizar  = document.getElementById('tws-minimizar');
 
-        if (inpMaximo)  inpMaximo.checked     = CUNHAR_MAXIMO;
-        if (inpQtd)     inpQtd.value          = QUANTIDADE;
-        if (inpAldeias) inpAldeias.value       = PAUSA_ENTRE_ALDEIAS;
-        if (inpCiclos)  inpCiclos.value        = PAUSA_ENTRE_CICLOS / 1000;
-        if (qtdDiv)     qtdDiv.style.display   = CUNHAR_MAXIMO ? 'none' : 'flex';
+        if (inpMaximo)  inpMaximo.checked   = CUNHAR_MAXIMO;
+        if (inpQtd)     inpQtd.value        = QUANTIDADE;
+        if (inpAldeias) inpAldeias.value    = PAUSA_ENTRE_ALDEIAS;
+        if (inpCiclos)  inpCiclos.value     = PAUSA_ENTRE_CICLOS / 1000;
+        if (qtdDiv)     qtdDiv.style.display = CUNHAR_MAXIMO ? 'none' : 'flex';
 
-        atualizarBotao(false);
+        if (body && minimizar) {
+            body.style.display    = MINIMIZADO ? 'none' : 'flex';
+            minimizar.textContent = MINIMIZADO ? '+' : '-';
+        }
+
+        atualizarBotao(ATIVADO);
         atualizarMetricas();
 
-        // Limpa erros de validação
         ['tws-err-qtd', 'tws-err-aldeias', 'tws-err-ciclos'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'none';
@@ -181,63 +207,92 @@
     // CUNHAGEM VIA FORMULARIO NATIVO
     // ============================================
     async function cunharMoedaViaFormulario(villageId, quantidade) {
-        try {
-            const url = `/game.php?village=${villageId}&screen=snob`;
-            const response = await fetch(url, { credentials: 'same-origin' });
-            if (!response.ok) return { success: false, reason: 'Nao foi possivel acessar a academia' };
+    try {
+        const url = `/game.php?village=${villageId}&screen=snob`;
+        const response = await fetch(url, { credentials: 'same-origin' });
+        if (!response.ok) return { success: false, reason: 'Nao foi possivel acessar a academia' };
 
-            const html = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            const form = doc.querySelector('form[action*="action=coin"]');
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const form = doc.querySelector('form[action*="action=coin"]');
 
-            if (!form) return { success: false, reason: 'Formulario de cunhagem nao encontrado' };
+        if (!form) return { success: false, reason: 'Formulario de cunhagem nao encontrado' };
 
-            const inputCount = form.querySelector('#coin_mint_count, input[name="count"]');
-            if (!inputCount) return { success: false, reason: 'Campo de quantidade nao encontrado' };
+        const inputCount = form.querySelector('#coin_mint_count, input[name="count"]');
+        if (!inputCount) return { success: false, reason: 'Campo de quantidade nao encontrado' };
 
-            inputCount.value = quantidade;
+        inputCount.value = quantidade;
 
-            const actionUrl = form.getAttribute('action');
-            const csrfMatch = actionUrl.match(/[&?]h=([a-f0-9]+)/i);
-            const csrf = csrfMatch ? csrfMatch[1] : (window.game_data?.csrf || '');
+        const actionUrl = form.getAttribute('action');
+        const csrfMatch = actionUrl.match(/[&?]h=([a-f0-9]+)/i);
+        const csrf = csrfMatch ? csrfMatch[1] : (window.game_data?.csrf || '');
 
-            const formData = new URLSearchParams();
-            form.querySelectorAll('input, select, textarea').forEach(input => {
-                if (input.name && input.type !== 'submit' && input.type !== 'button') {
-                    formData.append(input.name, input.value);
-                }
-            });
-            formData.set('count', quantidade.toString());
+        const formData = new URLSearchParams();
+        form.querySelectorAll('input, select, textarea').forEach(input => {
+            if (input.name && input.type !== 'submit' && input.type !== 'button') {
+                formData.append(input.name, input.value);
+            }
+        });
+        formData.set('count', quantidade.toString());
 
-            const postUrl = `/game.php?village=${villageId}&screen=snob&action=coin&h=${csrf}`;
+        const postUrl = `/game.php?village=${villageId}&screen=snob&action=coin&h=${csrf}`;
 
-            const postResponse = await fetch(postUrl, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData.toString()
-            });
+        const postResponse = await fetch(postUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData.toString()
+        });
 
-            if (postResponse.ok) {
-                const texto = await postResponse.text();
-                if (/recursos insuficientes|not enough resources/i.test(texto))
-                    return { success: false, reason: 'recursos_insuficientes' };
-                if (/limite máximo|excede o limite/i.test(texto))
-                    return { success: false, reason: 'limite_atingido' };
-                return { success: true, reason: 'sucesso' };
+        if (postResponse.ok) {
+            const texto = await postResponse.text();
+
+            // ============================================
+            // VERIFICAÇÕES DE ERRO (mantidas)
+            // ============================================
+            if (/recursos insuficientes|not enough resources/i.test(texto))
+                return { success: false, reason: 'recursos_insuficientes' };
+            if (/limite máximo|excede o limite|max limit/i.test(texto))
+                return { success: false, reason: 'limite_atingido' };
+
+            // ============================================
+            // VERIFICAÇÕES DE SUCESSO (NOVAS!)
+            // ============================================
+            // Procura por mensagens de sucesso em português
+            const temSucesso =
+                /moeda(s)?\s*(cunhada|criada|produzida)/i.test(texto) ||
+                /cunhou\s+\d+\s+moeda/i.test(texto) ||
+                /sucesso.*cunhagem/i.test(texto) ||
+                /moedas? de ouro.*adicionadas?/i.test(texto) ||
+                /foram cunhadas/i.test(texto);
+
+            // Também verifica se o contador de moedas no HTML aumentou
+            // (captura o total de moedas após a cunhagem)
+            const totalMoedasMatch = texto.match(/total["\s:]+(\d+)/i);
+            const moedasAumentaram = totalMoedasMatch && parseInt(totalMoedasMatch[1]) > 0;
+
+            if (temSucesso || moedasAumentaram) {
+                return { success: true, reason: 'sucesso', quantidade: quantidade };
             }
 
-            return { success: false, reason: `HTTP ${postResponse.status}` };
-
-        } catch (err) {
-            console.error('[Cunhagem] Erro:', err);
-            return { success: false, reason: err.message };
+            // ============================================
+            // Se não achou nem erro nem sucesso, é duvidoso
+            // ============================================
+            console.warn('[Cunhagem] Resposta ambígua:', texto.substring(0, 500));
+            return { success: false, reason: 'resposta_ambigua', debug: texto.substring(0, 200) };
         }
+
+        return { success: false, reason: `HTTP ${postResponse.status}` };
+
+    } catch (err) {
+        console.error('[Cunhagem] Erro:', err);
+        return { success: false, reason: err.message };
     }
+}
 
     // ============================================
     // FUNCAO PRINCIPAL DE CUNHAGEM
@@ -259,7 +314,7 @@
             if (quantidadeCunhar === 0) return { success: false, reason: 'Quantidade invalida', maximo };
 
             const resultado = await cunharMoedaViaFormulario(villageId, quantidadeCunhar);
-            resultado.maximo    = maximo;
+            resultado.maximo     = maximo;
             resultado.quantidade = quantidadeCunhar;
             return resultado;
 
@@ -432,7 +487,7 @@
         if (dot)  dot.style.background = ativo ? '#22a55a' : '#e24b4a';
         if (stat) stat.textContent = ativo ? `Rodando - Ciclo ${cicloAtual}` : `Parado - ${totalCunhado} moedas`;
         if (btn) {
-            btn.innerHTML    = ativo ? '⏹ Desativar' : '▶ Ativar';
+            btn.innerHTML        = ativo ? '⏹ Desativar' : '▶ Ativar';
             btn.style.background = ativo ? '#c0392b' : '#27ae60';
         }
         atualizarMetricas();
@@ -463,21 +518,30 @@
             color: #e0e0e0;
         `;
 
+        if (POS_X !== null && POS_Y !== null) {
+            const maxX = window.innerWidth  - 300;
+            const maxY = window.innerHeight - 100;
+            const x = Math.max(0, Math.min(POS_X, maxX));
+            const y = Math.max(0, Math.min(POS_Y, maxY));
+            painel.style.left   = x + 'px';
+            painel.style.top    = y + 'px';
+            painel.style.right  = 'auto';
+            painel.style.bottom = 'auto';
+        }
+
         painel.innerHTML = `
             <div id="tws-header" style="background:#2c2c2c;padding:10px 14px;border-radius:11px 11px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:move;border-bottom:1px solid #3a3a3a;user-select:none;">
-                <span style="font-weight:bold;color:#ffa500;font-size:13px;">💰 Cunhagem Automática</span>
-                <button id="tws-minimizar" style="background:#3a3a3a;border:none;color:#ccc;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;">−</button>
+                <span style="font-weight:bold;color:#ffa500;font-size:13px;">Cunhagem Automatica</span>
+                <button id="tws-minimizar" style="background:#3a3a3a;border:none;color:#ccc;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;">${MINIMIZADO ? '+' : '-'}</button>
             </div>
 
-            <div id="tws-body" style="padding:14px;display:flex;flex-direction:column;gap:12px;">
+            <div id="tws-body" style="padding:14px;display:${MINIMIZADO ? 'none' : 'flex'};flex-direction:column;gap:12px;">
 
-                <!-- Status -->
                 <div style="display:flex;align-items:center;gap:10px;background:#252525;border-radius:8px;padding:8px 12px;">
                     <div id="tws-dot" style="width:10px;height:10px;border-radius:50%;background:#e24b4a;flex-shrink:0;transition:background .3s;"></div>
                     <span id="tws-status" style="font-weight:500;font-size:12px;">Parado</span>
                 </div>
 
-                <!-- Métricas -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <div style="background:#252525;border-radius:8px;padding:10px;text-align:center;">
                         <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Moedas</div>
@@ -491,11 +555,10 @@
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
-                <!-- Modo -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Modo de cunhagem</div>
                     <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#252525;border-radius:8px;padding:8px 12px;">
-                        <span>Cunhar máximo possível</span>
+                        <span>Cunhar maximo possivel</span>
                         <input type="checkbox" id="tws-maximo" ${CUNHAR_MAXIMO ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;accent-color:#ffa500;">
                     </label>
                 </div>
@@ -508,36 +571,33 @@
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
-                <!-- Intervalos -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Intervalos</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                         <div>
                             <label style="${labelStyle}" for="tws-pausa-aldeias">Entre aldeias (ms)</label>
                             <input type="number" id="tws-pausa-aldeias" value="${PAUSA_ENTRE_ALDEIAS}" min="500" max="30000" step="100" style="${inputStyle}">
-                            <span id="tws-err-aldeias" style="${errStyle}">Mín. 500 ms</span>
+                            <span id="tws-err-aldeias" style="${errStyle}">Min. 500 ms</span>
                         </div>
                         <div>
                             <label style="${labelStyle}" for="tws-pausa-ciclos">Entre ciclos (s)</label>
                             <input type="number" id="tws-pausa-ciclos" value="${PAUSA_ENTRE_CICLOS / 1000}" min="10" max="3600" step="1" style="${inputStyle}">
-                            <span id="tws-err-ciclos" style="${errStyle}">Mín. 10 s</span>
+                            <span id="tws-err-ciclos" style="${errStyle}">Min. 10 s</span>
                         </div>
                     </div>
                 </div>
 
                 <div style="border-top:1px solid #2e2e2e;"></div>
 
-                <!-- Botões ativar + reset -->
                 <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch;">
                     <button id="tws-botao" style="padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#27ae60;color:#fff;transition:opacity .15s;">
                         ▶ Ativar
                     </button>
-                    <button id="tws-reset" title="Resetar tudo e limpar dados salvos" style="padding:10px 12px;border:none;border-radius:8px;font-size:12px;cursor:pointer;background:#2e2e2e;color:#e24b4a;border:1px solid #3a3a3a;font-weight:bold;white-space:nowrap;">
+                    <button id="tws-reset" title="Resetar tudo e limpar dados salvos" style="padding:10px 12px;border:1px solid #3a3a3a;border-radius:8px;font-size:12px;cursor:pointer;background:#2e2e2e;color:#e24b4a;font-weight:bold;white-space:nowrap;">
                         ↺ Reset
                     </button>
                 </div>
 
-                <!-- Log -->
                 <div>
                     <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Log recente</div>
                     <div id="tws-log" style="background:#0f0f0f;border-radius:6px;padding:8px;font-family:monospace;color:#888;max-height:120px;overflow-y:auto;min-height:60px;display:flex;flex-direction:column;gap:2px;">
@@ -550,7 +610,7 @@
 
         document.body.appendChild(painel);
 
-        // --- Eventos ---
+        // Event listeners
         const maximoCheck   = document.getElementById('tws-maximo');
         const quantidadeDiv = document.getElementById('tws-quantidade-div');
         const inpQtd        = document.getElementById('tws-quantidade');
@@ -589,23 +649,21 @@
             toggle();
         });
 
-        // Botão reset com confirmação
         document.getElementById('tws-reset').addEventListener('click', () => {
-            if (confirm('Resetar tudo? Isso vai parar a cunhagem, zerar contadores e apagar as configurações salvas.')) {
+            if (confirm('Resetar tudo? Isso vai parar a cunhagem, zerar contadores e apagar as configuracoes salvas.')) {
                 resetarTudo();
             }
         });
 
-        // Minimizar
         const minimizar = document.getElementById('tws-minimizar');
         const body      = document.getElementById('tws-body');
         minimizar.addEventListener('click', () => {
-            const visivel = body.style.display !== 'none';
-            body.style.display    = visivel ? 'none' : 'flex';
-            minimizar.textContent = visivel ? '+' : '−';
+            MINIMIZADO = body.style.display !== 'none';
+            body.style.display    = MINIMIZADO ? 'none' : 'flex';
+            minimizar.textContent = MINIMIZADO ? '+' : '-';
+            salvarEstado();
         });
 
-        // Arrastar
         const header = document.getElementById('tws-header');
         let dragging = false, startX, startY, startLeft, startTop;
 
@@ -634,7 +692,22 @@
             painel.style.top  = newTop  + 'px';
         });
 
-        document.addEventListener('mouseup', () => { dragging = false; });
+        document.addEventListener('mouseup', e => {
+            if (!dragging) return;
+            dragging = false;
+            const rect = painel.getBoundingClientRect();
+            POS_X = Math.round(rect.left);
+            POS_Y = Math.round(rect.top);
+            salvarEstado();
+        });
+
+        // CORRECAO: Garantir que o botao reflita o estado atual apos criar o painel
+        atualizarBotao(ATIVADO);
+
+        // Se estava ativado e nao esta rodando, iniciar automaticamente
+        if (ATIVADO && !rodando) {
+            setTimeout(() => iniciar(), 1000);
+        }
     }
 
     // ============================================
@@ -643,7 +716,9 @@
     carregarEstado();
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', criarPainel);
+        document.addEventListener('DOMContentLoaded', () => {
+            criarPainel();
+        });
     } else {
         criarPainel();
     }
