@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         -TW Pesquisa Automática
+// @name         Tribal Wars - Pesquisa Automática
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      3.0
 // @description  Pesquisa unidades por categoria (Infantaria/Cavalaria/Armas de cerco) por aldeia
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
@@ -16,19 +16,19 @@
     const CATEGORIAS = {
         infantaria: {
             nome:  'Infantaria',
-            cor:   '#e24b4a',
+            cor:   '#9b59b6',
             icone: '⚔️',
             unidades: ['spear', 'sword', 'axe', 'archer']
         },
         cavalaria: {
             nome:  'Cavalaria',
-            cor:   '#378add',
+            cor:   '#8e44ad',
             icone: '🐴',
             unidades: ['spy', 'light', 'marcher', 'heavy']
         },
         cerco: {
             nome:  'Armas de cerco',
-            cor:   '#c97c00',
+            cor:   '#7d3c98',
             icone: '🪨',
             unidades: ['ram', 'catapult']
         }
@@ -70,7 +70,7 @@
     let totalPesquisado     = DEFAULTS.totalPesquisado;
     let configAldeias       = {};
 
-    let csrfCache  = null;   // CSRF cacheado — válido para toda a sessão
+    let csrfCache  = null;
     let rodando    = false;
     let cicloAtivo = false;
     let cicloAtual = 0;
@@ -80,7 +80,7 @@
     // ============================================
     // PERSISTÊNCIA
     // ============================================
-    const STORAGE_KEY = 'tws_pesquisa_v2';
+    const STORAGE_KEY = 'twp_pesquisa_v3';
 
     function salvarEstado() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -129,16 +129,17 @@
         totalPesquisado     = DEFAULTS.totalPesquisado;
         cicloAtual          = 0;
         configAldeias       = {};
+        csrfCache           = null;
         localStorage.removeItem(STORAGE_KEY);
 
         if (painel) {
             painel.style.left   = 'auto';
             painel.style.top    = 'auto';
-            painel.style.right  = '340px';
+            painel.style.right  = '20px';
             painel.style.bottom = '20px';
         }
         aplicarEstadoNaUI();
-        adicionarLog('Reiniciado.', 'warn');
+        adicionarLog('Reset completo. Configurações reiniciadas.', 'warn');
     }
 
     function aplicarEstadoNaUI() {
@@ -162,7 +163,7 @@
         if (!el) return;
         const total = Object.keys(configAldeias).length;
         el.textContent = total === 0 ? 'Nenhuma aldeia configurada' : `${total} aldeia(s) configurada(s)`;
-        el.style.color = total === 0 ? '#e24b4a' : '#22a55a';
+        el.style.color = total === 0 ? '#9b59b6' : '#7d3c98';
     }
 
     // ============================================
@@ -174,7 +175,7 @@
         const inpAldeias = document.getElementById('twp-pausa-aldeias');
         const va = parseInt(inpAldeias?.value);
         const validA = !isNaN(va) && va >= 500;
-        if (inpAldeias) inpAldeias.style.borderColor = validA ? '#444' : '#e24b4a';
+        if (inpAldeias) inpAldeias.style.borderColor = validA ? '#333' : '#9b59b6';
         const errA = document.getElementById('twp-err-aldeias');
         if (errA) errA.style.display = validA ? 'none' : 'block';
         if (!validA) ok = false;
@@ -182,7 +183,7 @@
         const inpCiclos = document.getElementById('twp-pausa-ciclos');
         const vc = parseInt(inpCiclos?.value);
         const validC = !isNaN(vc) && vc >= 10;
-        if (inpCiclos) inpCiclos.style.borderColor = validC ? '#444' : '#e24b4a';
+        if (inpCiclos) inpCiclos.style.borderColor = validC ? '#333' : '#9b59b6';
         const errC = document.getElementById('twp-err-ciclos');
         if (errC) errC.style.display = validC ? 'none' : 'block';
         if (!validC) ok = false;
@@ -202,7 +203,7 @@
         const log = document.getElementById('twp-log');
         if (!log) return;
         const t = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const cores = { ok: '#22a55a', err: '#e24b4a', warn: '#c97c00' };
+        const cores = { ok: '#9b59b6', err: '#e24b4a', warn: '#c97c00' };
         const cor = cores[tipo] || '#888';
 
         if (log.children.length === 1 && log.children[0].dataset?.placeholder) log.innerHTML = '';
@@ -216,7 +217,7 @@
     }
 
     // ============================================
-    // LÓGICA DE PESQUISA — CORRIGIDA
+    // LÓGICA DE PESQUISA
     // ============================================
 
     function obterCsrf() {
@@ -232,19 +233,15 @@
 
             const html = await response.text();
 
-            // Sem ferreiro
             if (!html.includes('BuildingSmith')) return null;
 
-            // CSRF: inicializa o cache na primeira aldeia se game_data ainda não tinha
             if (!csrfCache) {
                 const m = html.match(/ajaxaction=research&(?:amp;)?h=([a-f0-9]+)/i);
                 if (m) csrfCache = m[1];
             }
 
-            // Detecta pesquisa em andamento pelo timer no HTML
             const emAndamento = /class="timer"/.test(html);
 
-            // Extrai BuildingSmith.techs do HTML
             const techMatch = html.match(/BuildingSmith\.techs\s*=\s*(\{[\s\S]*?\});\s*[\r\n]/);
             let techs = {};
             if (techMatch) {
@@ -287,7 +284,6 @@
 
             if (json) {
                 if (json?.error) {
-                    // Se sessão expirou, invalida o cache para forçar nova leitura
                     if (/sess.o|session|expirou|expired/i.test(JSON.stringify(json.error))) {
                         csrfCache = null;
                     }
@@ -316,13 +312,11 @@
 
         const resultados = [];
 
-        // Para cada categoria ativa nessa aldeia
         for (const catKey of Object.keys(CATEGORIAS)) {
             if (!cfg[catKey]) continue;
 
             const cat = CATEGORIAS[catKey];
 
-            // Encontra a primeira unidade da categoria não pesquisada e disponível
             for (const unidade of cat.unidades) {
                 const tech = estado.techs[unidade];
                 if (!tech) continue;
@@ -331,19 +325,15 @@
                 const levelAfter  = parseInt(tech.level_after) || 0;
                 const canResearch = tech.can_research === true;
 
-                // can_research === true é a fonte da verdade — se o jogo diz que pode, pode.
-                // research_error pode estar desatualizado (era fila cheia antes, agora não é mais).
-                if (level >= 1)      continue; // já pesquisado
-                if (levelAfter >= 1) continue; // pesquisa em andamento
-                if (!canResearch)    continue; // não desbloqueado / indisponível
+                if (level >= 1)      continue;
+                if (levelAfter >= 1) continue;
+                if (!canResearch)    continue;
 
                 const resultado = await pesquisarUnidade(villageId, unidade, estado.csrf);
 
                 if (resultado.success) {
                     resultados.push({ pulou: false, unidade, nomeUnidade: NOMES_UNIDADES[unidade], categoria: cat.nome });
-                    // Pausa curta entre pesquisas da mesma aldeia
                     await new Promise(r => setTimeout(r, 800));
-                    // Recarrega estado — se a fila ficou cheia, para
                     const novoEstado = await obterEstadoFerraria(villageId);
                     if (!novoEstado || novoEstado.emAndamento) {
                         return resultados;
@@ -351,7 +341,7 @@
                 } else {
                     resultados.push({ pulou: true, motivo: `${NOMES_UNIDADES[unidade]}: ${resultado.reason}` });
                 }
-                break; // só uma por categoria por ciclo
+                break;
             }
         }
 
@@ -465,11 +455,12 @@
         const btn  = document.getElementById('twp-botao');
         const dot  = document.getElementById('twp-dot');
         const stat = document.getElementById('twp-status');
-        if (dot)  dot.style.background  = ativo ? '#22a55a' : '#e24b4a';
+        if (dot)  dot.style.background  = ativo ? '#9b59b6' : '#6c3483';
         if (stat) stat.textContent      = ativo ? `Rodando — Ciclo ${cicloAtual}` : `Parado — ${totalPesquisado} pesquisadas`;
         if (btn) {
             btn.innerHTML        = ativo ? '⏹ Parar' : '▶ Pesquisar';
-            btn.style.background = ativo ? '#c0392b' : '#27ae60';
+            btn.style.background = ativo ? '#6c3483' : '#9b59b6';
+            btn.style.color      = '#fff';
         }
         atualizarMetricas();
     }
@@ -480,20 +471,20 @@
     function criarPainel() {
         if (painel) return;
 
-        const inputStyle = 'width:100%;padding:6px 8px;background:#111;border:1px solid #444;color:#e0e0e0;border-radius:6px;font-size:12px;box-sizing:border-box;';
-        const labelStyle = 'display:block;margin-bottom:4px;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px;';
-        const errStyle   = 'display:none;font-size:10px;color:#e24b4a;margin-top:3px;';
+        const inputStyle = 'width:100%;padding:6px 8px;background:#0a0a0a;border:1px solid #333;color:#e0e0e0;border-radius:6px;font-size:12px;box-sizing:border-box;';
+        const labelStyle = 'display:block;margin-bottom:4px;font-size:10px;color:#9b59b6;text-transform:uppercase;letter-spacing:.4px;';
+        const errStyle   = 'display:none;font-size:10px;color:#9b59b6;margin-top:3px;';
 
         painel = document.createElement('div');
         painel.style.cssText = `
             position: fixed;
             bottom: 20px;
-            right: 340px;
+            right: 20px;
             width: 300px;
-            background: #1a1a1a;
-            border: 1px solid #333;
+            background: #0a0a0a;
+            border: 1px solid #9b59b6;
             border-radius: 12px;
-            z-index: 999998;
+            z-index: 999999;
             font-family: 'Segoe UI', Arial, sans-serif;
             font-size: 12px;
             color: #e0e0e0;
@@ -511,45 +502,45 @@
         const totalConfig = Object.keys(configAldeias).length;
 
         painel.innerHTML = `
-            <div id="twp-header" style="background:#2c2c2c;padding:10px 14px;border-radius:11px 11px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:move;border-bottom:1px solid #3a3a3a;user-select:none;">
-                <span style="font-weight:bold;color:#7c5cbf;font-size:13px;">🔬 Pesquisa Automática</span>
-                <button id="twp-minimizar" style="background:#3a3a3a;border:none;color:#ccc;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;">${MINIMIZADO ? '+' : '−'}</button>
+            <div id="twp-header" style="background:#111;padding:10px 14px;border-radius:11px 11px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:move;border-bottom:1px solid #9b59b6;user-select:none;">
+                <span style="font-weight:bold;color:#9b59b6;font-size:13px;">🔬 Pesquisa Automática</span>
+                <button id="twp-minimizar" style="background:#1a1a1a;border:1px solid #9b59b6;color:#9b59b6;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;">${MINIMIZADO ? '+' : '−'}</button>
             </div>
 
             <div id="twp-body" style="padding:14px;display:${MINIMIZADO ? 'none' : 'flex'};flex-direction:column;gap:12px;">
 
-                <div style="display:flex;align-items:center;gap:10px;background:#252525;border-radius:8px;padding:8px 12px;">
-                    <div id="twp-dot" style="width:10px;height:10px;border-radius:50%;background:#e24b4a;flex-shrink:0;transition:background .3s;"></div>
-                    <span id="twp-status" style="font-weight:500;font-size:12px;">Parado</span>
+                <div style="display:flex;align-items:center;gap:10px;background:#111;border:1px solid #9b59b633;border-radius:8px;padding:8px 12px;">
+                    <div id="twp-dot" style="width:10px;height:10px;border-radius:50%;background:#6c3483;flex-shrink:0;transition:background .3s;"></div>
+                    <span id="twp-status" style="font-weight:500;font-size:12px;color:#9b59b6;">Parado</span>
                 </div>
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div style="background:#252525;border-radius:8px;padding:10px;text-align:center;">
-                        <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Pesquisadas</div>
-                        <div id="twp-met-total" style="font-size:24px;font-weight:bold;color:#7c5cbf;">${totalPesquisado}</div>
+                    <div style="background:#111;border:1px solid #9b59b633;border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:10px;color:#9b59b6;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Pesquisadas</div>
+                        <div id="twp-met-total" style="font-size:24px;font-weight:bold;color:#9b59b6;">${totalPesquisado}</div>
                     </div>
-                    <div style="background:#252525;border-radius:8px;padding:10px;text-align:center;">
-                        <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Ciclos</div>
-                        <div id="twp-met-ciclos" style="font-size:24px;font-weight:bold;color:#7c5cbf;">${cicloAtual}</div>
+                    <div style="background:#111;border:1px solid #9b59b633;border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:10px;color:#9b59b6;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Ciclos</div>
+                        <div id="twp-met-ciclos" style="font-size:24px;font-weight:bold;color:#9b59b6;">${cicloAtual}</div>
                     </div>
                 </div>
 
-                <div style="border-top:1px solid #2e2e2e;"></div>
+                <div style="border-top:1px solid #9b59b633;"></div>
 
                 <div>
-                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Aldeias</div>
-                    <div id="twp-aldeias-config" style="font-size:11px;margin-bottom:8px;color:${totalConfig === 0 ? '#e24b4a' : '#22a55a'};">
+                    <div style="font-size:10px;color:#9b59b6;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Aldeias</div>
+                    <div id="twp-aldeias-config" style="font-size:11px;margin-bottom:8px;color:${totalConfig === 0 ? '#9b59b6' : '#7d3c98'};">
                         ${totalConfig === 0 ? 'Nenhuma aldeia configurada' : `${totalConfig} aldeia(s) configurada(s)`}
                     </div>
-                    <button id="twp-btn-config" style="width:100%;padding:8px;border:1px solid #444;border-radius:8px;font-size:12px;cursor:pointer;background:#252525;color:#7c5cbf;font-weight:bold;">
+                    <button id="twp-btn-config" style="width:100%;padding:8px;border:1px solid #9b59b6;border-radius:8px;font-size:12px;cursor:pointer;background:#111;color:#9b59b6;font-weight:bold;">
                         ⚙ Configurar Aldeias
                     </button>
                 </div>
 
-                <div style="border-top:1px solid #2e2e2e;"></div>
+                <div style="border-top:1px solid #9b59b633;"></div>
 
                 <div>
-                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Intervalos</div>
+                    <div style="font-size:10px;color:#9b59b6;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Intervalos</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                         <div>
                             <label style="${labelStyle}" for="twp-pausa-aldeias">Entre aldeias (ms)</label>
@@ -564,21 +555,21 @@
                     </div>
                 </div>
 
-                <div style="border-top:1px solid #2e2e2e;"></div>
+                <div style="border-top:1px solid #9b59b633;"></div>
 
                 <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch;">
-                    <button id="twp-botao" style="padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#27ae60;color:#fff;transition:opacity .15s;">
+                    <button id="twp-botao" style="padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#9b59b6;color:#fff;transition:opacity .15s;">
                         ▶ Pesquisar
                     </button>
-                    <button id="twp-reset" title="Resetar tudo" style="padding:10px 12px;border:1px solid #3a3a3a;border-radius:8px;font-size:12px;cursor:pointer;background:#2e2e2e;color:#e24b4a;font-weight:bold;white-space:nowrap;">
+                    <button id="twp-reset" title="Resetar tudo" style="padding:10px 12px;border:1px solid #9b59b6;border-radius:8px;font-size:12px;cursor:pointer;background:#111;color:#9b59b6;font-weight:bold;white-space:nowrap;">
                         ↺ Reiniciar
                     </button>
                 </div>
 
                 <div>
-                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Registro</div>
-                    <div id="twp-log" style="background:#0f0f0f;border-radius:6px;padding:8px;font-family:monospace;color:#888;max-height:120px;overflow-y:auto;min-height:60px;display:flex;flex-direction:column;gap:2px;">
-                        <div data-placeholder="1" style="color:#555;font-size:10px;">Aguardando...</div>
+                    <div style="font-size:10px;color:#9b59b6;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Registro</div>
+                    <div id="twp-log" style="background:#050505;border:1px solid #9b59b633;border-radius:6px;padding:8px;font-family:monospace;color:#9b59b688;max-height:120px;overflow-y:auto;min-height:60px;display:flex;flex-direction:column;gap:2px;">
+                        <div data-placeholder="1" style="color:#9b59b644;font-size:10px;">Aguardando...</div>
                     </div>
                 </div>
 
@@ -595,7 +586,7 @@
             if (!isNaN(v) && v >= 500) { PAUSA_ENTRE_ALDEIAS = v; salvarEstado(); }
             const err = document.getElementById('twp-err-aldeias');
             if (err) err.style.display = (!isNaN(v) && v >= 500) ? 'none' : 'block';
-            inpAldeias.style.borderColor = (!isNaN(v) && v >= 500) ? '#444' : '#e24b4a';
+            inpAldeias.style.borderColor = (!isNaN(v) && v >= 500) ? '#333' : '#9b59b6';
         });
 
         inpCiclos.addEventListener('input', () => {
@@ -603,7 +594,7 @@
             if (!isNaN(v) && v >= 10) { PAUSA_ENTRE_CICLOS = v * 1000; salvarEstado(); }
             const err = document.getElementById('twp-err-ciclos');
             if (err) err.style.display = (!isNaN(v) && v >= 10) ? 'none' : 'block';
-            inpCiclos.style.borderColor = (!isNaN(v) && v >= 10) ? '#444' : '#e24b4a';
+            inpCiclos.style.borderColor = (!isNaN(v) && v >= 10) ? '#333' : '#9b59b6';
         });
 
         document.getElementById('twp-btn-config').addEventListener('click', abrirModal);
@@ -675,7 +666,7 @@
         modal = document.createElement('div');
         modal.style.cssText = `
             position: fixed; inset: 0;
-            background: rgba(0,0,0,0.75);
+            background: rgba(0,0,0,0.85);
             z-index: 1000000;
             display: flex;
             align-items: center;
@@ -685,8 +676,8 @@
 
         const container = document.createElement('div');
         container.style.cssText = `
-            background: #1a1a1a;
-            border: 1px solid #444;
+            background: #0a0a0a;
+            border: 1px solid #9b59b6;
             border-radius: 14px;
             width: 620px;
             max-width: 95vw;
@@ -699,40 +690,40 @@
         `;
 
         const legendaHtml = Object.entries(CATEGORIAS).map(([, cat]) =>
-            `<span style="color:${cat.cor};font-weight:bold;">${cat.icone} ${cat.nome}:</span> <span style="color:#888;">${cat.unidades.map(u => NOMES_UNIDADES[u]).join(', ')}</span>`
+            `<span style="color:${cat.cor};font-weight:bold;">${cat.icone} ${cat.nome}:</span> <span style="color:#9b59b688;">${cat.unidades.map(u => NOMES_UNIDADES[u]).join(', ')}</span>`
         ).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
 
         container.innerHTML = `
-            <div style="background:#2c2c2c;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #3a3a3a;flex-shrink:0;">
-                <span style="font-weight:bold;color:#7c5cbf;font-size:14px;">⚙ Configurar Pesquisa por Aldeia</span>
-                <button id="twp-modal-fechar" style="background:#3a3a3a;border:none;color:#ccc;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
+            <div style="background:#111;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #9b59b6;flex-shrink:0;">
+                <span style="font-weight:bold;color:#9b59b6;font-size:14px;">⚙ Configurar Pesquisa por Aldeia</span>
+                <button id="twp-modal-fechar" style="background:#1a1a1a;border:1px solid #9b59b6;color:#9b59b6;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
             </div>
 
-            <div style="padding:10px 18px;border-bottom:1px solid #2e2e2e;flex-shrink:0;font-size:11px;line-height:1.7;">
+            <div style="padding:10px 18px;border-bottom:1px solid #9b59b633;flex-shrink:0;font-size:11px;line-height:1.7;">
                 ${legendaHtml}
             </div>
 
-            <div style="padding:10px 18px;border-bottom:1px solid #2e2e2e;flex-shrink:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <span style="font-size:11px;color:#666;">Aplicar a todas:</span>
+            <div style="padding:10px 18px;border-bottom:1px solid #9b59b633;flex-shrink:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:11px;color:#9b59b6;">Aplicar a todas:</span>
                 ${Object.entries(CATEGORIAS).map(([key, cat]) => `
                     <button data-all="${key}" style="padding:4px 10px;border:1px solid ${cat.cor}44;border-radius:6px;background:${cat.cor}18;color:${cat.cor};font-size:11px;font-weight:bold;cursor:pointer;">
                         ${cat.icone} ${cat.nome}
                     </button>
                 `).join('')}
-                <button data-all="todas" style="padding:4px 10px;border:1px solid #555;border-radius:6px;background:#252525;color:#ccc;font-size:11px;cursor:pointer;">✓ Todas</button>
-                <button data-all="nenhuma" style="padding:4px 10px;border:1px solid #3a3a3a;border-radius:6px;background:#2a2a2a;color:#888;font-size:11px;cursor:pointer;">✕ Nenhuma</button>
-                <button id="twp-modal-carregar" style="margin-left:auto;padding:5px 14px;border:1px solid #444;border-radius:6px;background:#252525;color:#7c5cbf;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">
+                <button data-all="todas" style="padding:4px 10px;border:1px solid #9b59b6;border-radius:6px;background:#1a1a1a;color:#9b59b6;font-size:11px;cursor:pointer;">✓ Todas</button>
+                <button data-all="nenhuma" style="padding:4px 10px;border:1px solid #333;border-radius:6px;background:#111;color:#9b59b688;font-size:11px;cursor:pointer;">✕ Nenhuma</button>
+                <button id="twp-modal-carregar" style="margin-left:auto;padding:5px 14px;border:1px solid #9b59b6;border-radius:6px;background:#111;color:#9b59b6;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">
                     ↻ Recarregar aldeias
                 </button>
             </div>
 
             <div id="twp-modal-lista" style="overflow-y:auto;flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:8px;">
-                <div style="color:#555;font-size:12px;text-align:center;padding:20px 0;">Carregando...</div>
+                <div style="color:#9b59b688;font-size:12px;text-align:center;padding:20px 0;">Carregando...</div>
             </div>
 
-            <div style="padding:12px 18px;border-top:1px solid #2e2e2e;display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;">
-                <button id="twp-modal-cancelar" style="padding:8px 18px;border:1px solid #444;border-radius:8px;background:#252525;color:#ccc;font-size:12px;cursor:pointer;">Cancelar</button>
-                <button id="twp-modal-salvar" style="padding:8px 18px;border:none;border-radius:8px;background:#27ae60;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">Salvar</button>
+            <div style="padding:12px 18px;border-top:1px solid #9b59b633;display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;">
+                <button id="twp-modal-cancelar" style="padding:8px 18px;border:1px solid #9b59b6;border-radius:8px;background:#111;color:#9b59b6;font-size:12px;cursor:pointer;">Cancelar</button>
+                <button id="twp-modal-salvar" style="padding:8px 18px;border:none;border-radius:8px;background:#9b59b6;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;">Salvar</button>
             </div>
         `;
 
@@ -753,7 +744,6 @@
             btn.disabled = false;
         });
 
-        // Botões globais — marca todas as aldeias para a categoria clicada
         container.querySelectorAll('[data-all]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const acao = btn.dataset.all;
@@ -762,7 +752,7 @@
                         const cb = row.querySelector(`[data-cat="${catKey}"]`);
                         if (!cb) return;
                         if (Object.keys(CATEGORIAS).includes(acao)) {
-                            if (acao === catKey) cb.checked = true;  // marca só a categoria clicada
+                            if (acao === catKey) cb.checked = true;
                         } else if (acao === 'todas')   cb.checked = true;
                         else if (acao === 'nenhuma')   cb.checked = false;
                     });
@@ -794,13 +784,13 @@
 
         const row = document.createElement('div');
         row.dataset.villageId = aldeia.id;
-        row.style.cssText = 'background:#252525;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:12px;';
+        row.style.cssText = 'background:#111;border:1px solid #9b59b633;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:12px;';
 
         const info = document.createElement('div');
         info.style.cssText = 'flex:1;min-width:0;';
         info.innerHTML = `
-            <div style="font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${aldeia.nome}</div>
-            <div style="font-size:10px;color:#555;">${aldeia.coord}</div>
+            <div style="font-weight:bold;font-size:12px;color:#9b59b6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${aldeia.nome}</div>
+            <div style="font-size:10px;color:#9b59b688;">${aldeia.coord}</div>
         `;
         row.appendChild(info);
 
@@ -843,7 +833,7 @@
         const lista = document.getElementById('twp-modal-lista');
         if (!lista) return;
 
-        lista.innerHTML = `<div style="color:#888;font-size:12px;text-align:center;padding:20px 0;">Carregando...</div>`;
+        lista.innerHTML = `<div style="color:#9b59b688;font-size:12px;text-align:center;padding:20px 0;">Carregando...</div>`;
 
         try {
             const response = await fetch('/map/village.txt', { credentials: 'same-origin' });
@@ -866,7 +856,7 @@
             const header = document.createElement('div');
             header.style.cssText = 'display:flex;align-items:center;gap:12px;padding:0 14px 4px;';
             header.innerHTML = `
-                <div style="flex:1;font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.4px;">Aldeia</div>
+                <div style="flex:1;font-size:10px;color:#9b59b6;text-transform:uppercase;letter-spacing:.4px;">Aldeia</div>
                 <div style="display:flex;gap:10px;flex-shrink:0;">
                     ${Object.entries(CATEGORIAS).map(([, cat]) =>
                         `<div style="width:32px;text-align:center;font-size:10px;color:${cat.cor};font-weight:bold;">${cat.icone}<br>${cat.nome}</div>`
@@ -879,7 +869,7 @@
             minhasAldeias.forEach(aldeia => lista.appendChild(construirRowAldeia(aldeia)));
 
         } catch (err) {
-            lista.innerHTML = `<div style="color:#e24b4a;font-size:12px;text-align:center;padding:20px 0;">Erro: ${err.message}</div>`;
+            lista.innerHTML = `<div style="color:#9b59b6;font-size:12px;text-align:center;padding:20px 0;">Erro: ${err.message}</div>`;
         }
     }
 
