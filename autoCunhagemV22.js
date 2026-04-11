@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tribal Wars - Cunhagem Automatica
 // @namespace    http://tampermonkey.net/
-// @version      21.0
+// @version      22.0
 // @description  Cunhagem automatica - Versao simplificada sem verificacao ambigua
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
@@ -44,7 +44,7 @@
     // ============================================
     // PERSISTENCIA
     // ============================================
-    const STORAGE_KEY = 'tws_cunhagem_form_v2';
+    const STORAGE_KEY = 'twc_cunhagem_v22';
 
     function salvarEstado() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -113,7 +113,6 @@
         adicionarLog('Reset completo. Cache de academias limpo.', 'warn');
         console.log('[Cunhagem] Reset completo. localStorage limpo.');
         
-        // Se estava rodando, reinicia automaticamente
         if (estavaRodando) {
             adicionarLog('Reiniciando automaticamente com cache limpo...', 'ok');
             setTimeout(() => {
@@ -125,13 +124,13 @@
     }
 
     function aplicarEstadoNaUI() {
-        const inpMaximo  = document.getElementById('tws-maximo');
-        const inpQtd     = document.getElementById('tws-quantidade');
-        const inpAldeias = document.getElementById('tws-pausa-aldeias');
-        const inpCiclos  = document.getElementById('tws-pausa-ciclos');
-        const qtdDiv     = document.getElementById('tws-quantidade-div');
-        const body       = document.getElementById('tws-body');
-        const minimizar  = document.getElementById('tws-minimizar');
+        const inpMaximo  = document.getElementById('twc-maximo');
+        const inpQtd     = document.getElementById('twc-quantidade');
+        const inpAldeias = document.getElementById('twc-pausa-aldeias');
+        const inpCiclos  = document.getElementById('twc-pausa-ciclos');
+        const qtdDiv     = document.getElementById('twc-quantidade-div');
+        const body       = document.getElementById('twc-body');
+        const minimizar  = document.getElementById('twc-minimizar');
 
         if (inpMaximo)  inpMaximo.checked   = CUNHAR_MAXIMO;
         if (inpQtd)     inpQtd.value        = QUANTIDADE;
@@ -147,13 +146,13 @@
         atualizarBotao(ATIVADO);
         atualizarMetricas();
 
-        ['tws-err-qtd', 'tws-err-aldeias', 'tws-err-ciclos'].forEach(id => {
+        ['twc-err-qtd', 'twc-err-aldeias', 'twc-err-ciclos'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
-        ['tws-quantidade', 'tws-pausa-aldeias', 'tws-pausa-ciclos'].forEach(id => {
+        ['twc-quantidade', 'twc-pausa-aldeias', 'twc-pausa-ciclos'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.style.borderColor = '#444';
+            if (el) el.style.borderColor = '#333';
         });
     }
 
@@ -164,28 +163,28 @@
         let ok = true;
 
         if (!CUNHAR_MAXIMO) {
-            const inpQtd = document.getElementById('tws-quantidade');
+            const inpQtd = document.getElementById('twc-quantidade');
             const v = parseInt(inpQtd?.value);
             const valid = !isNaN(v) && v >= 1 && v <= 999;
-            if (inpQtd) inpQtd.style.borderColor = valid ? '#444' : '#e24b4a';
-            const err = document.getElementById('tws-err-qtd');
+            if (inpQtd) inpQtd.style.borderColor = valid ? '#333' : '#ffcc00';
+            const err = document.getElementById('twc-err-qtd');
             if (err) err.style.display = valid ? 'none' : 'block';
             if (!valid) ok = false;
         }
 
-        const inpAldeias = document.getElementById('tws-pausa-aldeias');
+        const inpAldeias = document.getElementById('twc-pausa-aldeias');
         const va = parseInt(inpAldeias?.value);
         const validA = !isNaN(va) && va >= 500;
-        if (inpAldeias) inpAldeias.style.borderColor = validA ? '#444' : '#e24b4a';
-        const errA = document.getElementById('tws-err-aldeias');
+        if (inpAldeias) inpAldeias.style.borderColor = validA ? '#333' : '#ffcc00';
+        const errA = document.getElementById('twc-err-aldeias');
         if (errA) errA.style.display = validA ? 'none' : 'block';
         if (!validA) ok = false;
 
-        const inpCiclos = document.getElementById('tws-pausa-ciclos');
+        const inpCiclos = document.getElementById('twc-pausa-ciclos');
         const vc = parseInt(inpCiclos?.value);
         const validC = !isNaN(vc) && vc >= 10;
-        if (inpCiclos) inpCiclos.style.borderColor = validC ? '#444' : '#e24b4a';
-        const errC = document.getElementById('tws-err-ciclos');
+        if (inpCiclos) inpCiclos.style.borderColor = validC ? '#333' : '#ffcc00';
+        const errC = document.getElementById('twc-err-ciclos');
         if (errC) errC.style.display = validC ? 'none' : 'block';
         if (!validC) ok = false;
 
@@ -196,10 +195,10 @@
     // LOG NO PAINEL
     // ============================================
     function adicionarLog(msg, tipo) {
-        const log = document.getElementById('tws-log');
+        const log = document.getElementById('twc-log');
         if (!log) return;
         const t = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const cores = { ok: '#22a55a', err: '#e24b4a', warn: '#c97c00' };
+        const cores = { ok: '#ffcc00', err: '#e24b4a', warn: '#ff8800' };
         const cor = cores[tipo] || '#888';
 
         if (log.children.length === 1 && log.children[0].dataset?.placeholder) {
@@ -266,7 +265,6 @@
 
             const texto = await postResponse.text();
             
-            // Só verifica erros conhecidos
             if (/recursos insuficientes|not enough resources/i.test(texto)) {
                 return { success: false, reason: 'recursos_insuficientes' };
             }
@@ -274,7 +272,6 @@
                 return { success: false, reason: 'limite_atingido' };
             }
 
-            // Se chegou aqui, assume sucesso (HTTP 200 + sem erros conhecidos)
             return { success: true, reason: 'sucesso', quantidade: quantidade };
 
         } catch (err) {
@@ -399,7 +396,7 @@
                     totalCunhado += resultado.quantidade;
                     salvarEstado();
                     atualizarMetricas();
-                    adicionarLog(`${aldeia.name}: +${resultado.quantidade} moeda(s) (HTTP 200)`, 'ok');
+                    adicionarLog(`${aldeia.name}: +${resultado.quantidade} moeda(s)`, 'ok');
                     console.log(`[${index}] ${aldeia.name} - cunhou ${resultado.quantidade} (max: ${resultado.maximo})`);
                     await new Promise(r => setTimeout(r, 1000));
                 } else {
@@ -470,22 +467,23 @@
     // UI - ATUALIZAR
     // ============================================
     function atualizarMetricas() {
-        const metT = document.getElementById('tws-met-total');
-        const metC = document.getElementById('tws-met-ciclos');
+        const metT = document.getElementById('twc-met-total');
+        const metC = document.getElementById('twc-met-ciclos');
         if (metT) metT.textContent = totalCunhado;
         if (metC) metC.textContent = cicloAtual;
     }
 
     function atualizarBotao(ativo) {
-        const btn  = document.getElementById('tws-botao');
-        const dot  = document.getElementById('tws-dot');
-        const stat = document.getElementById('tws-status');
+        const btn  = document.getElementById('twc-botao');
+        const dot  = document.getElementById('twc-dot');
+        const stat = document.getElementById('twc-status');
 
-        if (dot)  dot.style.background = ativo ? '#22a55a' : '#e24b4a';
+        if (dot)  dot.style.background = ativo ? '#ffcc00' : '#cc9900';
         if (stat) stat.textContent = ativo ? `Rodando - Ciclo ${cicloAtual}` : `Parado - ${totalCunhado} moedas`;
         if (btn) {
             btn.innerHTML        = ativo ? '⏹ Desativar' : '▶ Ativar';
-            btn.style.background = ativo ? '#c0392b' : '#27ae60';
+            btn.style.background = ativo ? '#cc9900' : '#ffcc00';
+            btn.style.color      = ativo ? '#000' : '#000';
         }
         atualizarMetricas();
     }
@@ -496,9 +494,9 @@
     function criarPainel() {
         if (painel) return;
 
-        const inputStyle = 'width:100%;padding:6px 8px;background:#111;border:1px solid #444;color:#e0e0e0;border-radius:6px;font-size:12px;box-sizing:border-box;';
-        const labelStyle = 'display:block;margin-bottom:4px;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px;';
-        const errStyle   = 'display:none;font-size:10px;color:#e24b4a;margin-top:3px;';
+        const inputStyle = 'width:100%;padding:6px 8px;background:#0a0a0a;border:1px solid #333;color:#e0e0e0;border-radius:6px;font-size:12px;box-sizing:border-box;';
+        const labelStyle = 'display:block;margin-bottom:4px;font-size:10px;color:#ffcc00;text-transform:uppercase;letter-spacing:.4px;';
+        const errStyle   = 'display:none;font-size:10px;color:#ffcc00;margin-top:3px;';
 
         painel = document.createElement('div');
         painel.style.cssText = `
@@ -506,8 +504,8 @@
             bottom: 20px;
             right: 20px;
             width: 300px;
-            background: #1a1a1a;
-            border: 1px solid #333;
+            background: #0a0a0a;
+            border: 1px solid #ffcc00;
             border-radius: 12px;
             z-index: 999999;
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -527,78 +525,78 @@
         }
 
         painel.innerHTML = `
-            <div id="tws-header" style="background:#2c2c2c;padding:10px 14px;border-radius:11px 11px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:move;border-bottom:1px solid #3a3a3a;user-select:none;">
-                <span style="font-weight:bold;color:#ffa500;font-size:13px;">Cunhagem Automatica</span>
-                <button id="tws-minimizar" style="background:#3a3a3a;border:none;color:#ccc;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;">${MINIMIZADO ? '+' : '-'}</button>
+            <div id="twc-header" style="background:#111;padding:10px 14px;border-radius:11px 11px 0 0;display:flex;align-items:center;justify-content:space-between;cursor:move;border-bottom:1px solid #ffcc00;user-select:none;">
+                <span style="font-weight:bold;color:#ffcc00;font-size:13px;">💰 Cunhagem Automática</span>
+                <button id="twc-minimizar" style="background:#1a1a1a;border:1px solid #ffcc00;color:#ffcc00;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;">${MINIMIZADO ? '+' : '-'}</button>
             </div>
 
-            <div id="tws-body" style="padding:14px;display:${MINIMIZADO ? 'none' : 'flex'};flex-direction:column;gap:12px;">
+            <div id="twc-body" style="padding:14px;display:${MINIMIZADO ? 'none' : 'flex'};flex-direction:column;gap:12px;">
 
-                <div style="display:flex;align-items:center;gap:10px;background:#252525;border-radius:8px;padding:8px 12px;">
-                    <div id="tws-dot" style="width:10px;height:10px;border-radius:50%;background:#e24b4a;flex-shrink:0;transition:background .3s;"></div>
-                    <span id="tws-status" style="font-weight:500;font-size:12px;">Parado</span>
+                <div style="display:flex;align-items:center;gap:10px;background:#111;border:1px solid #ffcc0033;border-radius:8px;padding:8px 12px;">
+                    <div id="twc-dot" style="width:10px;height:10px;border-radius:50%;background:#cc9900;flex-shrink:0;transition:background .3s;"></div>
+                    <span id="twc-status" style="font-weight:500;font-size:12px;color:#ffcc00;">Parado</span>
                 </div>
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div style="background:#252525;border-radius:8px;padding:10px;text-align:center;">
-                        <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Moedas</div>
-                        <div id="tws-met-total" style="font-size:24px;font-weight:bold;color:#ffa500;">${totalCunhado}</div>
+                    <div style="background:#111;border:1px solid #ffcc0033;border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:10px;color:#ffcc00;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Moedas</div>
+                        <div id="twc-met-total" style="font-size:24px;font-weight:bold;color:#ffcc00;">${totalCunhado}</div>
                     </div>
-                    <div style="background:#252525;border-radius:8px;padding:10px;text-align:center;">
-                        <div style="font-size:10px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Ciclos</div>
-                        <div id="tws-met-ciclos" style="font-size:24px;font-weight:bold;color:#ffa500;">${cicloAtual}</div>
+                    <div style="background:#111;border:1px solid #ffcc0033;border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:10px;color:#ffcc00;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;">Ciclos</div>
+                        <div id="twc-met-ciclos" style="font-size:24px;font-weight:bold;color:#ffcc00;">${cicloAtual}</div>
                     </div>
                 </div>
 
-                <div style="border-top:1px solid #2e2e2e;"></div>
+                <div style="border-top:1px solid #ffcc0033;"></div>
 
                 <div>
-                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Modo de cunhagem</div>
-                    <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#252525;border-radius:8px;padding:8px 12px;">
-                        <span>Cunhar maximo possivel</span>
-                        <input type="checkbox" id="tws-maximo" ${CUNHAR_MAXIMO ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;accent-color:#ffa500;">
+                    <div style="font-size:10px;color:#ffcc00;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Modo de cunhagem</div>
+                    <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#111;border:1px solid #ffcc0033;border-radius:8px;padding:8px 12px;">
+                        <span style="color:#e0e0e0;">Cunhar máximo possível</span>
+                        <input type="checkbox" id="twc-maximo" ${CUNHAR_MAXIMO ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;accent-color:#ffcc00;">
                     </label>
                 </div>
 
-                <div id="tws-quantidade-div" style="${CUNHAR_MAXIMO ? 'display:none;' : ''}flex-direction:column;gap:3px;">
-                    <label style="${labelStyle}" for="tws-quantidade">Quantidade por aldeia</label>
-                    <input type="number" id="tws-quantidade" value="${QUANTIDADE}" min="1" max="999" step="1" style="${inputStyle}">
-                    <span id="tws-err-qtd" style="${errStyle}">Informe um valor entre 1 e 999</span>
+                <div id="twc-quantidade-div" style="${CUNHAR_MAXIMO ? 'display:none;' : ''}flex-direction:column;gap:3px;">
+                    <label style="${labelStyle}" for="twc-quantidade">Quantidade por aldeia</label>
+                    <input type="number" id="twc-quantidade" value="${QUANTIDADE}" min="1" max="999" step="1" style="${inputStyle}">
+                    <span id="twc-err-qtd" style="${errStyle}">Informe um valor entre 1 e 999</span>
                 </div>
 
-                <div style="border-top:1px solid #2e2e2e;"></div>
+                <div style="border-top:1px solid #ffcc0033;"></div>
 
                 <div>
-                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Intervalos</div>
+                    <div style="font-size:10px;color:#ffcc00;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Intervalos</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                         <div>
-                            <label style="${labelStyle}" for="tws-pausa-aldeias">Entre aldeias (ms)</label>
-                            <input type="number" id="tws-pausa-aldeias" value="${PAUSA_ENTRE_ALDEIAS}" min="500" max="30000" step="100" style="${inputStyle}">
-                            <span id="tws-err-aldeias" style="${errStyle}">Min. 500 ms</span>
+                            <label style="${labelStyle}" for="twc-pausa-aldeias">Entre aldeias (ms)</label>
+                            <input type="number" id="twc-pausa-aldeias" value="${PAUSA_ENTRE_ALDEIAS}" min="500" max="30000" step="100" style="${inputStyle}">
+                            <span id="twc-err-aldeias" style="${errStyle}">Min. 500 ms</span>
                         </div>
                         <div>
-                            <label style="${labelStyle}" for="tws-pausa-ciclos">Entre ciclos (s)</label>
-                            <input type="number" id="tws-pausa-ciclos" value="${PAUSA_ENTRE_CICLOS / 1000}" min="10" max="3600" step="1" style="${inputStyle}">
-                            <span id="tws-err-ciclos" style="${errStyle}">Min. 10 s</span>
+                            <label style="${labelStyle}" for="twc-pausa-ciclos">Entre ciclos (s)</label>
+                            <input type="number" id="twc-pausa-ciclos" value="${PAUSA_ENTRE_CICLOS / 1000}" min="10" max="3600" step="1" style="${inputStyle}">
+                            <span id="twc-err-ciclos" style="${errStyle}">Min. 10 s</span>
                         </div>
                     </div>
                 </div>
 
-                <div style="border-top:1px solid #2e2e2e;"></div>
+                <div style="border-top:1px solid #ffcc0033;"></div>
 
                 <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch;">
-                    <button id="tws-botao" style="padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#27ae60;color:#fff;transition:opacity .15s;">
+                    <button id="twc-botao" style="padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#ffcc00;color:#000;transition:opacity .15s;">
                         ▶ Ativar
                     </button>
-                    <button id="tws-reset" title="Resetar tudo e limpar dados salvos" style="padding:10px 12px;border:1px solid #3a3a3a;border-radius:8px;font-size:12px;cursor:pointer;background:#2e2e2e;color:#e24b4a;font-weight:bold;white-space:nowrap;">
+                    <button id="twc-reset" title="Resetar tudo e limpar dados salvos" style="padding:10px 12px;border:1px solid #ffcc00;border-radius:8px;font-size:12px;cursor:pointer;background:#111;color:#ffcc00;font-weight:bold;white-space:nowrap;">
                         ↺ Reset
                     </button>
                 </div>
 
                 <div>
-                    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Log recente</div>
-                    <div id="tws-log" style="background:#0f0f0f;border-radius:6px;padding:8px;font-family:monospace;color:#888;max-height:120px;overflow-y:auto;min-height:60px;display:flex;flex-direction:column;gap:2px;">
-                        <div data-placeholder="1" style="color:#555;font-size:10px;">Aguardando...</div>
+                    <div style="font-size:10px;color:#ffcc00;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Log recente</div>
+                    <div id="twc-log" style="background:#050505;border:1px solid #ffcc0033;border-radius:6px;padding:8px;font-family:monospace;color:#ffcc0088;max-height:120px;overflow-y:auto;min-height:60px;display:flex;flex-direction:column;gap:2px;">
+                        <div data-placeholder="1" style="color:#ffcc0044;font-size:10px;">Aguardando...</div>
                     </div>
                 </div>
 
@@ -607,12 +605,11 @@
 
         document.body.appendChild(painel);
 
-        // Event listeners
-        const maximoCheck   = document.getElementById('tws-maximo');
-        const quantidadeDiv = document.getElementById('tws-quantidade-div');
-        const inpQtd        = document.getElementById('tws-quantidade');
-        const inpAldeias    = document.getElementById('tws-pausa-aldeias');
-        const inpCiclos     = document.getElementById('tws-pausa-ciclos');
+        const maximoCheck   = document.getElementById('twc-maximo');
+        const quantidadeDiv = document.getElementById('twc-quantidade-div');
+        const inpQtd        = document.getElementById('twc-quantidade');
+        const inpAldeias    = document.getElementById('twc-pausa-aldeias');
+        const inpCiclos     = document.getElementById('twc-pausa-ciclos');
 
         maximoCheck.addEventListener('change', () => {
             CUNHAR_MAXIMO = maximoCheck.checked;
@@ -638,7 +635,7 @@
             validarCampos();
         });
 
-        document.getElementById('tws-botao').addEventListener('click', () => {
+        document.getElementById('twc-botao').addEventListener('click', () => {
             if (!ATIVADO && !validarCampos()) {
                 adicionarLog('Corrija os campos antes de ativar', 'err');
                 return;
@@ -646,14 +643,14 @@
             toggle();
         });
 
-        document.getElementById('tws-reset').addEventListener('click', () => {
+        document.getElementById('twc-reset').addEventListener('click', () => {
             if (confirm('Resetar tudo? Isso vai parar a cunhagem, zerar contadores e apagar as configuracoes salvas.')) {
                 resetarTudo();
             }
         });
 
-        const minimizar = document.getElementById('tws-minimizar');
-        const body      = document.getElementById('tws-body');
+        const minimizar = document.getElementById('twc-minimizar');
+        const body      = document.getElementById('twc-body');
         minimizar.addEventListener('click', () => {
             MINIMIZADO = body.style.display !== 'none';
             body.style.display    = MINIMIZADO ? 'none' : 'flex';
@@ -661,7 +658,7 @@
             salvarEstado();
         });
 
-        const header = document.getElementById('tws-header');
+        const header = document.getElementById('twc-header');
         let dragging = false, startX, startY, startLeft, startTop;
 
         header.addEventListener('mousedown', e => {
@@ -698,10 +695,8 @@
             salvarEstado();
         });
 
-        // CORRECAO: Garantir que o botao reflita o estado atual apos criar o painel
         atualizarBotao(ATIVADO);
 
-        // Se estava ativado e nao esta rodando, iniciar automaticamente
         if (ATIVADO && !rodando) {
             setTimeout(() => iniciar(), 1000);
         }
