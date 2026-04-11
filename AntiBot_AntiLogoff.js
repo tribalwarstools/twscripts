@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TW Sistema Unificado - AntiBot + AntiLogoff
-// @version      3.7
-// @description  Sistema Anti-Bot e Anti-Logoff com contador persistente e reload automático
+// @version      3.8
+// @description  Sistema Anti-Bot e Anti-Logoff com contador persistente e reload automático com chave ON/OFF
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -15,13 +15,14 @@
     const CONFIG = {
         antiLogoff: {
             intervalo: 4 * 60 * 1000, // 4 minutos
-            reloadAoFinalizar: true // Reload automático quando o cronômetro chegar a zero
+            reloadAoFinalizar: true // Padrão: true
         },
         storage: {
             antibot: 'tw_antibot_enabled',
             antilogoff: 'tw_antilogoff_enabled',
-            antilogoff_counter: 'tw_antilogoff_counter', // NOVO: salvar contador
-            botPausado: 'tw_bot_pausado'
+            antilogoff_counter: 'tw_antilogoff_counter',
+            botPausado: 'tw_bot_pausado',
+            reloadEnabled: 'tw_reload_enabled' // NOVO: chave ON/OFF do reload
         }
     };
 
@@ -47,7 +48,8 @@
         },
         painel: {
             minimizado: true
-        }
+        },
+        reloadEnabled: true // NOVO: estado do reload automático
     };
 
     // ============================================
@@ -247,6 +249,43 @@
             color: #fff;
         }
 
+        /* NOVO: estilo para chave seletora ON/OFF */
+        .tw-toggle-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .tw-toggle-btn {
+            flex: 1;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.2s;
+            background: #333;
+            color: #888;
+            border: none;
+        }
+
+        .tw-toggle-btn.ativo-toggle {
+            background: #2ecc71;
+            color: #fff;
+            box-shadow: 0 0 5px #2ecc71;
+        }
+
+        .tw-toggle-btn.inativo-toggle {
+            background: #e74c3c;
+            color: #fff;
+            box-shadow: 0 0 5px #e74c3c;
+        }
+
+        .tw-toggle-btn:hover {
+            transform: translateY(-1px);
+        }
+
         .tw-timer {
             font-size: 14px;
             font-weight: bold;
@@ -262,6 +301,10 @@
         .tw-timer.reload {
             color: #ff9900;
             animation: pulse 1s infinite;
+        }
+
+        .tw-timer.disabled {
+            color: #666;
         }
 
         .tw-counter-display {
@@ -301,6 +344,24 @@
             color: #888;
             margin-top: 5px;
             text-align: center;
+        }
+
+        .reload-status {
+            font-size: 10px;
+            text-align: center;
+            margin-top: 6px;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .reload-status.on {
+            background: #0a3a0a;
+            color: #2ecc71;
+        }
+
+        .reload-status.off {
+            background: #3a0a0a;
+            color: #e74c3c;
         }
 
         @keyframes slideInRight {
@@ -363,7 +424,7 @@
     };
 
     // ============================================
-    // HTML DO PAINEL
+    // HTML DO PAINEL (ATUALIZADO)
     // ============================================
     const painel = document.createElement('div');
     painel.id = 'tw-painel-unificado';
@@ -402,12 +463,25 @@
                 <div class="tw-counter-display" id="antilogoff-counter">Ações: 0</div>
             </div>
 
+            <div class="tw-section">
+                <div class="tw-section-title">🔄 Reload Automático</div>
+                <div class="tw-toggle-group">
+                    <button class="tw-toggle-btn" id="reload-on"> ON </button>
+                    <button class="tw-toggle-btn" id="reload-off"> OFF </button>
+                </div>
+                <div class="reload-status on" id="reload-status">🔁 Reload automático: ATIVADO</div>
+                <div class="info-text" style="margin-top: 8px;">
+                    ⚡ Quando OFF: o Anti-Logoff NÃO vai recarregar a página<br>
+                    💾 A escolha é salva e mantida mesmo após reload
+                </div>
+            </div>
+
             <hr>
 
             <div class="info-text">
                 💡 <strong>Anti-Bot:</strong> Detecta e evita captchas<br>
                 💡 <strong>Anti-Logoff:</strong> Mantém sua sessão ativa<br>
-                💡 <strong>Reload:</strong> Recarrega automaticamente a cada ciclo<br>
+                💡 <strong>Reload:</strong> Chave ON/OFF para controlar se recarrega<br>
                 💡 <strong>Contador:</strong> Persistente mesmo após reload
             </div>
         </div>
@@ -432,6 +506,11 @@
             toggleBtn: document.getElementById('antilogoff-toggle'),
             timer: document.getElementById('antilogoff-timer'),
             counter: document.getElementById('antilogoff-counter')
+        },
+        reload: {
+            btnOn: document.getElementById('reload-on'),
+            btnOff: document.getElementById('reload-off'),
+            status: document.getElementById('reload-status')
         }
     };
 
@@ -479,6 +558,25 @@
         }
     }
 
+    // NOVO: atualizar UI da chave de reload
+    function atualizarUIReload() {
+        if (Estado.reloadEnabled) {
+            UI.reload.btnOn.classList.add('ativo-toggle');
+            UI.reload.btnOff.classList.remove('inativo-toggle');
+            UI.reload.status.className = 'reload-status on';
+            UI.reload.status.innerHTML = '🔁 Reload automático: ATIVADO';
+        } else {
+            UI.reload.btnOn.classList.remove('ativo-toggle');
+            UI.reload.btnOff.classList.add('inativo-toggle');
+            UI.reload.status.className = 'reload-status off';
+            UI.reload.status.innerHTML = '⏸️ Reload automático: DESATIVADO';
+            // Se estiver com reload desativado e o timer estava em reload, remove a classe
+            if (UI.antilogoff.timer) {
+                UI.antilogoff.timer.classList.remove('reload');
+            }
+        }
+    }
+
     function formatarTempo(ms) {
         const seg = Math.floor(ms / 1000);
         const min = Math.floor(seg / 60);
@@ -494,8 +592,13 @@
         }
 
         if (Estado.antilogoff.tempoRestante <= 0) {
-            UI.antilogoff.timer.textContent = '🔄 RELOAD!';
-            UI.antilogoff.timer.classList.add('reload');
+            if (Estado.reloadEnabled) {
+                UI.antilogoff.timer.textContent = '🔄 RELOAD!';
+                UI.antilogoff.timer.classList.add('reload');
+            } else {
+                UI.antilogoff.timer.textContent = '⏸️ RELOAD OFF';
+                UI.antilogoff.timer.classList.remove('reload');
+            }
         } else {
             UI.antilogoff.timer.textContent = formatarTempo(Estado.antilogoff.tempoRestante);
             UI.antilogoff.timer.classList.remove('reload');
@@ -503,16 +606,22 @@
 
         UI.antilogoff.counter.textContent = `Ações: ${Estado.antilogoff.contadorAcoes}`;
 
-        // Salvar contador no localStorage a cada atualização
         if (Estado.antilogoff.ativo) {
             localStorage.setItem(CONFIG.storage.antilogoff_counter, Estado.antilogoff.contadorAcoes.toString());
         }
     }
 
     // ============================================
-    // FUNÇÃO DE RELOAD CORRIGIDA
+    // FUNÇÃO DE RELOAD COM CHAVE ON/OFF
     // ============================================
     function executarReload() {
+        // VERIFICA SE O RELOAD ESTÁ ATIVADO PELA CHAVE SELETORA
+        if (!Estado.reloadEnabled) {
+            console.log('ℹ️ Reload automático está DESATIVADO pela chave seletora');
+            Toast.info('⏸️ Reload desativado - O Anti-Logoff continua ativo mas não vai recarregar');
+            return;
+        }
+
         if (!CONFIG.antiLogoff.reloadAoFinalizar) {
             console.log('ℹ️ Reload automático está desativado nas configurações');
             return;
@@ -529,10 +638,10 @@
         // Salvar estado atual antes do reload
         localStorage.setItem(CONFIG.storage.antilogoff_counter, Estado.antilogoff.contadorAcoes.toString());
         localStorage.setItem(CONFIG.storage.antilogoff, Estado.antilogoff.ativo ? '1' : '0');
+        localStorage.setItem(CONFIG.storage.reloadEnabled, Estado.reloadEnabled ? '1' : '0');
 
         Toast.info(`🔄 Recarregando página em 3 segundos... (Ações: ${Estado.antilogoff.contadorAcoes})`);
 
-        // Contagem regressiva visual
         let countdown = 3;
         const interval = setInterval(() => {
             Toast.info(`🔄 Recarregando em ${countdown}...`, 1000);
@@ -546,6 +655,21 @@
             console.log('🔄 Executando reload da página...');
             window.location.reload();
         }, 3000);
+    }
+
+    // NOVO: função para alterar o estado do reload
+    function setReloadEnabled(enabled) {
+        Estado.reloadEnabled = enabled;
+        localStorage.setItem(CONFIG.storage.reloadEnabled, enabled ? '1' : '0');
+        atualizarUIReload();
+
+        // Se o timer estiver zerado, atualiza a exibição
+        if (Estado.antilogoff.ativo && Estado.antilogoff.tempoRestante <= 0) {
+            atualizarTimer();
+        }
+
+        Toast.success(`Reload automático ${enabled ? 'ATIVADO ✅' : 'DESATIVADO ❌'}`);
+        console.log(`🔄 Reload automático ${enabled ? 'ATIVADO' : 'DESATIVADO'}`);
     }
 
     // ============================================
@@ -691,7 +815,6 @@
 
         Estado.antilogoff.ativo = true;
 
-        // Restaurar contador do localStorage se existir
         const savedCounter = localStorage.getItem(CONFIG.storage.antilogoff_counter);
         Estado.antilogoff.contadorAcoes = savedCounter ? parseInt(savedCounter) : 0;
 
@@ -730,7 +853,6 @@
                 Estado.antilogoff.reloadAgendado = false;
                 atualizarTimer();
 
-                // Salvar contador no localStorage após cada ação
                 localStorage.setItem(CONFIG.storage.antilogoff_counter, Estado.antilogoff.contadorAcoes.toString());
 
                 console.log(`✅ Anti-Logoff: ação ${Estado.antilogoff.contadorAcoes} concluída`);
@@ -752,7 +874,6 @@
         Estado.antilogoff.tempoRestante = null;
         Estado.antilogoff.reloadAgendado = false;
         localStorage.setItem(CONFIG.storage.antilogoff, '0');
-        // Não limpar o contador ao desativar para manter persistência
 
         desativarWakeLock();
         atualizarUIAntiLogoff();
@@ -770,9 +891,17 @@
                 Estado.antilogoff.tempoRestante = 0;
                 atualizarTimer();
 
-                if (!Estado.antilogoff.reloadAgendado && CONFIG.antiLogoff.reloadAoFinalizar) {
+                if (!Estado.antilogoff.reloadAgendado) {
                     console.log(`⏰ Cronômetro zerado! (Ações executadas: ${Estado.antilogoff.contadorAcoes})`);
-                    executarReload();
+                    // Só executa reload se estiver ativado pela chave
+                    if (Estado.reloadEnabled && CONFIG.antiLogoff.reloadAoFinalizar) {
+                        executarReload();
+                    } else {
+                        console.log('ℹ️ Reload não executado - chave seletora OFF');
+                        // Reseta o timer para não ficar travado em zero
+                        Estado.antilogoff.tempoRestante = CONFIG.antiLogoff.intervalo;
+                        atualizarTimer();
+                    }
                 }
             } else {
                 atualizarTimer();
@@ -829,10 +958,23 @@
         Estado.antilogoff.ativo ? desativarAntiLogoff() : ativarAntiLogoff();
     });
 
+    // NOVOS: listeners para a chave seletora ON/OFF
+    UI.reload.btnOn.addEventListener('click', () => setReloadEnabled(true));
+    UI.reload.btnOff.addEventListener('click', () => setReloadEnabled(false));
+
     // ============================================
-    // RESTAURAR ESTADO (COM CONTADOR PERSISTENTE)
+    // RESTAURAR ESTADO (COM CHAVE DE RELOAD)
     // ============================================
     function restaurarEstado() {
+        // Restaurar estado do reload
+        const savedReloadEnabled = localStorage.getItem(CONFIG.storage.reloadEnabled);
+        if (savedReloadEnabled !== null) {
+            Estado.reloadEnabled = savedReloadEnabled === '1';
+        } else {
+            Estado.reloadEnabled = true; // padrão: ativado
+        }
+        atualizarUIReload();
+
         if (localStorage.getItem(CONFIG.storage.antibot) === '1') {
             ativarAntiBot();
             observerAntiBot.observe(document.body, { childList: true, subtree: true });
@@ -845,9 +987,8 @@
         }
 
         if (localStorage.getItem(CONFIG.storage.antilogoff) === '1') {
-            ativarAntiLogoff(); // Isso vai restaurar o contador automaticamente
+            ativarAntiLogoff();
         } else {
-            // Se não estiver ativo, ainda assim restaurar o contador para exibição
             const savedCounter = localStorage.getItem(CONFIG.storage.antilogoff_counter);
             if (savedCounter) {
                 Estado.antilogoff.contadorAcoes = parseInt(savedCounter);
@@ -866,12 +1007,12 @@
     // ============================================
     // INICIALIZAÇÃO
     // ============================================
-    console.log('🎮 Sistema TW Unificado 3.7 carregado!');
-    console.log('✅ Contador PERSISTENTE - Não zera mais após reload');
-    console.log('✅ Reload automático corrigido');
+    console.log('🎮 Sistema TW Unificado 3.8 carregado!');
+    console.log('✅ NOVIDADE: Chave seletora ON/OFF para reload automático');
+    console.log('✅ Quando OFF: Anti-Logoff NÃO recarrega a página');
+    console.log('✅ Persistente - salva sua escolha mesmo após reload');
     console.log('📍 Painel fixo no canto inferior direito');
     console.log('🖱️ Clique no ícone 🛡️ para abrir/fechar');
-    console.log('🔄 O Anti-Logoff agora mantém o contador mesmo após reload');
 
     restaurarEstado();
 
