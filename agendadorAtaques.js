@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Tribal Wars - Agendador de Ataques (Compatível Basic/Premium)
+// @name         Tribal Wars - Agendador de Ataques (AutoFill Completo)
 // @namespace    http://tampermonkey.net/
-// @version      15.0
-// @description  Agende ataques com precisão - Com NT4 e NT5 na lista de ataques (envio instantâneo)
+// @version      16.0
+// @description  Agende ataques com precisão - Auto preenche TODAS as tropas disponíveis quando campos vazios
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
@@ -34,7 +34,7 @@
 
     const STORAGE_KEYS = {
         FORM_DATA: 'tws_form_data_v6',
-        ATTACKS: 'tws_ataques_v7',
+        ATTACKS: 'tws_ataques_v8',
         TEMPLATES: 'tws_templates_v3',
         PANEL_POSITION: 'tws_panel_position',
         PANEL_MINIMIZED: 'tws_panel_minimized'
@@ -44,6 +44,10 @@
     const VILLAGE_TXT_URL = `/map/village.txt`;
     let _villageMap = {};
     let _myVillages = [];
+
+    // Cache para tropas
+    const troopCache = new Map();
+    let lastCacheClear = Date.now();
 
     // ============================================
     // DATA/HORA DO SERVIDOR
@@ -188,7 +192,7 @@
                 background:${colors[type]};color:white;padding:12px 20px;
                 border-radius:8px;font-size:14px;font-family:Arial,sans-serif;
                 box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;z-index:999999;
-                animation:slideInRight 0.3s ease;`;
+                animation:slideInRight 0.3s ease;max-width:400px;white-space:pre-line;`;
             el.innerHTML = message;
             el.onclick = () => el.remove();
             this._getContainer().appendChild(el);
@@ -225,7 +229,7 @@
                 min-width:300px;max-width:400px;box-shadow:0 5px 25px rgba(0,0,0,.3);
                 border:1px solid #ff9900;z-index:999999;`;
             box.innerHTML = `
-                <p style="color:#fff;margin-bottom:20px;font-size:14px;">${message}</p>
+                <p style="color:#fff;margin-bottom:20px;font-size:14px;white-space:pre-line;">${message}</p>
                 <div style="display:flex;gap:10px;justify-content:flex-end;">
                     <button id="tws-confirm-no" style="background:#555;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;">Não</button>
                     <button id="tws-confirm-yes" style="background:#ff9900;color:#1a1a1a;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;font-weight:bold;">Sim</button>
@@ -257,7 +261,7 @@
                 this._el.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
                     background:rgba(0,0,0,.8);color:#ff9900;padding:20px 30px;border-radius:10px;
                     z-index:999999;font-size:16px;font-weight:bold;display:flex;gap:10px;align-items:center;`;
-                this._el.innerHTML = '<div class="tws-spinner"></div> Enviando ataques...';
+                this._el.innerHTML = '<div class="tws-spinner"></div> Processando...';
                 document.body.appendChild(this._el);
             }
             this._el.style.display = 'flex';
@@ -373,6 +377,132 @@
     window.deleteTemplate = deleteTemplate;
 
     // ============================================
+    // TROPAS DISPONÍVEIS (COM CACHE)
+    // ============================================
+    async function getVillageTroops(villageId, forceRefresh = false) {
+        // Limpar cache a cada 30 segundos
+        if (Date.now() - lastCacheClear > 30000) {
+            troopCache.clear();
+            lastCacheClear = Date.now();
+        }
+        
+        if (!forceRefresh && troopCache.has(villageId)) {
+            return troopCache.get(villageId);
+        }
+        
+        try {
+            const url = `/game.php?village=${villageId}&screen=place`;
+            const res = await fetch(url, { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('Falha ao carregar /place');
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const troops = {};
+            TROOP_IDS.forEach(u => {
+                let el = doc.querySelector(`#units_entry_all_${u}`) ||
+                         doc.querySelector(`#units_home_${u}`) ||
+                         doc.querySelector(`.unit-input-faded a[data-unit="${u}"] + span`);
+                const txt = el ? (el.textContent || '').replace(/\./g, '').replace(/,/g, '').trim() : '0';
+                const m = txt.match(/(\d+)/g);
+                troops[u] = m ? parseInt(m.join(''), 10) : 0;
+            });
+            troopCache.set(villageId, troops);
+            return troops;
+        } catch (err) {
+            console.error('[TWS] Erro getVillageTroops:', err);
+            return null;
+        }
+    }
+
+    // Função para obter TODAS as tropas disponíveis (exceto espião e nobre)
+    async function getAllAvailableTroops(villageId) {
+        try {
+            const available = await getVillageTroops(villageId);
+            if (!available) return null;
+            
+            const allTroops = {};
+            TROOP_IDS.forEach(t => {
+                // Excluir espião e nobre por padrão (podem causar problemas)
+                if (t !== 'spy' && t !== 'snob') {
+                    allTroops[t] = available[t] || 0;
+                } else {
+                    allTroops[t] = 0;
+                }
+            });
+            return allTroops;
+        } catch (err) {
+            console.error('[TWS] Erro ao obter tropas:', err);
+            return null;
+        }
+    }
+
+    // Verificar se o usuário preencheu alguma tropa manualmente
+    function hasUserFilledTroops() {
+        for (const t of TROOP_IDS) {
+            const inp = document.getElementById(t);
+            if (inp && parseInt(inp.value) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Preencher automaticamente com todas as tropas disponíveis
+    async function autoFillWithAllTroops(villageCoord) {
+        const villageId = _villageMap[villageCoord];
+        if (!villageId) {
+            Toast.error('Vila não encontrada!');
+            return false;
+        }
+        
+        LoadingIndicator.show();
+        try {
+            const allTroops = await getAllAvailableTroops(villageId);
+            if (!allTroops) {
+                Toast.error('Não foi possível obter as tropas disponíveis!');
+                return false;
+            }
+            
+            const hasAnyTroops = Object.values(allTroops).some(v => v > 0);
+            if (!hasAnyTroops) {
+                Toast.error('Esta vila não possui tropas disponíveis para ataque!');
+                return false;
+            }
+            
+            TROOP_IDS.forEach(t => {
+                const inp = document.getElementById(t);
+                if (inp && allTroops[t] !== undefined) {
+                    inp.value = allTroops[t];
+                }
+            });
+            
+            let tropasMsg = '';
+            TROOP_IDS.forEach(t => {
+                if (allTroops[t] > 0) {
+                    tropasMsg += `${TROOP_NAMES[t]}: ${number_format(allTroops[t], '.')}\n`;
+                }
+            });
+            
+            Toast.success(`✅ Preenchido com TODAS as tropas disponíveis!\n\n${tropasMsg}`, 8000);
+            return true;
+        } catch (err) {
+            Toast.error(`Erro ao preencher tropas: ${err.message}`);
+            return false;
+        } finally {
+            LoadingIndicator.hide();
+        }
+    }
+
+    function validateTroops(requested, available) {
+        const errors = [];
+        TROOP_IDS.forEach(u => {
+            const req = Number(requested[u] || 0);
+            const avail = Number(available[u] || 0);
+            if (req > avail) errors.push(`${TROOP_NAMES[u]}: ${req}/${avail}`);
+        });
+        return errors;
+    }
+
+    // ============================================
     // IMPORTAÇÃO BBCODE
     // ============================================
     function importarBBCode() {
@@ -400,7 +530,7 @@
             const existe = ataques.some(a => a.origem === origem && a.alvo === alvo && a.datahora === datahora);
             if (!modo && existe) { ignorados++; continue; }
             ataques.push({ id: Date.now() + Math.random() + importados, origem, alvo, datahora, ...tropas,
-                enviado: false, travado: false, sucesso: null });
+                enviado: false, travado: false, sucesso: null, autoFill: false });
             salvarAtaques(ataques);
             importados++;
         }
@@ -417,7 +547,7 @@
     // ============================================
     function formatTroopsForDisplay(tropas) {
         const list = TROOP_IDS.filter(t => (tropas[t] || 0) > 0);
-        if (!list.length) return '';
+        if (!list.length) return '<span style="color:#ff9900;">🤖 AutoFill (todas disponíveis)</span>';
         const show = list.slice(0, 6);
         const hasMore = list.length > 6;
         let html = '<div class="troops-preview">';
@@ -479,42 +609,6 @@
     }
 
     // ============================================
-    // VERIFICAR TROPAS DISPONÍVEIS
-    // ============================================
-    async function getVillageTroops(villageId) {
-        try {
-            const url = `/game.php?village=${villageId}&screen=place`;
-            const res = await fetch(url, { credentials: 'same-origin' });
-            if (!res.ok) throw new Error('Falha ao carregar /place');
-            const html = await res.text();
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-            const troops = {};
-            TROOP_IDS.forEach(u => {
-                let el = doc.querySelector(`#units_entry_all_${u}`) ||
-                         doc.querySelector(`#units_home_${u}`) ||
-                         doc.querySelector(`.unit-input-faded a[data-unit="${u}"] + span`);
-                const txt = el ? (el.textContent || '').replace(/\./g, '').replace(/,/g, '').trim() : '0';
-                const m = txt.match(/(\d+)/g);
-                troops[u] = m ? parseInt(m.join(''), 10) : 0;
-            });
-            return troops;
-        } catch (err) {
-            console.error('[TWS] Erro getVillageTroops:', err);
-            return null;
-        }
-    }
-
-    function validateTroops(requested, available) {
-        const errors = [];
-        TROOP_IDS.forEach(u => {
-            const req = Number(requested[u] || 0);
-            const avail = Number(available[u] || 0);
-            if (req > avail) errors.push(`${TROOP_NAMES[u]}: ${req}/${avail}`);
-        });
-        return errors;
-    }
-
-    // ============================================
     // DETECTAR CONFIRMAÇÃO
     // ============================================
     function isAttackConfirmed(htmlText) {
@@ -549,12 +643,33 @@
             const [x, y] = (cfg.alvo || '').split('|');
             if (!x || !y) throw new Error(`Alvo inválido: ${cfg.alvo}`);
 
-            const availableTroops = await getVillageTroops(origemId);
-            if (availableTroops) {
-                const errors = validateTroops(cfg, availableTroops);
-                if (errors.length) {
-                    throw new Error(`Tropas insuficientes: ${errors.join(', ')}`);
+            let tropasParaEnviar = { ...cfg };
+            
+            // Se for AutoFill, buscar tropas atualizadas
+            if (cfg.autoFill) {
+                console.log('[TWS] AutoFill: Buscando tropas disponíveis em tempo real...');
+                const availableTroops = await getVillageTroops(origemId, true); // Forçar refresh
+                if (availableTroops) {
+                    TROOP_IDS.forEach(t => {
+                        if (t !== 'spy' && t !== 'snob') {
+                            tropasParaEnviar[t] = availableTroops[t] || 0;
+                        }
+                    });
+                    console.log('[TWS] AutoFill: Tropas atualizadas:', tropasParaEnviar);
                 }
+            } else {
+                const availableTroops = await getVillageTroops(origemId);
+                if (availableTroops) {
+                    const errors = validateTroops(cfg, availableTroops);
+                    if (errors.length) {
+                        throw new Error(`Tropas insuficientes: ${errors.join(', ')}`);
+                    }
+                }
+            }
+
+            const temTropas = TROOP_IDS.some(t => (tropasParaEnviar[t] || 0) > 0);
+            if (!temTropas) {
+                throw new Error('Nenhuma tropa disponível para enviar!');
             }
 
             const placeUrl = `/game.php?village=${origemId}&screen=place`;
@@ -582,7 +697,9 @@
 
             payload.x = String(x);
             payload.y = String(y);
-            TROOP_IDS.forEach(u => { payload[u] = String(cfg[u] !== undefined ? cfg[u] : 0); });
+            TROOP_IDS.forEach(u => { 
+                payload[u] = String(tropasParaEnviar[u] !== undefined ? tropasParaEnviar[u] : 0); 
+            });
 
             payload.attack = 'Ataque';
 
@@ -650,14 +767,9 @@
     }
 
     // ============================================
-    // FUNÇÕES NT4 e NT5 NA LISTA DE ATAQUES (SEM DELAY)
+    // FUNÇÕES NT4 e NT5
     // ============================================
 
-    /**
-     * Envia múltiplos ataques idênticos - INSTANTÂNEO (sem delay)
-     * @param {number} index - Índice do ataque na lista
-     * @param {number} quantidade - Número de ataques a enviar (4 ou 5)
-     */
     async function enviarMultiplosDoAtaque(index, quantidade) {
         const ataques = carregarAtaques();
         const ataqueOriginal = ataques[index];
@@ -667,58 +779,58 @@
             return;
         }
 
-        // Verificar se o ataque original tem tropas
         const hasTroops = TROOP_IDS.some(t => (ataqueOriginal[t] || 0) > 0);
-        if (!hasTroops) {
+        if (!hasTroops && !ataqueOriginal.autoFill) {
             Toast.error('Este ataque não possui tropas configuradas!');
             return;
         }
 
-        // Montar mensagem de confirmação
         let tropasMsg = '';
-        TROOP_IDS.forEach(t => {
-            if (ataqueOriginal[t] && ataqueOriginal[t] > 0) {
-                tropasMsg += `\n${TROOP_NAMES[t]}: ${number_format(ataqueOriginal[t], '.')}`;
-            }
-        });
+        if (ataqueOriginal.autoFill) {
+            tropasMsg = '\n🤖 Modo AutoFill: Usará TODAS as tropas disponíveis no momento do envio!';
+        } else {
+            TROOP_IDS.forEach(t => {
+                if (ataqueOriginal[t] && ataqueOriginal[t] > 0) {
+                    tropasMsg += `\n${TROOP_NAMES[t]}: ${number_format(ataqueOriginal[t], '.')}`;
+                }
+            });
+        }
 
         ConfirmationBox.show(
-            `🚀 Enviar ${quantidade} ataques INSTANTÂNEOS (sem delay!):\n\n` +
+            `🚀 Enviar ${quantidade} ataques:\n\n` +
             `Origem: ${ataqueOriginal.origem}\n` +
             `Alvo: ${ataqueOriginal.alvo}${tropasMsg}\n\n` +
-            `⚠️ Todos os ${quantidade} ataques serão disparados SIMULTANEAMENTE!`,
+            `⚠️ Os ataques serão enviados com intervalo de 150ms!`,
             async () => {
                 LoadingIndicator.show();
 
-                // Disparar TODOS os ataques ao mesmo tempo (Promise.all)
-                const promises = [];
+                const results = [];
                 for (let i = 1; i <= quantidade; i++) {
-                    promises.push(
-                        executeAttack(ataqueOriginal)
-                            .then(sucesso => ({ index: i, sucesso }))
-                            .catch(err => ({ index: i, sucesso: false, error: err.message }))
-                    );
+                    try {
+                        const sucesso = await executeAttack(ataqueOriginal);
+                        results.push({ index: i, sucesso });
+                        if (sucesso) {
+                            Toast.success(`✅ Ataque ${i}/${quantidade} enviado!`, 1500);
+                        } else {
+                            Toast.error(`❌ Ataque ${i}/${quantidade} falhou!`, 1500);
+                        }
+                        
+                        if (i < quantidade) {
+                            await new Promise(resolve => setTimeout(resolve, 150));
+                        }
+                    } catch (err) {
+                        results.push({ index: i, sucesso: false, error: err.message });
+                        Toast.error(`❌ Ataque ${i}/${quantidade} falhou: ${err.message}`, 1500);
+                    }
                 }
-
-                // Aguardar todos completarem
-                const results = await Promise.all(promises);
 
                 const sucessos = results.filter(r => r.sucesso === true).length;
                 const falhas = results.filter(r => r.sucesso === false).length;
 
                 LoadingIndicator.hide();
 
-                // Mostrar resultado resumido
-                results.forEach(r => {
-                    if (r.sucesso) {
-                        Toast.success(`✅ Ataque ${r.index}/${quantidade} enviado!`, 1500);
-                    } else {
-                        Toast.error(`❌ Ataque ${r.index}/${quantidade} falhou: ${r.error || 'motivo desconhecido'}`, 1500);
-                    }
-                });
-
                 if (sucessos === quantidade) {
-                    Toast.success(`🎯 PERFEITO! ${sucessos}/${quantidade} ataques simultâneos enviados!`);
+                    Toast.success(`🎯 PERFEITO! ${sucessos}/${quantidade} ataques enviados!`);
                 } else {
                     Toast.info(`📊 Resultado: ${sucessos} sucessos, ${falhas} falhas`);
                 }
@@ -734,7 +846,6 @@
         enviarMultiplosDoAtaque(index, 5);
     }
 
-    // Expor funções globalmente
     window.enviarNT4DoAtaque = enviarNT4DoAtaque;
     window.enviarNT5DoAtaque = enviarNT5DoAtaque;
 
@@ -847,9 +958,13 @@
         if (!ataque) { Toast.error('Ataque não encontrado!'); return; }
 
         let tropasMsg = '';
-        TROOP_IDS.forEach(t => {
-            if (ataque[t] && ataque[t] > 0) tropasMsg += `\n${TROOP_NAMES[t]}: ${number_format(ataque[t], '.')}`;
-        });
+        if (ataque.autoFill) {
+            tropasMsg = '\n🤖 Modo AutoFill: Usará TODAS as tropas disponíveis!';
+        } else {
+            TROOP_IDS.forEach(t => {
+                if (ataque[t] && ataque[t] > 0) tropasMsg += `\n${TROOP_NAMES[t]}: ${number_format(ataque[t], '.')}`;
+            });
+        }
 
         ConfirmationBox.show(`Enviar ataque IMEDIATAMENTE?\n\n${ataque.origem} → ${ataque.alvo}${tropasMsg}`,
             async () => {
@@ -944,7 +1059,7 @@
         painelElemento.innerHTML = `
         <style>
             #ataques-painel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-                width:550px;background:#1e1e1e;color:#fff;border-radius:10px;z-index:999999;
+                width:580px;background:#1e1e1e;color:#fff;border-radius:10px;z-index:999999;
                 font-family:Arial,sans-serif;box-shadow:0 5px 20px rgba(0,0,0,.5);border:1px solid #333;}
             .painel-header{background:#ff9900;padding:10px 15px;border-radius:10px 10px 0 0;
                 cursor:move;display:flex;justify-content:space-between;align-items:center;}
@@ -997,6 +1112,8 @@
             #tws-server-indicator.native{color:#4caf50;}
             .village-count{font-size:10px;color:#ff9900;margin-left:5px;}
             .botoes-ataque{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+            .btn-autofill{background:#ff6600;color:#fff;border:none;padding:8px 12px;border-radius:4px;
+                cursor:pointer;margin-right:5px;margin-bottom:5px;font-weight:bold;}
         </style>
 
         <div class="painel-header" id="painel-header">
@@ -1037,6 +1154,7 @@
             <div class="tropas-grid">${tropasGridHtml}</div>
             <div class="botoes-linha">
                 <button id="agendarBtn">📅 Agendar</button>
+                <button id="usarTodasTropasBtn" class="btn-autofill">🎯 Usar TODAS Tropas</button>
                 <button id="importarBtn" class="success">📋 Importar BBCode</button>
                 <button id="templatesBtn" class="success">💾 Templates</button>
                 <button id="salvarDadosBtn" class="success">💾 Salvar</button>
@@ -1070,6 +1188,16 @@
                 }
             });
         }
+
+        // Botão Usar Todas Tropas
+        document.getElementById('usarTodasTropasBtn').onclick = async () => {
+            const origem = document.getElementById('origem').value.trim();
+            if (!origem) {
+                Toast.error('Selecione uma vila origem primeiro!');
+                return;
+            }
+            await autoFillWithAllTroops(origem);
+        };
 
         // Botão recarregar aldeias
         document.getElementById('recarregarAldeiasBtn').onclick = async () => {
@@ -1189,7 +1317,131 @@
     }
 
     // ============================================
-    // RENDERIZAR LISTA - COM BOTÕES NT4 e NT5
+    // AGENDAR ATAQUE (COM AUTOFILL)
+    // ============================================
+    async function agendarAtaque() {
+        const origem = document.getElementById('origem').value.trim();
+        const alvo = document.getElementById('alvo').value.trim();
+        const data = document.getElementById('data').value.trim();
+        const hora = document.getElementById('hora').value.trim();
+
+        if (!origem || !alvo || !data || !hora) { 
+            Toast.error('Preencha todos os campos!'); 
+            return; 
+        }
+
+        const datahora = `${data} ${hora}`;
+
+        if (!/^\d{1,4}\|\d{1,4}$/.test(origem) || !/^\d{1,4}\|\d{1,4}$/.test(alvo)) {
+            Toast.error('Coordenadas inválidas! Use: 500|500'); 
+            return;
+        }
+        if (!/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(datahora)) {
+            Toast.error('Data/hora inválida! Use: DD/MM/AAAA HH:MM:SS'); 
+            return;
+        }
+
+        // Validar se a data é futura
+        const [dia, mes, ano] = data.split('/');
+        const [horaNum, minutoNum, segundoNum] = hora.split(':');
+        const dataAgendada = new Date(ano, mes-1, dia, horaNum, minutoNum, segundoNum);
+        const agora = getServerDate();
+        
+        if (dataAgendada <= agora) {
+            Toast.error('A data/hora deve ser futura! Use o botão "Agora" para horário atual.');
+            return;
+        }
+
+        let tropas = {};
+        let autoFill = false;
+        
+        // Verificar se o usuário preencheu alguma tropa manualmente
+        const userFilled = hasUserFilledTroops();
+        
+        if (!userFilled) {
+            // Usuário não preencheu nada - usar AutoFill
+            Toast.info('🤖 Nenhuma tropa especificada. Usando AutoFill com TODAS as tropas disponíveis...', 3000);
+            
+            const villageId = _villageMap[origem];
+            if (!villageId) {
+                Toast.error('Vila origem não encontrada no mapa!');
+                return;
+            }
+            
+            LoadingIndicator.show();
+            try {
+                const allTroops = await getAllAvailableTroops(villageId);
+                if (!allTroops) {
+                    LoadingIndicator.hide();
+                    Toast.error('Não foi possível obter as tropas disponíveis!');
+                    return;
+                }
+                
+                const hasAnyTroops = Object.values(allTroops).some(v => v > 0);
+                if (!hasAnyTroops) {
+                    LoadingIndicator.hide();
+                    Toast.error('Esta vila não possui tropas disponíveis para ataque!');
+                    return;
+                }
+                
+                tropas = allTroops;
+                autoFill = true;
+                LoadingIndicator.hide();
+                
+                let tropasResumo = [];
+                TROOP_IDS.forEach(t => {
+                    if (tropas[t] > 0) {
+                        tropasResumo.push(`${TROOP_NAMES[t]}: ${number_format(tropas[t], '.')}`);
+                    }
+                });
+                Toast.success(`✅ AutoFill ativado! Usará TODAS as tropas disponíveis no momento do envio.\n\n${tropasResumo.join(', ')}`, 8000);
+                
+            } catch (err) {
+                LoadingIndicator.hide();
+                Toast.error(`Erro ao carregar tropas: ${err.message}`);
+                return;
+            }
+        } else {
+            // Usuário preencheu manualmente
+            TROOP_IDS.forEach(t => {
+                const inp = document.getElementById(t);
+                tropas[t] = parseInt(inp?.value || 0);
+            });
+            
+            const temTropas = Object.values(tropas).some(v => v > 0);
+            if (!temTropas) {
+                Toast.error('Selecione pelo menos um tipo de tropa ou use o botão "Usar TODAS Tropas"!');
+                return;
+            }
+        }
+
+        const novoAtaque = {
+            id: Date.now() + Math.random(), 
+            origem, 
+            alvo, 
+            datahora, 
+            ...tropas,
+            enviado: false, 
+            travado: false, 
+            sucesso: null,
+            autoFill: autoFill
+        };
+
+        const ataques = carregarAtaques();
+        ataques.push(novoAtaque);
+        salvarAtaques(ataques);
+        
+        if (autoFill) {
+            Toast.success(`✅ Ataque agendado para ${datahora} no modo AutoFill!`);
+        } else {
+            const tropaCount = Object.values(tropas).reduce((a, b) => a + b, 0);
+            Toast.success(`✅ Ataque agendado para ${datahora} com ${number_format(tropaCount, '.')} tropas!`);
+        }
+        EventSystem.trigger('attack_scheduled', novoAtaque);
+    }
+
+    // ============================================
+    // RENDERIZAR LISTA
     // ============================================
     function renderizarLista() {
         const container = document.getElementById('listaAtaques');
@@ -1210,23 +1462,21 @@
             const dataAgendada = new Date(ano, mes - 1, dia, hora, min, seg).getTime() / 1000;
             const isPast = !ataque.enviado && dataAgendada < agora;
 
-            // Botão Repetir (só aparece se já foi enviado com sucesso)
             const repetirBtn = ataque.enviado && ataque.sucesso
                 ? `<button class="btn-repetir" onclick="window.repetirAtaque(${index})">🔄 Repetir</button>`
                 : '';
 
-            // Botão Enviar Agora (aparece se está atrasado ou não enviado)
             const enviarAgoraBtn = (!ataque.enviado || isPast)
                 ? `<button class="btn-enviar-agora" onclick="window.enviarImediato(${index})">▶ Enviar agora</button>`
                 : '';
 
-            // Botões NT4 e NT5 (aparecem para qualquer ataque que tenha tropas)
             const nt4Btn = `<button class="btn-nt btn-nt4" onclick="window.enviarNT4DoAtaque(${index})" title="Enviar 4 ataques idênticos simultaneamente">⚡NT4</button>`;
             const nt5Btn = `<button class="btn-nt btn-nt5" onclick="window.enviarNT5DoAtaque(${index})" title="Enviar 5 ataques idênticos simultaneamente">🔥NT5</button>`;
+            const autoFillBadge = ataque.autoFill ? '<span style="background:#ff6600;padding:2px 5px;border-radius:3px;font-size:9px;margin-left:5px;">🤖 AutoFill</span>' : '';
 
             return `
             <div class="ataque-item ${ataque.enviado ? 'sent' : ''} ${ataque.sucesso === false ? 'failed' : ''} ${isPast ? 'past' : ''}">
-                <div><strong>${escapeHtml(ataque.origem)}</strong> → <strong>${escapeHtml(ataque.alvo)}</strong></div>
+                <div><strong>${escapeHtml(ataque.origem)}</strong> → <strong>${escapeHtml(ataque.alvo)}</strong>${autoFillBadge}</div>
                 <div>📅 ${escapeHtml(ataque.datahora)}</div>
                 ${tropasHtml}
                 <div class="botoes-ataque">
@@ -1243,7 +1493,7 @@
                             : `❌ Falhou: ${escapeHtml(ataque.erro || 'motivo desconhecido')}`)
                         : (isPast
                             ? '⏰ Atrasado — clique em "Enviar agora"'
-                            : (ataque.travado ? '⏳ Enviando...' : '⏰ Agendado'))}
+                            : (ataque.travado ? '⏳ Enviando...' : (ataque.autoFill ? '🤖 AutoFill (usará tropas atuais)' : '⏰ Agendado')))}
                 </div>
             </div>`;
         }).join('');
@@ -1259,44 +1509,6 @@
             Toast.success('✅ Ataque removido!');
         });
     };
-
-    // ============================================
-    // AGENDAR
-    // ============================================
-    function agendarAtaque() {
-        const origem = document.getElementById('origem').value.trim();
-        const alvo = document.getElementById('alvo').value.trim();
-        const data = document.getElementById('data').value.trim();
-        const hora = document.getElementById('hora').value.trim();
-
-        if (!origem || !alvo || !data || !hora) { Toast.error('Preencha todos os campos!'); return; }
-
-        const datahora = `${data} ${hora}`;
-
-        if (!/^\d{1,4}\|\d{1,4}$/.test(origem) || !/^\d{1,4}\|\d{1,4}$/.test(alvo)) {
-            Toast.error('Coordenadas inválidas! Use: 500|500'); return;
-        }
-        if (!/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(datahora)) {
-            Toast.error('Data/hora inválida! Use: DD/MM/AAAA HH:MM:SS'); return;
-        }
-
-        const tropas = {};
-        TROOP_IDS.forEach(t => {
-            const inp = document.getElementById(t);
-            tropas[t] = parseInt(inp?.value || 0);
-        });
-
-        const novoAtaque = {
-            id: Date.now() + Math.random(), origem, alvo, datahora, ...tropas,
-            enviado: false, travado: false, sucesso: null
-        };
-
-        const ataques = carregarAtaques();
-        ataques.push(novoAtaque);
-        salvarAtaques(ataques);
-        Toast.success(`✅ Ataque agendado para ${datahora}`);
-        EventSystem.trigger('attack_scheduled', novoAtaque);
-    }
 
     function limparTudo() {
         ConfirmationBox.show('⚠️ Remover TODOS os ataques agendados?', () => {
@@ -1333,7 +1545,7 @@
     // INICIALIZAÇÃO
     // ============================================
     async function inicializar() {
-        console.log('[TWS] Inicializando agendador...');
+        console.log('[TWS] Inicializando agendador com AutoFill...');
 
         LoadingIndicator.show();
 
@@ -1354,7 +1566,7 @@
             console.log('[TWS] Agendador inicializado com sucesso!');
 
             if (_myVillages.length > 0) {
-                Toast.success(`✅ ${_myVillages.length} aldeias carregadas!`);
+                Toast.success(`✅ ${_myVillages.length} aldeias carregadas! Modo AutoFill ativado!`);
             } else {
                 Toast.info('ℹ️ Nenhuma aldeia encontrada. Use o campo de texto para digitar coordenadas.');
             }
