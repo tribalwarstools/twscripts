@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tribal Wars - Agendador de Ataques (AutoFill Completo)
 // @namespace    http://tampermonkey.net/
-// @version      16.0
+// @version      17.0
 // @description  Agende ataques com precisão - Auto preenche TODAS as tropas disponíveis quando campos vazios
 // @author       Você
 // @match        https://*.tribalwars.com.br/game.php*
@@ -770,73 +770,75 @@
     // FUNÇÕES NT4 e NT5
     // ============================================
 
-    async function enviarMultiplosDoAtaque(index, quantidade) {
-        const ataques = carregarAtaques();
-        const ataqueOriginal = ataques[index];
+async function enviarMultiplosDoAtaque(index, quantidade) {
+    const ataques = carregarAtaques();
+    const ataqueOriginal = ataques[index];
 
-        if (!ataqueOriginal) {
-            Toast.error('Ataque não encontrado!');
-            return;
-        }
+    if (!ataqueOriginal) {
+        Toast.error('Ataque não encontrado!');
+        return;
+    }
 
-        const hasTroops = TROOP_IDS.some(t => (ataqueOriginal[t] || 0) > 0);
-        if (!hasTroops && !ataqueOriginal.autoFill) {
-            Toast.error('Este ataque não possui tropas configuradas!');
-            return;
-        }
+    const hasTroops = TROOP_IDS.some(t => (ataqueOriginal[t] || 0) > 0);
+    if (!hasTroops && !ataqueOriginal.autoFill) {
+        Toast.error('Este ataque não possui tropas configuradas!');
+        return;
+    }
 
-        let tropasMsg = '';
-        if (ataqueOriginal.autoFill) {
-            tropasMsg = '\n🤖 Modo AutoFill: Usará TODAS as tropas disponíveis no momento do envio!';
-        } else {
-            TROOP_IDS.forEach(t => {
-                if (ataqueOriginal[t] && ataqueOriginal[t] > 0) {
-                    tropasMsg += `\n${TROOP_NAMES[t]}: ${number_format(ataqueOriginal[t], '.')}`;
+    let tropasMsg = '';
+    if (ataqueOriginal.autoFill) {
+        tropasMsg = '\n🤖 Modo AutoFill: Usará TODAS as tropas disponíveis no momento do envio!';
+    } else {
+        TROOP_IDS.forEach(t => {
+            if (ataqueOriginal[t] && ataqueOriginal[t] > 0) {
+                tropasMsg += `\n${TROOP_NAMES[t]}: ${number_format(ataqueOriginal[t], '.')}`;
+            }
+        });
+    }
+
+    ConfirmationBox.show(
+        `🚀 Enviar ${quantidade} ataques SIMULTÂNEOS (INSTANTÂNEO - sem delay!):\n\n` +
+        `Origem: ${ataqueOriginal.origem}\n` +
+        `Alvo: ${ataqueOriginal.alvo}${tropasMsg}\n\n` +
+        `⚠️ TODOS os ${quantidade} ataques serão disparados AO MESMO TEMPO!`,
+        async () => {
+            LoadingIndicator.show();
+
+            // 🔥 COMPORTAMENTO ORIGINAL: Promise.all (todos ao mesmo tempo)
+            const promises = [];
+            for (let i = 1; i <= quantidade; i++) {
+                promises.push(
+                    executeAttack(ataqueOriginal)
+                        .then(sucesso => ({ index: i, sucesso }))
+                        .catch(err => ({ index: i, sucesso: false, error: err.message }))
+                );
+            }
+
+            // Aguardar TODOS completarem simultaneamente
+            const results = await Promise.all(promises);
+
+            const sucessos = results.filter(r => r.sucesso === true).length;
+            const falhas = results.filter(r => r.sucesso === false).length;
+
+            LoadingIndicator.hide();
+
+            // Mostrar resultado resumido
+            results.forEach(r => {
+                if (r.sucesso) {
+                    Toast.success(`✅ Ataque ${r.index}/${quantidade} enviado!`, 1500);
+                } else {
+                    Toast.error(`❌ Ataque ${r.index}/${quantidade} falhou: ${r.error || 'motivo desconhecido'}`, 1500);
                 }
             });
-        }
 
-        ConfirmationBox.show(
-            `🚀 Enviar ${quantidade} ataques:\n\n` +
-            `Origem: ${ataqueOriginal.origem}\n` +
-            `Alvo: ${ataqueOriginal.alvo}${tropasMsg}\n\n` +
-            `⚠️ Os ataques serão enviados com intervalo de 0ms!`,
-            async () => {
-                LoadingIndicator.show();
-
-                const results = [];
-                for (let i = 1; i <= quantidade; i++) {
-                    try {
-                        const sucesso = await executeAttack(ataqueOriginal);
-                        results.push({ index: i, sucesso });
-                        if (sucesso) {
-                            Toast.success(`✅ Ataque ${i}/${quantidade} enviado!`, 1500);
-                        } else {
-                            Toast.error(`❌ Ataque ${i}/${quantidade} falhou!`, 1500);
-                        }
-                        
-                        if (i < quantidade) {
-                            await new Promise(resolve => setTimeout(resolve, 0));
-                        }
-                    } catch (err) {
-                        results.push({ index: i, sucesso: false, error: err.message });
-                        Toast.error(`❌ Ataque ${i}/${quantidade} falhou: ${err.message}`, 1500);
-                    }
-                }
-
-                const sucessos = results.filter(r => r.sucesso === true).length;
-                const falhas = results.filter(r => r.sucesso === false).length;
-
-                LoadingIndicator.hide();
-
-                if (sucessos === quantidade) {
-                    Toast.success(`🎯 PERFEITO! ${sucessos}/${quantidade} ataques enviados!`);
-                } else {
-                    Toast.info(`📊 Resultado: ${sucessos} sucessos, ${falhas} falhas`);
-                }
+            if (sucessos === quantidade) {
+                Toast.success(`🎯 PERFEITO! ${sucessos}/${quantidade} ataques simultâneos enviados!`);
+            } else {
+                Toast.info(`📊 Resultado: ${sucessos} sucessos, ${falhas} falhas`);
             }
-        );
-    }
+        }
+    );
+}
 
     function enviarNT4DoAtaque(index) {
         enviarMultiplosDoAtaque(index, 4);
