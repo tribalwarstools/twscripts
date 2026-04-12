@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Recrutamento Automático
 // @namespace    http://tampermonkey.net/
-// @version      6.0
-// @description  Recrutamento automático por aldeia com ordenação por população disponível (otimizado)
+// @version      5.0
+// @description  Recrutamento automático por aldeia com predefinições de ataque/defesa
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -65,8 +65,7 @@
         posX:           null,
         posY:           null,
         totalRecrutado: 0,
-        configAldeias:  {},
-        ordemPorPopulacao: true
+        configAldeias:  {}
     };
 
     let ATIVADO             = DEFAULTS.ativado;
@@ -77,7 +76,6 @@
     let POS_Y               = DEFAULTS.posY;
     let totalRecrutado      = DEFAULTS.totalRecrutado;
     let configAldeias       = {};
-    let ordemPorPopulacao   = DEFAULTS.ordemPorPopulacao;
 
     let rodando    = false;
     let cicloAtivo = false;
@@ -85,15 +83,10 @@
     let painel     = null;
     let modal      = null;
 
-    // Cache de populações (obtido em UMA requisição)
-    let cachePopulacoes = {};
-    let ultimaAtualizacaoCache = 0;
-    const TEMPO_CACHE = 5 * 60 * 1000; // 5 minutos
-
     // ============================================
     // PERSISTÊNCIA
     // ============================================
-    const STORAGE_KEY = 'twr_recrutamento_v6';
+    const STORAGE_KEY = 'twr_recrutamento_v5';
 
     function salvarEstado() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -104,8 +97,7 @@
             posX:           POS_X,
             posY:           POS_Y,
             totalRecrutado: totalRecrutado,
-            configAldeias:  configAldeias,
-            ordemPorPopulacao: ordemPorPopulacao
+            configAldeias:  configAldeias
         }));
     }
 
@@ -121,7 +113,6 @@
             POS_Y               = d.posY            !== undefined ? d.posY : DEFAULTS.posY;
             totalRecrutado      = d.totalRecrutado  || DEFAULTS.totalRecrutado;
             configAldeias       = d.configAldeias   || {};
-            ordemPorPopulacao   = d.ordemPorPopulacao !== undefined ? d.ordemPorPopulacao : DEFAULTS.ordemPorPopulacao;
 
             const aguardarPainel = setInterval(() => {
                 if (painel) {
@@ -129,68 +120,115 @@
                     atualizarBotao(ATIVADO);
                     atualizarMetricas();
                     atualizarContadorAldeias();
-                    atualizarCheckboxOrdem();
                     if (ATIVADO && !rodando) setTimeout(() => iniciar(), 2000);
                 }
             }, 100);
         }
     }
 
-    // ============================================
-    // OBTENÇÃO DE POPULAÇÕES (UMA ÚNICA REQUISIÇÃO)
-    // ============================================
-    async function obterTodasPopulacoes() {
-        try {
-            const villageId = window.game_data?.village?.id || 17616;
-            const url = `/game.php?village=${villageId}&screen=overview_villages&mode=combined`;
-            const response = await fetch(url, { credentials: 'same-origin' });
-            const html = await response.text();
-            
-            const populacoes = {};
-            
-            // Pega todas as linhas da tabela
-            const linhas = html.match(/<tr class="nowrap[^>]*>([\s\S]*?)<\/tr>/gi);
-            
-            if (linhas) {
-                for (const linha of linhas) {
-                    // Pega o ID da aldeia
-                    const idMatch = linha.match(/data-id="(\d+)"/);
-                    if (!idMatch) continue;
-                    
-                    const id = idMatch[1];
-                    
-                    // Pega a população disponível e nível da fazenda
-                    const farmMatch = linha.match(/screen=farm[^"]*">(\d+)\s*\((\d+)\)<\/a>/);
-                    if (farmMatch) {
-                        populacoes[id] = parseInt(farmMatch[1]);
-                    }
-                }
-            }
-            
-            return populacoes;
-            
-        } catch (err) {
-            console.error('[População] Erro:', err);
-            return {};
+    function resetarTudo() {
+        if (ATIVADO) { ATIVADO = false; rodando = false; cicloAtivo = false; }
+        PAUSA_ENTRE_ALDEIAS = DEFAULTS.pausaAldeias;
+        PAUSA_ENTRE_CICLOS  = DEFAULTS.pausaCiclos;
+        MINIMIZADO          = DEFAULTS.minimizado;
+        POS_X               = DEFAULTS.posX;
+        POS_Y               = DEFAULTS.posY;
+        totalRecrutado      = DEFAULTS.totalRecrutado;
+        cicloAtual          = 0;
+        configAldeias       = {};
+        localStorage.removeItem(STORAGE_KEY);
+
+        if (painel) {
+            painel.style.left   = 'auto';
+            painel.style.top    = 'auto';
+            painel.style.right  = '20px';
+            painel.style.bottom = '20px';
         }
+        aplicarEstadoNaUI();
+        adicionarLog('Reset completo. Configurações restauradas.', 'warn');
     }
 
-    async function atualizarCachePopulacao() {
-        adicionarLog(`Obtendo população de todas as aldeias...`, 'ok');
-        cachePopulacoes = await obterTodasPopulacoes();
-        ultimaAtualizacaoCache = Date.now();
-        
-        const totalPop = Object.values(cachePopulacoes).reduce((sum, p) => sum + p, 0);
-        const comEspaco = Object.values(cachePopulacoes).filter(p => p > 0).length;
-        adicionarLog(`Cache atualizado: ${comEspaco} aldeias com espaço (total: ${totalPop.toLocaleString()})`, 'ok');
+    function aplicarEstadoNaUI() {
+        const inpAldeias = document.getElementById('twr-pausa-aldeias');
+        const inpCiclos  = document.getElementById('twr-pausa-ciclos');
+        const body       = document.getElementById('twr-body');
+        const minimizar  = document.getElementById('twr-minimizar');
+
+        if (inpAldeias) inpAldeias.value      = PAUSA_ENTRE_ALDEIAS;
+        if (inpCiclos)  inpCiclos.value       = PAUSA_ENTRE_CICLOS / 1000;
+        if (body)       body.style.display    = MINIMIZADO ? 'none' : 'flex';
+        if (minimizar)  minimizar.textContent = MINIMIZADO ? '+' : '−';
+
+        atualizarBotao(false);
+        atualizarMetricas();
+        atualizarContadorAldeias();
+
+        ['twr-err-aldeias','twr-err-ciclos'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        ['twr-pausa-aldeias','twr-pausa-ciclos'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.borderColor = '#333';
+        });
     }
 
-    async function obterPopulacaoDisponivel(villageId) {
-        const agora = Date.now();
-        if (agora - ultimaAtualizacaoCache > TEMPO_CACHE) {
-            await atualizarCachePopulacao();
+    function atualizarContadorAldeias() {
+        const el = document.getElementById('twr-aldeias-config');
+        if (!el) return;
+        const total = Object.keys(configAldeias).length;
+        el.textContent = total === 0 ? 'Nenhuma aldeia configurada' : `${total} aldeia(s) configurada(s)`;
+        el.style.color = total === 0 ? '#22a55a' : '#0f6e3f';
+    }
+
+    // ============================================
+    // VALIDAÇÃO
+    // ============================================
+    function validarCampos() {
+        let ok = true;
+
+        const inpAldeias = document.getElementById('twr-pausa-aldeias');
+        const va = parseInt(inpAldeias?.value);
+        const validA = !isNaN(va) && va >= 500;
+        if (inpAldeias) inpAldeias.style.borderColor = validA ? '#333' : '#22a55a';
+        const errA = document.getElementById('twr-err-aldeias');
+        if (errA) errA.style.display = validA ? 'none' : 'block';
+        if (!validA) ok = false;
+
+        const inpCiclos = document.getElementById('twr-pausa-ciclos');
+        const vc = parseInt(inpCiclos?.value);
+        const validC = !isNaN(vc) && vc >= 10;
+        if (inpCiclos) inpCiclos.style.borderColor = validC ? '#333' : '#22a55a';
+        const errC = document.getElementById('twr-err-ciclos');
+        if (errC) errC.style.display = validC ? 'none' : 'block';
+        if (!validC) ok = false;
+
+        if (Object.keys(configAldeias).length === 0) {
+            adicionarLog('Configure ao menos uma aldeia antes de ativar.', 'err');
+            ok = false;
         }
-        return cachePopulacoes[villageId] || 0;
+
+        return ok;
+    }
+
+    // ============================================
+    // LOG
+    // ============================================
+    function adicionarLog(msg, tipo) {
+        const log = document.getElementById('twr-log');
+        if (!log) return;
+        const t = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const cores = { ok: '#22a55a', err: '#e24b4a', warn: '#c97c00' };
+        const cor = cores[tipo] || '#888';
+
+        if (log.children.length === 1 && log.children[0].dataset?.placeholder) log.innerHTML = '';
+
+        const entry = document.createElement('div');
+        entry.style.cssText = 'display:flex;gap:8px;font-size:10px;margin-bottom:2px;font-family:monospace;';
+        entry.innerHTML = `<span style="color:#555;flex-shrink:0;">${t}</span><span style="color:${cor};">${msg}</span>`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+        while (log.children.length > 50) log.removeChild(log.children[0]);
     }
 
     // ============================================
@@ -280,7 +318,7 @@
     }
 
     // ============================================
-    // CICLO PRINCIPAL COM ORDENAÇÃO
+    // CICLO PRINCIPAL
     // ============================================
     async function escanearERecrutar() {
         if (!ATIVADO) return;
@@ -296,10 +334,7 @@
         console.log(`========================================`);
 
         try {
-            // Atualiza cache de populações
-            await atualizarCachePopulacao();
-            
-            let aldeiasCfg = Object.entries(configAldeias);
+            const aldeiasCfg = Object.entries(configAldeias);
 
             if (aldeiasCfg.length === 0) {
                 adicionarLog('Nenhuma aldeia configurada.', 'warn');
@@ -307,31 +342,15 @@
                 return;
             }
 
-            // Ordena por população disponível (maior para menor)
-            if (ordemPorPopulacao) {
-                aldeiasCfg.sort((a, b) => {
-                    const popA = cachePopulacoes[a[0]] || 0;
-                    const popB = cachePopulacoes[b[0]] || 0;
-                    return popB - popA;
-                });
-                adicionarLog(`Ordenado por população disponível (maior → menor)`, 'ok');
-            }
-
             adicionarLog(`${aldeiasCfg.length} aldeia(s) no ciclo`, 'ok');
 
             for (const [villageId, cfg] of aldeiasCfg) {
                 if (!ATIVADO) break;
 
-                const popDisponivel = cachePopulacoes[villageId] || 0;
-                if (popDisponivel === 0) {
-                    console.log(`[${cfg.nome}] - Sem espaço, pulando...`);
-                    continue;
-                }
-
                 const slots = (cfg.slots || []).filter(s => s.unidade && s.quantidade > 0);
                 if (slots.length === 0) continue;
 
-                console.log(`\n[${cfg.nome}] - Pop disponível: ${popDisponivel.toLocaleString()}`);
+                console.log(`\n[${cfg.nome}]`);
 
                 for (const slot of slots) {
                     if (!ATIVADO) break;
@@ -340,8 +359,6 @@
 
                     if (resultado.success) {
                         totalRecrutado += resultado.quantidade;
-                        // Atualiza cache (diminui a população disponível)
-                        cachePopulacoes[villageId] = Math.max(0, popDisponivel - resultado.quantidade);
                         salvarEstado();
                         atualizarMetricas();
                         adicionarLog(`${cfg.nome}: +${resultado.quantidade} ${UNIDADES[slot.unidade]?.nome}`, 'ok');
@@ -380,12 +397,7 @@
     async function iniciar() {
         if (rodando) return;
         rodando = true;
-        
-        await atualizarCachePopulacao();
-        
         adicionarLog(`Iniciando — ${Object.keys(configAldeias).length} aldeia(s) configurada(s)`, 'ok');
-        if (ordemPorPopulacao) adicionarLog(`Modo: ordenação por POPULAÇÃO DISPONÍVEL (maior → menor)`, 'ok');
-        
         await new Promise(r => setTimeout(r, 500));
         escanearERecrutar();
     }
@@ -402,13 +414,6 @@
         salvarEstado();
     }
 
-    function toggleOrdemPopulacao() {
-        ordemPorPopulacao = !ordemPorPopulacao;
-        atualizarCheckboxOrdem();
-        salvarEstado();
-        adicionarLog(`Ordenação por população ${ordemPorPopulacao ? 'ATIVADA' : 'DESATIVADA'}`, 'ok');
-    }
-
     // ============================================
     // UI — PAINEL PRINCIPAL
     // ============================================
@@ -417,11 +422,6 @@
         const metC = document.getElementById('twr-met-ciclos');
         if (metT) metT.textContent = totalRecrutado;
         if (metC) metC.textContent = cicloAtual;
-    }
-
-    function atualizarCheckboxOrdem() {
-        const checkbox = document.getElementById('twr-ordem-pop');
-        if (checkbox) checkbox.checked = ordemPorPopulacao;
     }
 
     function atualizarBotao(ativo) {
@@ -449,7 +449,7 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 320px;
+            width: 300px;
             background: #0a0a0a;
             border: 1px solid #22a55a;
             border-radius: 12px;
@@ -460,7 +460,7 @@
         `;
 
         if (POS_X !== null && POS_Y !== null) {
-            const x = Math.max(0, Math.min(POS_X, window.innerWidth  - 320));
+            const x = Math.max(0, Math.min(POS_X, window.innerWidth  - 300));
             const y = Math.max(0, Math.min(POS_Y, window.innerHeight - 100));
             painel.style.left   = x + 'px';
             painel.style.top    = y + 'px';
@@ -481,11 +481,6 @@
                 <div style="display:flex;align-items:center;gap:10px;background:#111;border:1px solid #22a55a33;border-radius:8px;padding:8px 12px;">
                     <div id="twr-dot" style="width:10px;height:10px;border-radius:50%;background:#0f6e3f;flex-shrink:0;transition:background .3s;"></div>
                     <span id="twr-status" style="font-weight:500;font-size:12px;color:#22a55a;">Parado</span>
-                </div>
-
-                <div style="display:flex;align-items:center;gap:10px;background:#111;border:1px solid #22a55a33;border-radius:8px;padding:8px 12px;">
-                    <input type="checkbox" id="twr-ordem-pop" ${ordemPorPopulacao ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;">
-                    <label for="twr-ordem-pop" style="cursor:pointer;flex:1;font-size:11px;">📊 Ordenar por população disponível (maior espaço primeiro)</label>
                 </div>
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -572,20 +567,17 @@
         });
 
         document.getElementById('twr-btn-config').addEventListener('click', abrirModal);
+
         document.getElementById('twr-botao').addEventListener('click', () => {
             if (!ATIVADO && !validarCampos()) return;
             toggle();
         });
+
         document.getElementById('twr-reset').addEventListener('click', () => {
-            if (confirm('Resetar tudo?')) {
+            if (confirm('Resetar tudo? Isso vai parar o recrutamento, zerar contadores, remover configurações de aldeias e apagar dados salvos.')) {
                 resetarTudo();
             }
         });
-
-        const checkboxOrdem = document.getElementById('twr-ordem-pop');
-        if (checkboxOrdem) {
-            checkboxOrdem.addEventListener('change', toggleOrdemPopulacao);
-        }
 
         const minimizar = document.getElementById('twr-minimizar');
         const body      = document.getElementById('twr-body');
@@ -632,108 +624,6 @@
             POS_Y = Math.round(rect.top);
             salvarEstado();
         });
-    }
-
-    function resetarTudo() {
-        if (ATIVADO) { ATIVADO = false; rodando = false; cicloAtivo = false; }
-        PAUSA_ENTRE_ALDEIAS = DEFAULTS.pausaAldeias;
-        PAUSA_ENTRE_CICLOS  = DEFAULTS.pausaCiclos;
-        MINIMIZADO          = DEFAULTS.minimizado;
-        POS_X               = DEFAULTS.posX;
-        POS_Y               = DEFAULTS.posY;
-        totalRecrutado      = DEFAULTS.totalRecrutado;
-        cicloAtual          = 0;
-        configAldeias       = {};
-        ordemPorPopulacao   = DEFAULTS.ordemPorPopulacao;
-        cachePopulacoes     = {};
-        localStorage.removeItem(STORAGE_KEY);
-
-        if (painel) {
-            painel.style.left   = 'auto';
-            painel.style.top    = 'auto';
-            painel.style.right  = '20px';
-            painel.style.bottom = '20px';
-        }
-        aplicarEstadoNaUI();
-        adicionarLog('Reset completo. Configurações restauradas.', 'warn');
-    }
-
-    function aplicarEstadoNaUI() {
-        const inpAldeias = document.getElementById('twr-pausa-aldeias');
-        const inpCiclos  = document.getElementById('twr-pausa-ciclos');
-        const body       = document.getElementById('twr-body');
-        const minimizar  = document.getElementById('twr-minimizar');
-
-        if (inpAldeias) inpAldeias.value      = PAUSA_ENTRE_ALDEIAS;
-        if (inpCiclos)  inpCiclos.value       = PAUSA_ENTRE_CICLOS / 1000;
-        if (body)       body.style.display    = MINIMIZADO ? 'none' : 'flex';
-        if (minimizar)  minimizar.textContent = MINIMIZADO ? '+' : '−';
-
-        atualizarBotao(false);
-        atualizarMetricas();
-        atualizarContadorAldeias();
-        atualizarCheckboxOrdem();
-
-        ['twr-err-aldeias','twr-err-ciclos'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
-        ['twr-pausa-aldeias','twr-pausa-ciclos'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.borderColor = '#333';
-        });
-    }
-
-    function atualizarContadorAldeias() {
-        const el = document.getElementById('twr-aldeias-config');
-        if (!el) return;
-        const total = Object.keys(configAldeias).length;
-        el.textContent = total === 0 ? 'Nenhuma aldeia configurada' : `${total} aldeia(s) configurada(s)`;
-        el.style.color = total === 0 ? '#22a55a' : '#0f6e3f';
-    }
-
-    function validarCampos() {
-        let ok = true;
-
-        const inpAldeias = document.getElementById('twr-pausa-aldeias');
-        const va = parseInt(inpAldeias?.value);
-        const validA = !isNaN(va) && va >= 500;
-        if (inpAldeias) inpAldeias.style.borderColor = validA ? '#333' : '#22a55a';
-        const errA = document.getElementById('twr-err-aldeias');
-        if (errA) errA.style.display = validA ? 'none' : 'block';
-        if (!validA) ok = false;
-
-        const inpCiclos = document.getElementById('twr-pausa-ciclos');
-        const vc = parseInt(inpCiclos?.value);
-        const validC = !isNaN(vc) && vc >= 10;
-        if (inpCiclos) inpCiclos.style.borderColor = validC ? '#333' : '#22a55a';
-        const errC = document.getElementById('twr-err-ciclos');
-        if (errC) errC.style.display = validC ? 'none' : 'block';
-        if (!validC) ok = false;
-
-        if (Object.keys(configAldeias).length === 0) {
-            adicionarLog('Configure ao menos uma aldeia antes de ativar.', 'err');
-            ok = false;
-        }
-
-        return ok;
-    }
-
-    function adicionarLog(msg, tipo) {
-        const log = document.getElementById('twr-log');
-        if (!log) return;
-        const t = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const cores = { ok: '#22a55a', err: '#e24b4a', warn: '#c97c00' };
-        const cor = cores[tipo] || '#888';
-
-        if (log.children.length === 1 && log.children[0].dataset?.placeholder) log.innerHTML = '';
-
-        const entry = document.createElement('div');
-        entry.style.cssText = 'display:flex;gap:8px;font-size:10px;margin-bottom:2px;font-family:monospace;';
-        entry.innerHTML = `<span style="color:#555;flex-shrink:0;">${t}</span><span style="color:${cor};">${msg}</span>`;
-        log.appendChild(entry);
-        log.scrollTop = log.scrollHeight;
-        while (log.children.length > 50) log.removeChild(log.children[0]);
     }
 
     // ============================================
@@ -847,7 +737,7 @@
     }
 
     // ============================================
-    // UI — MODAL
+    // UI — MODAL DE CONFIGURAÇÃO DE ALDEIAS
     // ============================================
     async function abrirModal() {
         if (modal) { modal.style.display = 'flex'; return; }
