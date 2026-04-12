@@ -800,7 +800,7 @@
             `🚀 Enviar ${quantidade} ataques:\n\n` +
             `Origem: ${ataqueOriginal.origem}\n` +
             `Alvo: ${ataqueOriginal.alvo}${tropasMsg}\n\n` +
-            `⚠️ Os ataques serão enviados com intervalo de 150ms!`,
+            `⚠️ Os ataques serão enviados com intervalo de 0ms!`,
             async () => {
                 LoadingIndicator.show();
 
@@ -816,7 +816,7 @@
                         }
                         
                         if (i < quantidade) {
-                            await new Promise(resolve => setTimeout(resolve, 150));
+                            await new Promise(resolve => setTimeout(resolve, 0));
                         }
                     } catch (err) {
                         results.push({ index: i, sucesso: false, error: err.message });
