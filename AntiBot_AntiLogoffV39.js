@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TW Sistema Unificado - AntiBot + AntiLogoff
-// @version      3.8
-// @description  Sistema Anti-Bot e Anti-Logoff com contador persistente e reload automático com chave ON/OFF
+// @version      3.9
+// @description  Sistema Anti-Bot e Anti-Logoff com contador persistente e reload automático com chave ON/OFF + Botão RESET
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -82,6 +82,70 @@
             return !this.pausado && localStorage.getItem(CONFIG.storage.botPausado) !== '1';
         }
     };
+
+    // ============================================
+    // FUNÇÃO RESET (NOVO)
+    // ============================================
+    function resetarSistema() {
+        console.log('🔄 Iniciando RESET completo do sistema...');
+        
+        // Desativar Anti-Bot se estiver ativo
+        if (Estado.antibot.ativo) {
+            desativarAntiBot();
+        }
+        
+        // Desativar Anti-Logoff se estiver ativo
+        if (Estado.antilogoff.ativo) {
+            desativarAntiLogoff();
+        }
+        
+        // Limpar todos os storages
+        localStorage.removeItem(CONFIG.storage.antibot);
+        localStorage.removeItem(CONFIG.storage.antilogoff);
+        localStorage.removeItem(CONFIG.storage.antilogoff_counter);
+        localStorage.removeItem(CONFIG.storage.botPausado);
+        // NÃO remove o reloadEnabled para manter a preferência do usuário
+        
+        // Resetar estados
+        Estado.antibot.ativo = false;
+        Estado.antibot.pausado = false;
+        Estado.antilogoff.ativo = false;
+        Estado.antilogoff.contadorAcoes = 0;
+        Estado.antilogoff.tempoRestante = null;
+        Estado.antilogoff.reloadAgendado = false;
+        
+        // Limpar intervalos se existirem
+        if (Estado.antilogoff.intervalo) {
+            clearInterval(Estado.antilogoff.intervalo);
+            Estado.antilogoff.intervalo = null;
+        }
+        
+        // Desativar WakeLock
+        desativarWakeLock();
+        
+        // Resetar controle de bot
+        window.TWBotControl.pausado = false;
+        
+        // Parar observer do Anti-Bot
+        observerAntiBot.disconnect();
+        
+        // Atualizar UI
+        atualizarUIAntiBot();
+        atualizarUIAntiLogoff();
+        atualizarTimer();
+        
+        // Mostrar mensagem de sucesso
+        Toast.success('✅ Sistema resetado com sucesso! Todos os módulos foram desativados.');
+        
+        console.log('✅ RESET completo executado! Sistema limpo e pronto para reativação.');
+        
+        // Opcional: Recarregar a página após 2 segundos para garantir limpeza total
+        setTimeout(() => {
+            if (confirm('Reset concluído! Deseja recarregar a página para garantir que tudo foi limpo?')) {
+                window.location.reload();
+            }
+        }, 500);
+    }
 
     // ============================================
     // CSS DO PAINEL
@@ -247,6 +311,17 @@
         .tw-btn.inativo {
             background: #990000;
             color: #fff;
+        }
+
+        /* NOVO: estilo para botão RESET */
+        .tw-btn-reset {
+            background: #ff4444;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .tw-btn-reset:hover {
+            background: #ff6666;
         }
 
         /* NOVO: estilo para chave seletora ON/OFF */
@@ -424,7 +499,7 @@
     };
 
     // ============================================
-    // HTML DO PAINEL (ATUALIZADO)
+    // HTML DO PAINEL (ATUALIZADO COM BOTÃO RESET)
     // ============================================
     const painel = document.createElement('div');
     painel.id = 'tw-painel-unificado';
@@ -476,13 +551,25 @@
                 </div>
             </div>
 
+            <!-- NOVO: Botão RESET -->
+            <div class="tw-section">
+                <div class="tw-section-title">🔄 Reset do Sistema</div>
+                <button class="tw-btn tw-btn-reset" id="reset-system">⚠️ RESETAR SISTEMA ⚠️</button>
+                <div class="info-text" style="margin-top: 8px; color: #ff6666;">
+                    🔧 Use se o sistema travar ou não responder<br>
+                    💡 Reseta Anti-Bot, Anti-Logoff e limpa todos os dados<br>
+                    ⚡ Mantém sua preferência de reload
+                </div>
+            </div>
+
             <hr>
 
             <div class="info-text">
                 💡 <strong>Anti-Bot:</strong> Detecta e evita captchas<br>
                 💡 <strong>Anti-Logoff:</strong> Mantém sua sessão ativa<br>
                 💡 <strong>Reload:</strong> Chave ON/OFF para controlar se recarrega<br>
-                💡 <strong>Contador:</strong> Persistente mesmo após reload
+                💡 <strong>Contador:</strong> Persistente mesmo após reload<br>
+                💡 <strong>Reset:</strong> Corrige travamentos no logout
             </div>
         </div>
     `;
@@ -511,7 +598,8 @@
             btnOn: document.getElementById('reload-on'),
             btnOff: document.getElementById('reload-off'),
             status: document.getElementById('reload-status')
-        }
+        },
+        resetBtn: document.getElementById('reset-system') // NOVO
     };
 
     // ============================================
@@ -961,6 +1049,15 @@
     // NOVOS: listeners para a chave seletora ON/OFF
     UI.reload.btnOn.addEventListener('click', () => setReloadEnabled(true));
     UI.reload.btnOff.addEventListener('click', () => setReloadEnabled(false));
+    
+    // NOVO: listener para o botão RESET
+    if (UI.resetBtn) {
+        UI.resetBtn.addEventListener('click', () => {
+            if (confirm('⚠️ ATENÇÃO! Isso irá:\n\n• Desativar Anti-Bot\n• Desativar Anti-Logoff\n• Limpar todos os contadores\n• Resetar estados travados\n\nDeseja realmente resetar o sistema?')) {
+                resetarSistema();
+            }
+        });
+    }
 
     // ============================================
     // RESTAURAR ESTADO (COM CHAVE DE RELOAD)
@@ -1007,8 +1104,9 @@
     // ============================================
     // INICIALIZAÇÃO
     // ============================================
-    console.log('🎮 Sistema TW Unificado 3.8 carregado!');
-    console.log('✅ NOVIDADE: Chave seletora ON/OFF para reload automático');
+    console.log('🎮 Sistema TW Unificado 3.9 carregado!');
+    console.log('✅ NOVIDADE: Botão RESET para quando o script travar no logout');
+    console.log('✅ Chave seletora ON/OFF para reload automático');
     console.log('✅ Quando OFF: Anti-Logoff NÃO recarrega a página');
     console.log('✅ Persistente - salva sua escolha mesmo após reload');
     console.log('📍 Painel fixo no canto inferior direito');
