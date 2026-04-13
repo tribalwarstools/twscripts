@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tribal Wars - Recrutamento Automático
 // @namespace    http://tampermonkey.net/
-// @version      5.1
+// @version      7
 // @description  Recrutamento automático por aldeia com predefinições de ataque/defesa + ordenação por população disponível
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
@@ -66,7 +66,7 @@
         posY:           null,
         totalRecrutado: 0,
         configAldeias:  {},
-        ordenarPorPop:  true  // NOVA: ordenação por população disponível
+        ordenarPorPop:  true
     };
 
     let ATIVADO             = DEFAULTS.ativado;
@@ -84,58 +84,83 @@
     let cicloAtual = 0;
     let painel     = null;
     let modal      = null;
-
-    // Cache de população das aldeias (atualizado a cada ciclo)
+    
+    // Cache de população
     let cachePopulacao = {};
 
     // ============================================
-    // FUNÇÃO PARA OBTER POPULAÇÃO DISPONÍVEL
+    // FUNÇÃO PARA OBTER POPULAÇÃO (via screen=farm)
     // ============================================
     async function obterPopulacaoDisponivel(villageId, villageName) {
         try {
-            const url = `/game.php?village=${villageId}&screen=main`;
+            const url = `/game.php?village=${villageId}&screen=farm`;
             const response = await fetch(url, { credentials: 'same-origin' });
             if (!response.ok) return null;
             
             const html = await response.text();
             
-            // Múltiplos padrões para encontrar população
-            const patterns = [
-                /Popula[cç][ãa]o[:\s]+(\d+)\/(\d+)/i,
-                /pop[:\s]+(\d+)\/(\d+)/i,
-                /habitantes[:\s]+(\d+)\/(\d+)/i,
-                /population[:\s]+(\d+)\/(\d+)/i,
-                /(\d+)\s*\/\s*(\d+)\s*(?:pop|habitantes|população)/i,
-                />(\d+)\/(\d+)</,
-                /"population_current":(\d+),"population_max":(\d+)/,
-                /pop_current.*?(\d+).*?pop_max.*?(\d+)/i
+            let atual = null;
+            let maximo = null;
+            
+            // Extrair população máxima
+            const maxPatterns = [
+                /População máxima\s*<\/td>\s*<td[^>]*>\s*<b>(\d+)<\/b>/i,
+                /População máxima[^>]*>.*?<b>(\d+)<\/b>/i,
+                /"population_max":(\d+)/i
             ];
             
-            let atual = null, maximo = null;
-            
-            for (const pattern of patterns) {
+            for (const pattern of maxPatterns) {
                 const match = html.match(pattern);
                 if (match) {
-                    atual = parseInt(match[1]);
-                    maximo = parseInt(match[2]);
-                    if (!isNaN(atual) && !isNaN(maximo)) break;
+                    maximo = parseInt(match[1]);
+                    if (!isNaN(maximo) && maximo > 0) break;
                 }
             }
             
-            if (atual !== null && maximo !== null && !isNaN(atual) && !isNaN(maximo)) {
+            // Extrair população atual (Todos)
+            const atualPatterns = [
+                /Todos\s*<\/td>\s*<td[^>]*>\s*<b>(\d+)<\/b>/is,
+                /Todos[^<]*<\/td>\s*<td[^>]*>\s*<b>(\d+)<\/b>/i,
+                /"total_population":(\d+)/i
+            ];
+            
+            for (const pattern of atualPatterns) {
+                const match = html.match(pattern);
+                if (match) {
+                    atual = parseInt(match[1]);
+                    if (!isNaN(atual) && atual > 0) break;
+                }
+            }
+            
+            // Fallback: somar edifícios + tropas
+            if (atual === null) {
+                const edificiosMatch = html.match(/Edifícios[^>]*>.*?<td[^>]*>\s*<b?>?(\d+)/is);
+                const tropasMatch = html.match(/Tropas\s*<\/td>\s*<td[^>]*>\s*<b?>?(\d+)/is);
+                
+                let edificios = edificiosMatch ? parseInt(edificiosMatch[1]) : 0;
+                let tropas = tropasMatch ? parseInt(tropasMatch[1]) : 0;
+                
+                if (edificios > 0 || tropas > 0) {
+                    atual = edificios + tropas;
+                }
+            }
+            
+            if (atual !== null && maximo !== null && !isNaN(atual) && !isNaN(maximo) && atual > 0 && maximo > 0) {
+                if (atual > maximo) atual = maximo;
                 const disponivel = maximo - atual;
                 return { atual, maximo, disponivel };
             }
             
             return null;
+            
         } catch (err) {
-            console.error(`Erro na aldeia ${villageId} (${villageName}):`, err.message);
+            console.error(`Erro na aldeia ${villageId}:`, err.message);
             return null;
         }
     }
 
     // ============================================
-    // ATUALIZAR CACHE DE POPULAÇÃO DE TODAS ALDEIAS
+    // ATUALIZAR CACHE DE POPULAÇÃO
     // ============================================
     async function atualizarCachePopulacao() {
         const aldeiasIds = Object.keys(configAldeias);
@@ -150,32 +175,27 @@
             const pop = await obterPopulacaoDisponivel(parseInt(villageId), cfg.nome);
             if (pop) {
                 cachePopulacao[villageId] = pop;
-                console.log(`[Pop] ${cfg.nome}: ${pop.atual}/${pop.maximo} | Disponível: ${pop.disponivel}`);
             } else {
                 cachePopulacao[villageId] = { disponivel: 0, erro: true };
-                console.log(`[Pop] ${cfg.nome}: ❌ Não foi possível obter população`);
             }
             
-            // Pequena pausa para não sobrecarregar
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, 200));
         }
         
         const totalPopDisp = Object.values(cachePopulacao).reduce((sum, p) => sum + (p.disponivel || 0), 0);
-        adicionarLog(`✅ População coletada: ${totalPopDisp} espaços disponíveis no total`, 'ok');
+        adicionarLog(`✅ População coletada: ${totalPopDisp} espaços livres`, 'ok');
     }
 
     // ============================================
-    // OBTER ALDEIAS ORDENADAS POR POPULAÇÃO DISPONÍVEL (MAIOR → MENOR)
+    // OBTER ALDEIAS ORDENADAS (MAIOR → MENOR)
     // ============================================
     function obterAldeiasOrdenadas() {
         const aldeias = Object.entries(configAldeias);
         
         if (!ORDENAR_POR_POP) {
-            // Sem ordenação, mantém ordem original
             return aldeias;
         }
         
-        // Ordena por população disponível (MAIOR → MENOR)
         const comPop = [];
         const semPop = [];
         
@@ -188,16 +208,13 @@
             }
         }
         
-        // Ordena comPop por disponível decrescente (maior → menor)
         comPop.sort((a, b) => b.disponivel - a.disponivel);
-        
-        // Junta: primeiro as com população disponível (maior → menor), depois as sem dados
         const ordenadas = [...comPop, ...semPop];
         
-        // Log da ordenação
-        console.log('\n📋 ORDEM DE RECRUTAMENTO (MAIOR POPULAÇÃO DISPONÍVEL → MENOR):');
+        // Log da ordem
+        console.log('\n📋 ORDEM DE RECRUTAMENTO (MAIOR espaço → MENOR):');
         ordenadas.forEach((item, idx) => {
-            const popInfo = item.disponivel > 0 ? `disp: ${item.disponivel}` : 'sem dados';
+            const popInfo = item.disponivel > 0 ? `disp: ${item.disponivel}` : 'cheia/sem dados';
             console.log(`   ${idx+1}. ${item.cfg.nome} - ${popInfo}`);
         });
         
@@ -281,7 +298,7 @@
             const label = document.getElementById('twr-ordem-label');
             if (label) {
                 label.innerHTML = ORDENAR_POR_POP 
-                    ? '📊 Ordem: MAIOR população disponível → MENOR'
+                    ? '📊 Ordem: MAIOR espaço → MENOR'
                     : '📋 Ordem: conforme cadastro';
             }
         }
@@ -474,12 +491,10 @@
         console.log(`========================================`);
 
         try {
-            // 1. Atualiza cache de população para ordenação
             if (ORDENAR_POR_POP) {
                 await atualizarCachePopulacao();
             }
 
-            // 2. Obtém aldeias ordenadas (MAIOR população disponível → MENOR)
             const aldeiasOrdenadas = obterAldeiasOrdenadas();
 
             if (aldeiasOrdenadas.length === 0) {
@@ -488,18 +503,16 @@
                 return;
             }
 
-            adicionarLog(`${aldeiasOrdenadas.length} aldeia(s) no ciclo${ORDENAR_POR_POP ? ' (ordenadas por população ↓)' : ''}`, 'ok');
+            adicionarLog(`${aldeiasOrdenadas.length} aldeia(s) no ciclo${ORDENAR_POR_POP ? ' (ordenadas)' : ''}`, 'ok');
 
-            // 3. Recruta em cada aldeia na ordem definida
             for (const [villageId, cfg] of aldeiasOrdenadas) {
                 if (!ATIVADO) break;
 
                 const slots = (cfg.slots || []).filter(s => s.unidade && s.quantidade > 0);
                 if (slots.length === 0) continue;
 
-                // Exibe informação de população disponível se disponível
                 const popInfo = cachePopulacao[villageId];
-                const popMsg = popInfo && !popInfo.erro ? ` (${popInfo.disponivel} espaços livres)` : '';
+                const popMsg = popInfo && !popInfo.erro && popInfo.disponivel > 0 ? ` (${popInfo.disponivel} livres)` : '';
                 console.log(`\n[${cfg.nome}]${popMsg}`);
 
                 for (const slot of slots) {
@@ -514,7 +527,6 @@
                         adicionarLog(`${cfg.nome}: +${resultado.quantidade} ${UNIDADES[slot.unidade]?.nome}`, 'ok');
                         console.log(`  ✓ ${UNIDADES[slot.unidade]?.nome} x${resultado.quantidade}`);
                         
-                        // Atualiza cache de população após recrutamento bem-sucedido
                         if (ORDENAR_POR_POP && cachePopulacao[villageId]) {
                             cachePopulacao[villageId].disponivel -= resultado.quantidade;
                         }
@@ -530,7 +542,6 @@
                 await new Promise(r => setTimeout(r, PAUSA_ENTRE_ALDEIAS));
             }
 
-            // Resumo do ciclo
             const totalPopRestante = Object.values(cachePopulacao).reduce((sum, p) => sum + Math.max(0, p.disponivel || 0), 0);
             adicionarLog(`✅ Ciclo ${cicloAtual} concluído. Total: ${totalRecrutado} | Espaços restantes: ${totalPopRestante}`, 'ok');
             console.log(`\nCiclo ${cicloAtual} finalizado. Próximo em ${PAUSA_ENTRE_CICLOS / 1000}s\n`);
@@ -640,11 +651,10 @@
                     <span id="twr-status" style="font-weight:500;font-size:12px;color:#22a55a;">🔴 Parado</span>
                 </div>
 
-                <!-- NOVO: Toggle de ordenação por população -->
                 <div style="background:#111;border:1px solid #22a55a33;border-radius:8px;padding:10px 12px;">
                     <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                         <span id="twr-ordem-label" style="font-size:11px;color:#22a55a;">
-                            ${ORDENAR_POR_POP ? '📊 Ordem: MAIOR população disponível → MENOR' : '📋 Ordem: conforme cadastro'}
+                            ${ORDENAR_POR_POP ? '📊 Ordem: MAIOR espaço → MENOR' : '📋 Ordem: conforme cadastro'}
                         </span>
                         <div style="position:relative;display:inline-block;width:40px;height:20px;">
                             <input type="checkbox" id="twr-toggle-ordem" ${ORDENAR_POR_POP ? 'checked' : ''} style="opacity:0;width:0;height:0;position:absolute;">
@@ -652,7 +662,7 @@
                         </div>
                     </label>
                     <div style="font-size:9px;color:#22a55a88;margin-top:6px;">
-                        ⚡ Prioriza aldeias com MAIS espaço livre para recrutar
+                        ⚡ Prioriza aldeias com MAIS espaço livre
                     </div>
                 </div>
 
@@ -741,7 +751,7 @@
         `;
         document.head.appendChild(style);
 
-        // Fix para o toggle (o HTML do toggle precisa do span após o input)
+        // Fix para o toggle
         const toggleContainer = painel.querySelector('#twr-toggle-ordem').parentElement;
         const toggleSlider = toggleContainer.querySelector('#twr-toggle-slider');
         const toggleInput = toggleContainer.querySelector('#twr-toggle-ordem');
@@ -749,12 +759,11 @@
         toggleSlider.style.cssText = 'position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#333;transition:.3s;border-radius:20px;';
         toggleSlider.before(toggleInput);
         
-        // Evento do toggle
         toggleInput.addEventListener('change', (e) => {
             ORDENAR_POR_POP = e.target.checked;
             atualizarToggleOrdenacao();
             salvarEstado();
-            adicionarLog(ORDENAR_POR_POP ? '📊 Ordenação por MAIOR população disponível ativada' : '📋 Ordenação desativada (ordem do cadastro)', 'ok');
+            adicionarLog(ORDENAR_POR_POP ? '📊 Ordenação por MAIOR espaço ativada' : '📋 Ordenação desativada', 'ok');
         });
 
         const inpAldeias = document.getElementById('twr-pausa-aldeias');
@@ -837,7 +846,7 @@
     }
 
     // ============================================
-    // HELPERS DO MODAL (mesmo do original)
+    // HELPERS DO MODAL
     // ============================================
 
     function aplicarPredefinicao(row, chave) {
