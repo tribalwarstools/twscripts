@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Tribal Wars - Recrutamento Automático
 // @namespace    http://tampermonkey.net/
-// @version      5.0
-// @description  Recrutamento automático por aldeia com predefinições de ataque/defesa
+// @version      5.1
+// @description  Recrutamento automático por aldeia com predefinições de ataque/defesa + ordenação por população disponível
 // @match        https://*.tribalwars.com.br/game.php*
 // @grant        none
 // ==/UserScript==
@@ -65,7 +65,8 @@
         posX:           null,
         posY:           null,
         totalRecrutado: 0,
-        configAldeias:  {}
+        configAldeias:  {},
+        ordenarPorPop:  true  // NOVA: ordenação por população disponível
     };
 
     let ATIVADO             = DEFAULTS.ativado;
@@ -76,6 +77,7 @@
     let POS_Y               = DEFAULTS.posY;
     let totalRecrutado      = DEFAULTS.totalRecrutado;
     let configAldeias       = {};
+    let ORDENAR_POR_POP     = DEFAULTS.ordenarPorPop;
 
     let rodando    = false;
     let cicloAtivo = false;
@@ -83,10 +85,129 @@
     let painel     = null;
     let modal      = null;
 
+    // Cache de população das aldeias (atualizado a cada ciclo)
+    let cachePopulacao = {};
+
+    // ============================================
+    // FUNÇÃO PARA OBTER POPULAÇÃO DISPONÍVEL
+    // ============================================
+    async function obterPopulacaoDisponivel(villageId, villageName) {
+        try {
+            const url = `/game.php?village=${villageId}&screen=main`;
+            const response = await fetch(url, { credentials: 'same-origin' });
+            if (!response.ok) return null;
+            
+            const html = await response.text();
+            
+            // Múltiplos padrões para encontrar população
+            const patterns = [
+                /Popula[cç][ãa]o[:\s]+(\d+)\/(\d+)/i,
+                /pop[:\s]+(\d+)\/(\d+)/i,
+                /habitantes[:\s]+(\d+)\/(\d+)/i,
+                /population[:\s]+(\d+)\/(\d+)/i,
+                /(\d+)\s*\/\s*(\d+)\s*(?:pop|habitantes|população)/i,
+                />(\d+)\/(\d+)</,
+                /"population_current":(\d+),"population_max":(\d+)/,
+                /pop_current.*?(\d+).*?pop_max.*?(\d+)/i
+            ];
+            
+            let atual = null, maximo = null;
+            
+            for (const pattern of patterns) {
+                const match = html.match(pattern);
+                if (match) {
+                    atual = parseInt(match[1]);
+                    maximo = parseInt(match[2]);
+                    if (!isNaN(atual) && !isNaN(maximo)) break;
+                }
+            }
+            
+            if (atual !== null && maximo !== null && !isNaN(atual) && !isNaN(maximo)) {
+                const disponivel = maximo - atual;
+                return { atual, maximo, disponivel };
+            }
+            
+            return null;
+        } catch (err) {
+            console.error(`Erro na aldeia ${villageId} (${villageName}):`, err.message);
+            return null;
+        }
+    }
+
+    // ============================================
+    // ATUALIZAR CACHE DE POPULAÇÃO DE TODAS ALDEIAS
+    // ============================================
+    async function atualizarCachePopulacao() {
+        const aldeiasIds = Object.keys(configAldeias);
+        if (aldeiasIds.length === 0) return;
+        
+        adicionarLog('📊 Coletando população das aldeias...', 'ok');
+        
+        for (const villageId of aldeiasIds) {
+            const cfg = configAldeias[villageId];
+            if (!cfg) continue;
+            
+            const pop = await obterPopulacaoDisponivel(parseInt(villageId), cfg.nome);
+            if (pop) {
+                cachePopulacao[villageId] = pop;
+                console.log(`[Pop] ${cfg.nome}: ${pop.atual}/${pop.maximo} | Disponível: ${pop.disponivel}`);
+            } else {
+                cachePopulacao[villageId] = { disponivel: 0, erro: true };
+                console.log(`[Pop] ${cfg.nome}: ❌ Não foi possível obter população`);
+            }
+            
+            // Pequena pausa para não sobrecarregar
+            await new Promise(r => setTimeout(r, 300));
+        }
+        
+        const totalPopDisp = Object.values(cachePopulacao).reduce((sum, p) => sum + (p.disponivel || 0), 0);
+        adicionarLog(`✅ População coletada: ${totalPopDisp} espaços disponíveis no total`, 'ok');
+    }
+
+    // ============================================
+    // OBTER ALDEIAS ORDENADAS POR POPULAÇÃO DISPONÍVEL (MAIOR → MENOR)
+    // ============================================
+    function obterAldeiasOrdenadas() {
+        const aldeias = Object.entries(configAldeias);
+        
+        if (!ORDENAR_POR_POP) {
+            // Sem ordenação, mantém ordem original
+            return aldeias;
+        }
+        
+        // Ordena por população disponível (MAIOR → MENOR)
+        const comPop = [];
+        const semPop = [];
+        
+        for (const [id, cfg] of aldeias) {
+            const pop = cachePopulacao[id];
+            if (pop && !pop.erro && pop.disponivel > 0) {
+                comPop.push({ id, cfg, disponivel: pop.disponivel });
+            } else {
+                semPop.push({ id, cfg, disponivel: 0 });
+            }
+        }
+        
+        // Ordena comPop por disponível decrescente (maior → menor)
+        comPop.sort((a, b) => b.disponivel - a.disponivel);
+        
+        // Junta: primeiro as com população disponível (maior → menor), depois as sem dados
+        const ordenadas = [...comPop, ...semPop];
+        
+        // Log da ordenação
+        console.log('\n📋 ORDEM DE RECRUTAMENTO (MAIOR POPULAÇÃO DISPONÍVEL → MENOR):');
+        ordenadas.forEach((item, idx) => {
+            const popInfo = item.disponivel > 0 ? `disp: ${item.disponivel}` : 'sem dados';
+            console.log(`   ${idx+1}. ${item.cfg.nome} - ${popInfo}`);
+        });
+        
+        return ordenadas.map(item => [item.id, item.cfg]);
+    }
+
     // ============================================
     // PERSISTÊNCIA
     // ============================================
-    const STORAGE_KEY = 'twr_recrutamento_v5';
+    const STORAGE_KEY = 'twr_recrutamento_v5_1';
 
     function salvarEstado() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -97,7 +218,8 @@
             posX:           POS_X,
             posY:           POS_Y,
             totalRecrutado: totalRecrutado,
-            configAldeias:  configAldeias
+            configAldeias:  configAldeias,
+            ordenarPorPop:  ORDENAR_POR_POP
         }));
     }
 
@@ -113,6 +235,7 @@
             POS_Y               = d.posY            !== undefined ? d.posY : DEFAULTS.posY;
             totalRecrutado      = d.totalRecrutado  || DEFAULTS.totalRecrutado;
             configAldeias       = d.configAldeias   || {};
+            ORDENAR_POR_POP     = d.ordenarPorPop   !== undefined ? d.ordenarPorPop : DEFAULTS.ordenarPorPop;
 
             const aguardarPainel = setInterval(() => {
                 if (painel) {
@@ -120,6 +243,7 @@
                     atualizarBotao(ATIVADO);
                     atualizarMetricas();
                     atualizarContadorAldeias();
+                    atualizarToggleOrdenacao();
                     if (ATIVADO && !rodando) setTimeout(() => iniciar(), 2000);
                 }
             }, 100);
@@ -136,6 +260,8 @@
         totalRecrutado      = DEFAULTS.totalRecrutado;
         cicloAtual          = 0;
         configAldeias       = {};
+        ORDENAR_POR_POP     = DEFAULTS.ordenarPorPop;
+        cachePopulacao      = {};
         localStorage.removeItem(STORAGE_KEY);
 
         if (painel) {
@@ -146,6 +272,19 @@
         }
         aplicarEstadoNaUI();
         adicionarLog('Reset completo. Configurações restauradas.', 'warn');
+    }
+
+    function atualizarToggleOrdenacao() {
+        const toggle = document.getElementById('twr-toggle-ordem');
+        if (toggle) {
+            toggle.checked = ORDENAR_POR_POP;
+            const label = document.getElementById('twr-ordem-label');
+            if (label) {
+                label.innerHTML = ORDENAR_POR_POP 
+                    ? '📊 Ordem: MAIOR população disponível → MENOR'
+                    : '📋 Ordem: conforme cadastro';
+            }
+        }
     }
 
     function aplicarEstadoNaUI() {
@@ -162,6 +301,7 @@
         atualizarBotao(false);
         atualizarMetricas();
         atualizarContadorAldeias();
+        atualizarToggleOrdenacao();
 
         ['twr-err-aldeias','twr-err-ciclos'].forEach(id => {
             const el = document.getElementById(id);
@@ -318,7 +458,7 @@
     }
 
     // ============================================
-    // CICLO PRINCIPAL
+    // CICLO PRINCIPAL COM ORDENAÇÃO
     // ============================================
     async function escanearERecrutar() {
         if (!ATIVADO) return;
@@ -327,30 +467,40 @@
         cicloAtivo = true;
         cicloAtual++;
         atualizarMetricas();
-        adicionarLog(`Ciclo ${cicloAtual} iniciado`, 'ok');
+        adicionarLog(`🔄 Ciclo ${cicloAtual} iniciado`, 'ok');
 
         console.log(`\n========================================`);
         console.log(`CICLO ${cicloAtual} - ${new Date().toLocaleTimeString()}`);
         console.log(`========================================`);
 
         try {
-            const aldeiasCfg = Object.entries(configAldeias);
+            // 1. Atualiza cache de população para ordenação
+            if (ORDENAR_POR_POP) {
+                await atualizarCachePopulacao();
+            }
 
-            if (aldeiasCfg.length === 0) {
+            // 2. Obtém aldeias ordenadas (MAIOR população disponível → MENOR)
+            const aldeiasOrdenadas = obterAldeiasOrdenadas();
+
+            if (aldeiasOrdenadas.length === 0) {
                 adicionarLog('Nenhuma aldeia configurada.', 'warn');
                 cicloAtivo = false;
                 return;
             }
 
-            adicionarLog(`${aldeiasCfg.length} aldeia(s) no ciclo`, 'ok');
+            adicionarLog(`${aldeiasOrdenadas.length} aldeia(s) no ciclo${ORDENAR_POR_POP ? ' (ordenadas por população ↓)' : ''}`, 'ok');
 
-            for (const [villageId, cfg] of aldeiasCfg) {
+            // 3. Recruta em cada aldeia na ordem definida
+            for (const [villageId, cfg] of aldeiasOrdenadas) {
                 if (!ATIVADO) break;
 
                 const slots = (cfg.slots || []).filter(s => s.unidade && s.quantidade > 0);
                 if (slots.length === 0) continue;
 
-                console.log(`\n[${cfg.nome}]`);
+                // Exibe informação de população disponível se disponível
+                const popInfo = cachePopulacao[villageId];
+                const popMsg = popInfo && !popInfo.erro ? ` (${popInfo.disponivel} espaços livres)` : '';
+                console.log(`\n[${cfg.nome}]${popMsg}`);
 
                 for (const slot of slots) {
                     if (!ATIVADO) break;
@@ -363,6 +513,11 @@
                         atualizarMetricas();
                         adicionarLog(`${cfg.nome}: +${resultado.quantidade} ${UNIDADES[slot.unidade]?.nome}`, 'ok');
                         console.log(`  ✓ ${UNIDADES[slot.unidade]?.nome} x${resultado.quantidade}`);
+                        
+                        // Atualiza cache de população após recrutamento bem-sucedido
+                        if (ORDENAR_POR_POP && cachePopulacao[villageId]) {
+                            cachePopulacao[villageId].disponivel -= resultado.quantidade;
+                        }
                     } else {
                         const tipoLog = /insuficiente|máx/i.test(resultado.reason) ? 'warn' : 'err';
                         adicionarLog(`${cfg.nome} / ${UNIDADES[slot.unidade]?.nome}: ${resultado.reason}`, tipoLog);
@@ -375,7 +530,9 @@
                 await new Promise(r => setTimeout(r, PAUSA_ENTRE_ALDEIAS));
             }
 
-            adicionarLog(`Ciclo ${cicloAtual} concluído. Total: ${totalRecrutado}`, 'ok');
+            // Resumo do ciclo
+            const totalPopRestante = Object.values(cachePopulacao).reduce((sum, p) => sum + Math.max(0, p.disponivel || 0), 0);
+            adicionarLog(`✅ Ciclo ${cicloAtual} concluído. Total: ${totalRecrutado} | Espaços restantes: ${totalPopRestante}`, 'ok');
             console.log(`\nCiclo ${cicloAtual} finalizado. Próximo em ${PAUSA_ENTRE_CICLOS / 1000}s\n`);
 
         } catch (err) {
@@ -397,14 +554,14 @@
     async function iniciar() {
         if (rodando) return;
         rodando = true;
-        adicionarLog(`Iniciando — ${Object.keys(configAldeias).length} aldeia(s) configurada(s)`, 'ok');
+        adicionarLog(`🚀 Iniciando — ${Object.keys(configAldeias).length} aldeia(s) configurada(s)`, 'ok');
         await new Promise(r => setTimeout(r, 500));
         escanearERecrutar();
     }
 
     function parar() {
         rodando = false;
-        adicionarLog(`Parado. Total recrutado: ${totalRecrutado}`, 'warn');
+        adicionarLog(`⏹️ Parado. Total recrutado: ${totalRecrutado}`, 'warn');
     }
 
     function toggle() {
@@ -429,7 +586,7 @@
         const dot  = document.getElementById('twr-dot');
         const stat = document.getElementById('twr-status');
         if (dot)  dot.style.background  = ativo ? '#22a55a' : '#0f6e3f';
-        if (stat) stat.textContent      = ativo ? `Rodando — Ciclo ${cicloAtual}` : `Parado — ${totalRecrutado} recrutados`;
+        if (stat) stat.textContent      = ativo ? `🟢 Rodando — Ciclo ${cicloAtual}` : `🔴 Parado — ${totalRecrutado} recrutados`;
         if (btn) {
             btn.innerHTML        = ativo ? '⏹ Desativar' : '▶ Ativar';
             btn.style.background = ativo ? '#0f6e3f' : '#22a55a';
@@ -449,7 +606,7 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 300px;
+            width: 320px;
             background: #0a0a0a;
             border: 1px solid #22a55a;
             border-radius: 12px;
@@ -460,7 +617,7 @@
         `;
 
         if (POS_X !== null && POS_Y !== null) {
-            const x = Math.max(0, Math.min(POS_X, window.innerWidth  - 300));
+            const x = Math.max(0, Math.min(POS_X, window.innerWidth  - 320));
             const y = Math.max(0, Math.min(POS_Y, window.innerHeight - 100));
             painel.style.left   = x + 'px';
             painel.style.top    = y + 'px';
@@ -480,7 +637,23 @@
 
                 <div style="display:flex;align-items:center;gap:10px;background:#111;border:1px solid #22a55a33;border-radius:8px;padding:8px 12px;">
                     <div id="twr-dot" style="width:10px;height:10px;border-radius:50%;background:#0f6e3f;flex-shrink:0;transition:background .3s;"></div>
-                    <span id="twr-status" style="font-weight:500;font-size:12px;color:#22a55a;">Parado</span>
+                    <span id="twr-status" style="font-weight:500;font-size:12px;color:#22a55a;">🔴 Parado</span>
+                </div>
+
+                <!-- NOVO: Toggle de ordenação por população -->
+                <div style="background:#111;border:1px solid #22a55a33;border-radius:8px;padding:10px 12px;">
+                    <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                        <span id="twr-ordem-label" style="font-size:11px;color:#22a55a;">
+                            ${ORDENAR_POR_POP ? '📊 Ordem: MAIOR população disponível → MENOR' : '📋 Ordem: conforme cadastro'}
+                        </span>
+                        <div style="position:relative;display:inline-block;width:40px;height:20px;">
+                            <input type="checkbox" id="twr-toggle-ordem" ${ORDENAR_POR_POP ? 'checked' : ''} style="opacity:0;width:0;height:0;position:absolute;">
+                            <span id="twr-toggle-slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#333;transition:.3s;border-radius:20px;"></span>
+                        </div>
+                    </label>
+                    <div style="font-size:9px;color:#22a55a88;margin-top:6px;">
+                        ⚡ Prioriza aldeias com MAIS espaço livre para recrutar
+                    </div>
                 </div>
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -524,8 +697,6 @@
                     </div>
                 </div>
 
-                <div style="border-top:1px solid #22a55a33;"></div>
-
                 <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch;">
                     <button id="twr-botao" style="padding:10px;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;background:#22a55a;color:#000;transition:opacity .15s;">
                         ▶ Ativar
@@ -546,6 +717,45 @@
         `;
 
         document.body.appendChild(painel);
+
+        // Estilizar o toggle slider
+        const style = document.createElement('style');
+        style.textContent = `
+            #twr-toggle-ordem:checked + #twr-toggle-slider {
+                background-color: #22a55a;
+            }
+            #twr-toggle-slider:before {
+                content: "";
+                position: absolute;
+                height: 16px;
+                width: 16px;
+                left: 2px;
+                bottom: 2px;
+                background-color: white;
+                transition: .3s;
+                border-radius: 50%;
+            }
+            #twr-toggle-ordem:checked + #twr-toggle-slider:before {
+                transform: translateX(20px);
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Fix para o toggle (o HTML do toggle precisa do span após o input)
+        const toggleContainer = painel.querySelector('#twr-toggle-ordem').parentElement;
+        const toggleSlider = toggleContainer.querySelector('#twr-toggle-slider');
+        const toggleInput = toggleContainer.querySelector('#twr-toggle-ordem');
+        toggleInput.style.cssText = 'opacity:0;width:0;height:0;position:absolute;';
+        toggleSlider.style.cssText = 'position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#333;transition:.3s;border-radius:20px;';
+        toggleSlider.before(toggleInput);
+        
+        // Evento do toggle
+        toggleInput.addEventListener('change', (e) => {
+            ORDENAR_POR_POP = e.target.checked;
+            atualizarToggleOrdenacao();
+            salvarEstado();
+            adicionarLog(ORDENAR_POR_POP ? '📊 Ordenação por MAIOR população disponível ativada' : '📋 Ordenação desativada (ordem do cadastro)', 'ok');
+        });
 
         const inpAldeias = document.getElementById('twr-pausa-aldeias');
         const inpCiclos  = document.getElementById('twr-pausa-ciclos');
@@ -627,7 +837,7 @@
     }
 
     // ============================================
-    // HELPERS DO MODAL
+    // HELPERS DO MODAL (mesmo do original)
     // ============================================
 
     function aplicarPredefinicao(row, chave) {
